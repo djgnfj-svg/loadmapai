@@ -2,9 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
+from pydantic import BaseModel, Field
+from datetime import date
 
 from app.db import get_db
 from app.models.user import User
+from app.models.roadmap import RoadmapMode
 from app.schemas import (
     RoadmapCreate,
     RoadmapUpdate,
@@ -15,6 +18,20 @@ from app.schemas import (
 )
 from app.services.roadmap_service import RoadmapService, DailyTaskService
 from app.api.deps import get_current_user
+from app.ai.roadmap_graph import generate_roadmap
+
+
+class RoadmapGenerateRequest(BaseModel):
+    topic: str = Field(..., min_length=1, max_length=200)
+    duration_months: int = Field(..., ge=1, le=6)
+    start_date: date
+    mode: RoadmapMode = RoadmapMode.PLANNING
+
+
+class RoadmapGenerateResponse(BaseModel):
+    roadmap_id: str
+    title: str
+    message: str
 
 router = APIRouter()
 
@@ -125,3 +142,32 @@ async def toggle_daily_task(
     """Toggle daily task check status."""
     service = DailyTaskService(db)
     return service.toggle_daily_task(task_id, current_user.id)
+
+
+@router.post("/generate", response_model=RoadmapGenerateResponse)
+async def generate_roadmap_endpoint(
+    data: RoadmapGenerateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Generate a complete roadmap using AI (LangGraph + Claude)."""
+    try:
+        result = await generate_roadmap(
+            topic=data.topic,
+            duration_months=data.duration_months,
+            start_date=data.start_date,
+            mode=data.mode,
+            user_id=str(current_user.id),
+            db=db,
+        )
+
+        return RoadmapGenerateResponse(
+            roadmap_id=result["roadmap_id"],
+            title=result["title"],
+            message="로드맵이 성공적으로 생성되었습니다.",
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"로드맵 생성 중 오류가 발생했습니다: {str(e)}",
+        )

@@ -1,0 +1,64 @@
+import json
+from langchain_anthropic import ChatAnthropic
+from langchain_core.messages import HumanMessage
+
+from app.config import settings
+from app.ai.state import RoadmapGenerationState
+from app.ai.prompts.templates import DAILY_TASKS_PROMPT
+
+
+def create_llm():
+    return ChatAnthropic(
+        model="claude-sonnet-4-20250514",
+        anthropic_api_key=settings.anthropic_api_key,
+        temperature=0.7,
+    )
+
+
+def daily_generator(state: RoadmapGenerationState) -> RoadmapGenerationState:
+    """Generate daily tasks for each weekly task."""
+    llm = create_llm()
+
+    all_daily_tasks = []
+
+    for monthly_data in state["weekly_tasks"]:
+        month_number = monthly_data["month_number"]
+        monthly_daily_tasks = []
+
+        for weekly_task in monthly_data["weekly_tasks"]:
+            prompt = DAILY_TASKS_PROMPT.format(
+                topic=state["topic"],
+                weekly_task_title=weekly_task["title"],
+                weekly_task_description=weekly_task["description"],
+                month_number=month_number,
+                week_number=weekly_task["week_number"],
+            )
+
+            response = llm.invoke([HumanMessage(content=prompt)])
+
+            try:
+                result = json.loads(response.content)
+                daily_tasks = result["daily_tasks"]
+            except (json.JSONDecodeError, KeyError):
+                # Generate fallback daily tasks
+                daily_tasks = [
+                    {
+                        "day_number": i + 1,
+                        "title": f"{i + 1}일차 학습" if i < 5 else f"{i + 1}일차 복습",
+                        "description": f"{weekly_task['title']}의 {i + 1}일차 {'학습' if i < 5 else '복습'} 내용입니다."
+                    }
+                    for i in range(7)
+                ]
+
+            monthly_daily_tasks.append({
+                "week_number": weekly_task["week_number"],
+                "daily_tasks": daily_tasks
+            })
+
+        all_daily_tasks.append({
+            "month_number": month_number,
+            "weeks": monthly_daily_tasks
+        })
+
+    state["daily_tasks"] = all_daily_tasks
+    return state
