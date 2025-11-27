@@ -1,10 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from jose import jwt, JWTError
+from uuid import UUID
 
 from app.db import get_db
-from app.schemas import UserCreate, UserLogin, AuthResponse
+from app.config import settings
+from app.models.user import User
+from app.schemas import UserCreate, UserLogin, AuthResponse, UserResponse, RefreshTokenRequest, Token, TokenPayload
 from app.services.auth_service import AuthService
 from app.core.security import create_access_token, create_refresh_token
+from app.api.deps import get_current_user
 
 router = APIRouter()
 
@@ -57,4 +62,56 @@ async def login(
         user=user,
         access_token=access_token,
         refresh_token=refresh_token,
+    )
+
+
+@router.get("/me", response_model=UserResponse)
+async def get_me(
+    current_user: User = Depends(get_current_user),
+):
+    """Get current authenticated user info."""
+    return current_user
+
+
+@router.post("/refresh", response_model=Token)
+async def refresh_tokens(
+    refresh_data: RefreshTokenRequest,
+    db: Session = Depends(get_db),
+):
+    """Refresh access token using refresh token."""
+    try:
+        payload = jwt.decode(
+            refresh_data.refresh_token,
+            settings.secret_key,
+            algorithms=[settings.algorithm],
+        )
+        token_data = TokenPayload(**payload)
+
+        if token_data.type != "refresh":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token type",
+            )
+
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+        )
+
+    # Get user
+    user = db.query(User).filter(User.id == UUID(token_data.sub)).first()
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found or inactive",
+        )
+
+    # Create new tokens
+    new_access_token = create_access_token(subject=str(user.id))
+    new_refresh_token = create_refresh_token(subject=str(user.id))
+
+    return Token(
+        access_token=new_access_token,
+        refresh_token=new_refresh_token,
     )
