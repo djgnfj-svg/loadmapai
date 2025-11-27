@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
@@ -24,6 +25,9 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+# Session Middleware (for OAuth)
+app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
 
 # CORS 설정
 app.add_middleware(
