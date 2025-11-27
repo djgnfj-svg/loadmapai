@@ -5,121 +5,121 @@
 
 ---
 
-## Phase 1: 프로젝트 기반 구축
+## Phase 1: 프로젝트 기반 구축 ✅
 
 ### 1.1 프로젝트 구조 생성
-- [ ] 루트 디렉토리 구조 생성
-- [ ] backend/ 디렉토리 구조 생성
-- [ ] frontend/ 디렉토리 구조 생성
-- [ ] .gitignore 파일 생성
-- [ ] .env.example 파일 생성
+- [x] 루트 디렉토리 구조 생성
+- [x] backend/ 디렉토리 구조 생성
+- [x] frontend/ 디렉토리 구조 생성
+- [x] .gitignore 파일 생성
+- [x] .env.example 파일 생성
 
 ### 1.2 Docker Compose 설정
-- [ ] docker-compose.yml 작성
-- [ ] backend/Dockerfile 작성
-- [ ] frontend/Dockerfile 작성
-- [ ] Docker 네트워크 설정 확인
+- [x] docker-compose.yml 작성
+- [x] backend/Dockerfile 작성
+- [x] frontend/Dockerfile 작성
+- [x] Docker 네트워크 설정 확인
 - [ ] `docker-compose up` 테스트
 
 ### 1.3 FastAPI 기본 설정
-- [ ] requirements.txt 작성
-- [ ] app/main.py 생성 (FastAPI 앱)
-- [ ] app/config.py 생성 (환경변수 설정)
-- [ ] CORS 미들웨어 설정
-- [ ] Health check 엔드포인트 (`/health`)
+- [x] requirements.txt 작성
+- [x] app/main.py 생성 (FastAPI 앱)
+- [x] app/config.py 생성 (환경변수 설정)
+- [x] CORS 미들웨어 설정
+- [x] Health check 엔드포인트 (`/health`)
 
 ### 1.4 데이터베이스 연결
-- [ ] app/db/database.py 생성 (SQLAlchemy 설정)
-- [ ] alembic init 실행
-- [ ] alembic.ini 설정
-- [ ] alembic/env.py 설정
+- [x] app/db/database.py 생성 (SQLAlchemy 설정)
+- [x] alembic init 실행
+- [x] alembic.ini 설정
+- [x] alembic/env.py 설정
 - [ ] 첫 마이그레이션 테스트
 
 ### 1.5 React 프로젝트 설정
-- [ ] `npm create vite@latest` 실행
-- [ ] TypeScript 설정
-- [ ] TailwindCSS 설치 및 설정
-- [ ] 기본 폴더 구조 생성 (components, pages, hooks, services, store, types)
+- [x] `npm create vite@latest` 실행
+- [x] TypeScript 설정
+- [x] TailwindCSS 설치 및 설정
+- [x] 기본 폴더 구조 생성 (components, pages, hooks, services, store, types)
 - [ ] `npm run dev` 테스트
 
 ### 1.6 API 클라이언트 설정
-- [ ] Axios 설치
-- [ ] services/api.ts 생성 (Axios 인스턴스)
-- [ ] 인터셉터 설정 (토큰 자동 추가)
-- [ ] 에러 핸들링 설정
+- [x] Axios 설치
+- [x] services/api.ts 생성 (Axios 인스턴스)
+- [x] 인터셉터 설정 (토큰 자동 추가)
+- [x] 에러 핸들링 설정
 
 ---
 
-## Phase 2: 인증 시스템
+## Phase 2: 인증 시스템 ✅
 
 ### 2.1 User 모델 생성
-- [ ] app/models/user.py 작성
-- [ ] Alembic 마이그레이션 생성
+- [x] app/models/user.py 작성
+- [x] Alembic 마이그레이션 생성
 - [ ] 마이그레이션 실행 및 확인
 
 ### 2.2 이메일 회원가입/로그인 API
-- [ ] app/schemas/user.py 작성 (Pydantic)
-- [ ] app/core/security.py 작성 (비밀번호 해싱)
-- [ ] app/services/auth_service.py 작성
-- [ ] POST /api/v1/auth/register 구현
-- [ ] POST /api/v1/auth/login 구현
+- [x] app/schemas/user.py 작성 (Pydantic)
+- [x] app/core/security.py 작성 (비밀번호 해싱)
+- [x] app/services/auth_service.py 작성
+- [x] POST /api/v1/auth/register 구현
+- [x] POST /api/v1/auth/login 구현
 - [ ] Postman/curl 테스트
 
 ### 2.3 JWT 미들웨어
-- [ ] JWT 토큰 생성 함수 (access, refresh)
-- [ ] JWT 토큰 검증 함수
-- [ ] app/api/deps.py 작성 (get_current_user)
-- [ ] POST /api/v1/auth/refresh 구현
+- [x] JWT 토큰 생성 함수 (access, refresh)
+- [x] JWT 토큰 검증 함수
+- [x] app/api/deps.py 작성 (get_current_user)
+- [x] POST /api/v1/auth/refresh 구현
 - [ ] 보호된 엔드포인트 테스트
 
 ### 2.4 Google/GitHub OAuth 연동
-- [ ] app/core/oauth.py 작성
-- [ ] GET /api/v1/auth/google 구현
-- [ ] GET /api/v1/auth/google/callback 구현
-- [ ] GET /api/v1/auth/github 구현
-- [ ] GET /api/v1/auth/github/callback 구현
+- [x] app/core/oauth.py 작성
+- [x] GET /api/v1/auth/google 구현
+- [x] GET /api/v1/auth/google/callback 구현
+- [x] GET /api/v1/auth/github 구현
+- [x] GET /api/v1/auth/github/callback 구현
 - [ ] OAuth 플로우 테스트
 
 ### 2.5 프론트엔드 인증 페이지 및 상태 관리
-- [ ] Zustand 설치
-- [ ] store/authStore.ts 작성
-- [ ] services/authService.ts 작성
-- [ ] pages/Login.tsx 구현
-- [ ] pages/Register.tsx 구현
-- [ ] 로그인 상태 유지 (localStorage)
-- [ ] 로그아웃 기능
+- [x] Zustand 설치
+- [x] store/authStore.ts 작성
+- [x] services/authService.ts 작성
+- [x] pages/Login.tsx 구현
+- [x] pages/Register.tsx 구현
+- [x] 로그인 상태 유지 (localStorage)
+- [x] 로그아웃 기능
 
 ---
 
-## Phase 3: 기본 데이터 모델 및 CRUD
+## Phase 3: 기본 데이터 모델 및 CRUD ✅
 
 ### 3.1 Roadmap 모델
-- [ ] app/models/roadmap.py 작성 (mode 필드 포함)
-- [ ] app/schemas/roadmap.py 작성
-- [ ] Alembic 마이그레이션
+- [x] app/models/roadmap.py 작성 (mode 필드 포함)
+- [x] app/schemas/roadmap.py 작성
+- [x] Alembic 마이그레이션
 
 ### 3.2 Milestone, WeeklyTask, DailyTask 모델
-- [ ] app/models/milestone.py 작성
-- [ ] app/models/weekly_task.py 작성
-- [ ] app/models/daily_task.py 작성
-- [ ] 각 스키마 파일 작성
-- [ ] Alembic 마이그레이션
-- [ ] 관계 설정 확인 (cascade)
+- [x] app/models/milestone.py 작성
+- [x] app/models/weekly_task.py 작성
+- [x] app/models/daily_task.py 작성
+- [x] 각 스키마 파일 작성
+- [x] Alembic 마이그레이션
+- [x] 관계 설정 확인 (cascade)
 
 ### 3.3 기본 CRUD API
-- [ ] GET /api/v1/roadmaps (목록)
-- [ ] POST /api/v1/roadmaps (생성)
-- [ ] GET /api/v1/roadmaps/{id} (상세)
-- [ ] GET /api/v1/roadmaps/{id}/full (전체 계층)
-- [ ] PATCH /api/v1/roadmaps/{id} (수정)
-- [ ] DELETE /api/v1/roadmaps/{id} (삭제)
+- [x] GET /api/v1/roadmaps (목록)
+- [x] POST /api/v1/roadmaps (생성)
+- [x] GET /api/v1/roadmaps/{id} (상세)
+- [x] GET /api/v1/roadmaps/{id}/full (전체 계층)
+- [x] PATCH /api/v1/roadmaps/{id} (수정)
+- [x] DELETE /api/v1/roadmaps/{id} (삭제)
 - [ ] Milestone CRUD API
 - [ ] WeeklyTask CRUD API
 - [ ] DailyTask CRUD API
 
 ### 3.4 일별 태스크 체크 기능
-- [ ] PATCH /api/v1/daily-tasks/{id}/check 구현
-- [ ] 진행률 자동 계산 로직 구현
+- [x] PATCH /api/v1/daily-tasks/{id}/check 구현
+- [x] 진행률 자동 계산 로직 구현
 - [ ] 테스트
 
 ---
@@ -155,17 +155,17 @@
 ## Phase 5: 프론트엔드 기본 UI
 
 ### 5.1 공통/레이아웃 컴포넌트
+- [x] components/layout/Header.tsx
 - [ ] components/common/Button.tsx
 - [ ] components/common/Input.tsx
 - [ ] components/common/Modal.tsx
 - [ ] components/common/Card.tsx
 - [ ] components/common/Loading.tsx
-- [ ] components/layout/Header.tsx
 - [ ] components/layout/Sidebar.tsx
-- [ ] components/layout/Layout.tsx
+- [x] components/layout/Layout.tsx
 
 ### 5.2 랜딩, 대시보드 페이지
-- [ ] pages/Landing.tsx
+- [x] pages/Landing.tsx (Home.tsx)
 - [ ] pages/Dashboard.tsx
 - [ ] 오늘의 할 일 컴포넌트
 - [ ] 진행률 표시 컴포넌트
@@ -271,7 +271,18 @@
 
 | 커밋 | Phase | 날짜 | 설명 |
 |------|-------|------|------|
-| - | - | - | - |
+| 319c8c2 | 1.2 | 2024 | Docker Compose 개발 환경 설정 |
+| 4d6f1be | 1.3 | 2024 | FastAPI 기본 설정 및 프로젝트 구조 |
+| 5e97fca | 1.4 | 2024 | 데이터베이스 연결 및 Alembic 설정 |
+| bfb434e | 1.5 | 2024 | React 프로젝트 기본 구조 설정 |
+| 074a8b8 | 1.6 | 2024 | API 클라이언트 및 React Query 훅 설정 |
+| 4702f64 | 2.1 | 2024 | User 모델 및 마이그레이션 생성 |
+| 23d0d63 | 2.2 | 2024 | 이메일 회원가입/로그인 API 구현 |
+| 1cb6b83 | 2.3 | 2024 | JWT 인증 미들웨어 및 보호된 엔드포인트 |
+| 61789d2 | 2.4 | 2024 | Google/GitHub OAuth 연동 |
+| 013e576 | 2.5 | 2024 | 프론트엔드 인증 API 연동 |
+| 846e158 | 3.1-3.2 | 2024 | 로드맵 및 계층 데이터 모델 생성 |
+| c2a930b | 3.3-3.4 | 2024 | 로드맵 CRUD API 및 태스크 체크 기능 |
 
 ---
 
