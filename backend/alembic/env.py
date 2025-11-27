@@ -14,7 +14,7 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 from app.config import settings
 from app.db.base import Base
 # Import all models here for autogenerate
-from app.models import User  # noqa: F401
+from app.models import User, Roadmap, MonthlyGoal, WeeklyTask, DailyTask  # noqa: F401
 
 config = context.config
 
