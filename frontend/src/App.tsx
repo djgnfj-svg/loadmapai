@@ -1,16 +1,36 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Layout } from '@/components/layout';
+import { Home, Login, Register } from '@/pages';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      retry: 1,
+    },
+  },
+});
+
 function App() {
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-primary-600 mb-4">
-          LoadmapAI
-        </h1>
-        <p className="text-gray-600">
-          AI 기반 학습 로드맵 관리 플랫폼
-        </p>
-      </div>
-    </div>
-  )
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            {/* TODO: 추가 라우트 */}
+            {/* <Route path="/roadmaps" element={<Roadmaps />} /> */}
+            {/* <Route path="/roadmaps/new" element={<NewRoadmap />} /> */}
+            {/* <Route path="/roadmaps/:id" element={<RoadmapDetail />} /> */}
+            {/* <Route path="/learning" element={<Learning />} /> */}
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </QueryClientProvider>
+  );
 }
 
-export default App
+export default App;
