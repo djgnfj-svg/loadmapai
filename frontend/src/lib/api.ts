@@ -54,13 +54,20 @@ export const authApi = {
 
 // Roadmap API
 export const roadmapApi = {
-  list: (params?: { page?: number; size?: number }) =>
+  list: (params?: { skip?: number; limit?: number }) =>
     api.get('/roadmaps', { params }),
 
   get: (id: string) => api.get(`/roadmaps/${id}`),
 
-  create: (data: { topic: string; duration_months: number; start_date: string }) =>
+  getWithMonthly: (id: string) => api.get(`/roadmaps/${id}/monthly`),
+
+  getFull: (id: string) => api.get(`/roadmaps/${id}/full`),
+
+  create: (data: { topic: string; duration_months: number; start_date: string; mode: string }) =>
     api.post('/roadmaps', data),
+
+  generate: (data: { topic: string; duration_months: number; start_date: string; mode: string }) =>
+    api.post('/roadmaps/generate', data),
 
   update: (id: string, data: Partial<{ title: string; status: string }>) =>
     api.patch(`/roadmaps/${id}`, data),
@@ -69,7 +76,7 @@ export const roadmapApi = {
 
   // Monthly goals
   getMonthlyGoals: (roadmapId: string) =>
-    api.get(`/roadmaps/${roadmapId}/monthly-goals`),
+    api.get(`/roadmaps/${roadmapId}/monthly`),
 
   // Weekly tasks
   getWeeklyTasks: (monthlyGoalId: string) =>
@@ -80,7 +87,7 @@ export const roadmapApi = {
     api.get(`/weekly-tasks/${weeklyTaskId}/daily-tasks`),
 
   toggleDailyTask: (dailyTaskId: string) =>
-    api.patch(`/daily-tasks/${dailyTaskId}/toggle`),
+    api.patch(`/roadmaps/daily-tasks/${dailyTaskId}/toggle`),
 };
 
 // Learning API

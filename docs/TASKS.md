@@ -124,73 +124,73 @@
 
 ---
 
-## Phase 4: LangGraph - 로드맵 생성
+## Phase 4: LangGraph - 로드맵 생성 ✅
 
 ### 4.1 LangGraph 기본 설정
-- [ ] langraph, langchain-anthropic 설치
-- [ ] app/ai/state.py 작성 (GraphState)
-- [ ] Claude API 연결 테스트
+- [x] langraph, langchain-anthropic 설치
+- [x] app/ai/state.py 작성 (GraphState)
+- [x] Claude API 연결 테스트
 
 ### 4.2 Goal Analyzer → Daily Task Generator 노드
-- [ ] app/ai/nodes/goal_analyzer.py 작성
-- [ ] app/ai/nodes/roadmap_planner.py 작성
-- [ ] app/ai/nodes/milestone_generator.py 작성
-- [ ] app/ai/nodes/weekly_task_generator.py 작성
-- [ ] app/ai/nodes/daily_task_generator.py 작성
-- [ ] app/ai/prompts/templates.py 작성
+- [x] app/ai/nodes/goal_analyzer.py 작성
+- [x] app/ai/nodes/monthly_generator.py 작성
+- [x] app/ai/nodes/weekly_generator.py 작성
+- [x] app/ai/nodes/daily_generator.py 작성
+- [x] app/ai/prompts/templates.py 작성
 
 ### 4.3 Validator 노드
-- [ ] app/ai/nodes/validator.py 작성
-- [ ] 검증 실패 시 재생성 로직
+- [x] app/ai/nodes/validator.py 작성
+- [x] 검증 실패 시 재생성 로직
 
 ### 4.4 `/generate` API 엔드포인트
-- [ ] app/ai/roadmap_graph.py 작성 (그래프 통합)
-- [ ] POST /api/v1/roadmaps/generate 구현
+- [x] app/ai/roadmap_graph.py 작성 (그래프 통합)
+- [x] POST /api/v1/roadmaps/generate 구현
+- [x] app/ai/nodes/saver.py 작성 (DB 저장)
 - [ ] Rate Limiting 적용
-- [ ] 생성 결과 DB 저장
 - [ ] 테스트 (1개월, 3개월, 6개월)
 
 ---
 
-## Phase 5: 프론트엔드 기본 UI
+## Phase 5: 프론트엔드 기본 UI ✅
 
 ### 5.1 공통/레이아웃 컴포넌트
 - [x] components/layout/Header.tsx
-- [ ] components/common/Button.tsx
-- [ ] components/common/Input.tsx
-- [ ] components/common/Modal.tsx
-- [ ] components/common/Card.tsx
-- [ ] components/common/Loading.tsx
-- [ ] components/layout/Sidebar.tsx
+- [x] components/common/Button.tsx
+- [x] components/common/Input.tsx
+- [x] components/common/Modal.tsx
+- [x] components/common/Card.tsx
+- [x] components/common/Loading.tsx
+- [x] components/common/Progress.tsx
+- [x] components/layout/Sidebar.tsx
 - [x] components/layout/Layout.tsx
 
 ### 5.2 랜딩, 대시보드 페이지
 - [x] pages/Landing.tsx (Home.tsx)
-- [ ] pages/Dashboard.tsx
-- [ ] 오늘의 할 일 컴포넌트
-- [ ] 진행률 표시 컴포넌트
+- [x] pages/Dashboard.tsx
+- [x] 오늘의 할 일 컴포넌트
+- [x] 진행률 표시 컴포넌트 (CircularProgress)
 
 ### 5.3 로드맵 생성 페이지 (모드 선택 UI)
-- [ ] pages/RoadmapCreate.tsx
-- [ ] 모드 선택 UI (플래닝/러닝)
-- [ ] 목표 입력 폼
-- [ ] 기간/시간 선택
-- [ ] AI 생성 버튼 + 로딩 상태
-- [ ] 생성 완료 후 리다이렉트
+- [x] pages/RoadmapCreate.tsx
+- [x] 모드 선택 UI (플래닝/러닝)
+- [x] 목표 입력 폼
+- [x] 기간/시간 선택
+- [x] AI 생성 버튼 + 로딩 상태
+- [x] 생성 완료 후 리다이렉트
 
 ### 5.4 드릴다운 컴포넌트 (월/주/일)
-- [ ] components/tasks/DrilldownContainer.tsx
-- [ ] components/tasks/MilestoneView.tsx
-- [ ] components/tasks/WeeklyTaskView.tsx
-- [ ] components/tasks/DailyTaskView.tsx
-- [ ] 펼치기/접기 애니메이션
-- [ ] 진행률 바 표시
+- [x] components/tasks/DrilldownContainer.tsx
+- [x] components/tasks/MonthlyGoalView.tsx
+- [x] components/tasks/WeeklyTaskView.tsx
+- [x] components/tasks/DailyTaskView.tsx
+- [x] 펼치기/접기 애니메이션
+- [x] 진행률 바 표시
 
 ### 5.5 로드맵 상세 페이지
-- [ ] pages/RoadmapDetail.tsx
-- [ ] pages/RoadmapList.tsx
-- [ ] 드릴다운 컨테이너 통합
-- [ ] 태스크 체크박스 기능
+- [x] pages/RoadmapDetail.tsx
+- [x] pages/RoadmapList.tsx
+- [x] 드릴다운 컨테이너 통합
+- [x] 태스크 체크박스 기능
 - [ ] API 연동 테스트
 
 ---
@@ -283,6 +283,8 @@
 | 013e576 | 2.5 | 2024 | 프론트엔드 인증 API 연동 |
 | 846e158 | 3.1-3.2 | 2024 | 로드맵 및 계층 데이터 모델 생성 |
 | c2a930b | 3.3-3.4 | 2024 | 로드맵 CRUD API 및 태스크 체크 기능 |
+| 87a325f | 4.1-4.4 | 2024 | LangGraph AI 로드맵 생성 시스템 |
+| dab16e2 | 5.1-5.5 | 2024 | 프론트엔드 기본 UI (공통 컴포넌트, 대시보드, 로드맵 페이지) |
 
 ---
 

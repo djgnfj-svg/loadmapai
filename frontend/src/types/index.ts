@@ -16,6 +16,8 @@ export interface AuthState {
 }
 
 // Roadmap types
+export type RoadmapMode = 'planning' | 'learning';
+
 export interface Roadmap {
   id: string;
   user_id: string;
@@ -25,6 +27,8 @@ export interface Roadmap {
   duration_months: number;
   start_date: string;
   end_date: string;
+  mode: RoadmapMode;
+  progress: number;
   status: 'active' | 'completed' | 'paused';
   created_at: string;
   updated_at: string;
@@ -36,6 +40,7 @@ export interface MonthlyGoal {
   month_number: number;
   title: string;
   description: string;
+  progress: number;
   status: 'pending' | 'in_progress' | 'completed';
 }
 
@@ -45,6 +50,7 @@ export interface WeeklyTask {
   week_number: number;
   title: string;
   description: string;
+  progress: number;
   status: 'pending' | 'in_progress' | 'completed';
 }
 
@@ -54,8 +60,24 @@ export interface DailyTask {
   day_number: number;
   title: string;
   description: string;
-  status: 'pending' | 'in_progress' | 'completed';
   is_checked: boolean;
+}
+
+// Full hierarchical types
+export interface WeeklyTaskWithDaily extends WeeklyTask {
+  daily_tasks: DailyTask[];
+}
+
+export interface MonthlyGoalWithWeekly extends MonthlyGoal {
+  weekly_tasks: WeeklyTaskWithDaily[];
+}
+
+export interface RoadmapFull extends Roadmap {
+  monthly_goals: MonthlyGoalWithWeekly[];
+}
+
+export interface RoadmapWithMonthly extends Roadmap {
+  monthly_goals: MonthlyGoal[];
 }
 
 // Learning types

@@ -1,7 +1,17 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from '@/components/layout';
-import { Home, Login, Register, AuthCallback } from '@/pages';
+import {
+  Home,
+  Login,
+  Register,
+  AuthCallback,
+  Dashboard,
+  RoadmapCreate,
+  RoadmapList,
+  RoadmapDetail,
+} from '@/pages';
+import { useAuthStore } from '@/stores/authStore';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -11,6 +21,14 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuthStore();
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  return <>{children}</>;
+}
 
 function App() {
   return (
@@ -22,11 +40,38 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
-            {/* TODO: 추가 라우트 */}
-            {/* <Route path="/roadmaps" element={<Roadmaps />} /> */}
-            {/* <Route path="/roadmaps/new" element={<NewRoadmap />} /> */}
-            {/* <Route path="/roadmaps/:id" element={<RoadmapDetail />} /> */}
-            {/* <Route path="/learning" element={<Learning />} /> */}
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/roadmaps"
+              element={
+                <ProtectedRoute>
+                  <RoadmapList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/roadmaps/create"
+              element={
+                <ProtectedRoute>
+                  <RoadmapCreate />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/roadmaps/:id"
+              element={
+                <ProtectedRoute>
+                  <RoadmapDetail />
+                </ProtectedRoute>
+              }
+            />
           </Route>
         </Routes>
       </BrowserRouter>
