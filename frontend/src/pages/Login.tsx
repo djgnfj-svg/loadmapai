@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
+import { authApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import type { AxiosError } from 'axios';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export function Login() {
   const navigate = useNavigate();
@@ -17,16 +21,25 @@ export function Login() {
     setError('');
 
     try {
-      // TODO: API 연동
-      // const response = await api.auth.login({ email, password });
-      // login(response.user, response.token);
-      console.log('Login:', { email, password });
+      const response = await authApi.login({ email, password });
+      const { user, access_token, refresh_token } = response.data;
+      login(user, access_token);
+      localStorage.setItem('refresh_token', refresh_token);
       navigate('/roadmaps');
     } catch (err) {
-      setError('로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.');
+      const axiosError = err as AxiosError<{ detail: string }>;
+      setError(axiosError.response?.data?.detail || '로그인에 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleGoogleLogin = () => {
+    window.location.href = `${API_URL}/api/v1/auth/google`;
+  };
+
+  const handleGithubLogin = () => {
+    window.location.href = `${API_URL}/api/v1/auth/github`;
   };
 
   return (
@@ -100,12 +113,14 @@ export function Login() {
             <div className="mt-6 grid grid-cols-2 gap-3">
               <button
                 type="button"
+                onClick={handleGoogleLogin}
                 className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
               >
                 Google
               </button>
               <button
                 type="button"
+                onClick={handleGithubLogin}
                 className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
               >
                 GitHub

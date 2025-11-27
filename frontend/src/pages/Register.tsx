@@ -1,9 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuthStore } from '@/stores/authStore';
+import { authApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import type { AxiosError } from 'axios';
 
 export function Register() {
   const navigate = useNavigate();
+  const { login } = useAuthStore();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -28,12 +32,14 @@ export function Register() {
     setIsLoading(true);
 
     try {
-      // TODO: API 연동
-      // await api.auth.register({ name, email, password });
-      console.log('Register:', { name, email, password });
-      navigate('/login');
+      const response = await authApi.register({ name, email, password });
+      const { user, access_token, refresh_token } = response.data;
+      login(user, access_token);
+      localStorage.setItem('refresh_token', refresh_token);
+      navigate('/roadmaps');
     } catch (err) {
-      setError('회원가입에 실패했습니다. 다시 시도해주세요.');
+      const axiosError = err as AxiosError<{ detail: string }>;
+      setError(axiosError.response?.data?.detail || '회원가입에 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
