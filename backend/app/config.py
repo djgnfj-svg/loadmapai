@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     # Anthropic
     anthropic_api_key: str = ""
 
+    # Tavily (Web Search)
+    tavily_api_key: str = ""
+
     # OAuth - Google
     google_client_id: str = ""
     google_client_secret: str = ""

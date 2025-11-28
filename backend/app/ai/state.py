@@ -40,6 +40,10 @@ class RoadmapGenerationState(TypedDict):
     rest_days: Optional[List[int]]  # 쉬는 요일 [0=일, 6=토]
     intensity: Optional[str]  # 학습 강도: light/moderate/intense
 
+    # Web search results (for enhanced roadmap generation)
+    search_results: Optional[List[dict]]  # Raw search results from Tavily
+    search_context: Optional[str]  # Synthesized search context for prompts
+
     # Generated content
     title: Optional[str]
     description: Optional[str]
