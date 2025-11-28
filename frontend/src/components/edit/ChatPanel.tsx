@@ -10,7 +10,7 @@ import {
   useSendQuickAction,
   useApplyChanges,
 } from '@/hooks';
-import type { ChatChangeItem, ConversationMessage, ChatMessageResponse } from '@/types';
+import type { ChatChangeItem, ChatMessageResponse } from '@/types';
 
 interface ChatPanelProps {
   roadmapId: string;

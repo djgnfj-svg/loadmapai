@@ -5,10 +5,7 @@ import type {
   WeeklyTaskUpdate,
   MonthlyGoalUpdate,
   RoadmapScheduleUpdate,
-  ChatMessageResponse,
-  ApplyChangesResponse,
   ConversationMessage,
-  FinalizeResponse,
   ChatChangeItem,
 } from '@/types';
 
