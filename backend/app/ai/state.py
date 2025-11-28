@@ -1,4 +1,4 @@
-from typing import TypedDict, List, Optional, Annotated
+from typing import TypedDict, List, Optional, Annotated, Dict
 from operator import add
 from datetime import date
 
@@ -171,4 +171,76 @@ class InterviewState(TypedDict):
     answers: List[InterviewAnswerData]
 
     # Processing
+    error_message: Optional[str]
+
+
+# ============ Deep Interview State (Multi-Stage) ============
+
+class AnswerEvaluationData(TypedDict):
+    """Evaluation result for a single answer."""
+    question_id: str
+    specificity: float  # 0-1
+    relevance: float  # 0-1
+    completeness: float  # 0-1
+    average_score: float
+    needs_followup: bool
+    followup_question: Optional[InterviewQuestionData]
+    insights: List[str]
+
+
+class StageData(TypedDict):
+    """Data for a single interview stage."""
+    questions: List[InterviewQuestionData]
+    answers: List[InterviewAnswerData]
+    evaluations: List[AnswerEvaluationData]
+    followup_questions: List[InterviewQuestionData]
+    followup_answers: List[InterviewAnswerData]
+
+
+class DeepInterviewState(TypedDict):
+    """State for multi-stage deep interview system.
+
+    The interview consists of 3 stages:
+    1. Goal Clarification (Where to) - What do you want to achieve? Why?
+    2. Current State (Where from) - What do you already know? Experience?
+    3. Constraints - Time, deadlines, resources
+    """
+    # Session info
+    session_id: str
+    topic: str
+    mode: str  # "learning" or "planning"
+    duration_months: int
+    user_id: str
+
+    # Stage tracking
+    current_stage: int  # 1, 2, or 3
+    stages_completed: List[int]
+    max_followups_per_stage: int  # Maximum follow-up rounds per stage (default: 2)
+
+    # Questions and answers per stage
+    # Key: stage number (1, 2, 3)
+    stage_data: Dict[int, StageData]
+
+    # Current stage processing
+    current_questions: List[InterviewQuestionData]
+    current_answers: List[InterviewAnswerData]
+    current_evaluations: List[AnswerEvaluationData]
+
+    # Follow-up tracking for current stage
+    followup_count: int  # Number of follow-ups done in current stage
+    pending_followup_questions: List[InterviewQuestionData]
+
+    # Interview completion status
+    is_complete: bool
+
+    # Final compiled context (generated after all stages complete)
+    compiled_context: Optional[str]  # Formatted summary of all interview data
+    key_insights: List[str]  # Key insights extracted from answers
+
+    # Schedule info extracted from Stage 3
+    extracted_daily_minutes: Optional[int]
+    extracted_rest_days: Optional[List[int]]
+    extracted_intensity: Optional[str]
+
+    # Error handling
     error_message: Optional[str]
