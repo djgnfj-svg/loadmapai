@@ -4,3 +4,6 @@ export * from './Card';
 export * from './Modal';
 export * from './Loading';
 export * from './Progress';
+export * from './ErrorBoundary';
+export * from './Toast';
+export * from './Skeleton';

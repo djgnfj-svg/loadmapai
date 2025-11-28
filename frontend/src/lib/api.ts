@@ -25,15 +25,57 @@ api.interceptors.request.use(
 // Response interceptor - handle errors
 api.interceptors.response.use(
   (response) => response,
-  async (error: AxiosError) => {
-    if (error.response?.status === 401) {
+  async (error: AxiosError<{ error?: { message?: string } }>) => {
+    const status = error.response?.status;
+    const errorMessage = error.response?.data?.error?.message;
+
+    if (status === 401) {
       // Token expired or invalid
       useAuthStore.getState().logout();
       window.location.href = '/login';
     }
-    return Promise.reject(error);
+
+    // Enhance error with user-friendly message
+    const enhancedError = error as AxiosError & { userMessage?: string };
+    enhancedError.userMessage = errorMessage || getDefaultErrorMessage(status);
+
+    return Promise.reject(enhancedError);
   }
 );
+
+function getDefaultErrorMessage(status?: number): string {
+  switch (status) {
+    case 400:
+      return '잘못된 요청입니다.';
+    case 401:
+      return '인증이 필요합니다.';
+    case 403:
+      return '접근 권한이 없습니다.';
+    case 404:
+      return '요청한 리소스를 찾을 수 없습니다.';
+    case 429:
+      return '요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.';
+    case 500:
+      return '서버 오류가 발생했습니다.';
+    case 503:
+      return '서비스를 일시적으로 사용할 수 없습니다.';
+    default:
+      return '네트워크 오류가 발생했습니다.';
+  }
+}
+
+// Helper to extract user-friendly error message
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof AxiosError) {
+    return (error as AxiosError & { userMessage?: string }).userMessage ||
+           error.response?.data?.error?.message ||
+           getDefaultErrorMessage(error.response?.status);
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return '알 수 없는 오류가 발생했습니다.';
+}
 
 // Auth API
 export const authApi = {

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from '@/components/layout';
+import { ErrorBoundary, ToastContainer } from '@/components/common';
 import {
   Home,
   Login,
@@ -14,6 +15,7 @@ import {
   QuizResult,
 } from '@/pages';
 import { useAuthStore } from '@/stores/authStore';
+import { useToastStore } from '@/stores/toastStore';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -33,11 +35,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function App() {
+  const { toasts, removeToast } = useToastStore();
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          <Route element={<Layout />}>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <Routes>
+            <Route element={<Layout />}>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -92,8 +97,10 @@ function App() {
             />
           </Route>
         </Routes>
+        <ToastContainer toasts={toasts} onClose={removeToast} />
       </BrowserRouter>
     </QueryClientProvider>
+  </ErrorBoundary>
   );
 }
 
