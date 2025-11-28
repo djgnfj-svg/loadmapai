@@ -6,6 +6,7 @@ from app.models.daily_task import DailyTask
 from app.models.quiz import Quiz, QuizStatus
 from app.models.question import Question, QuestionType
 from app.models.user_answer import UserAnswer
+from app.models.roadmap_conversation import RoadmapConversation
 
 __all__ = [
     "User",
@@ -22,4 +23,5 @@ __all__ = [
     "Question",
     "QuestionType",
     "UserAnswer",
+    "RoadmapConversation",
 ]

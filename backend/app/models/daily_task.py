@@ -14,6 +14,7 @@ class DailyTask(Base, TimestampMixin):
     weekly_task_id = Column(UUID(as_uuid=True), ForeignKey("weekly_tasks.id", ondelete="CASCADE"), nullable=False)
 
     day_number = Column(Integer, nullable=False)  # 1-7
+    order = Column(Integer, default=0, nullable=False)  # 같은 day_number 내 순서 (다중 태스크 지원)
     title = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
 
