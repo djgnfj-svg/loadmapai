@@ -14,11 +14,43 @@ export type StreamEventType =
   | 'web_searching'
   | 'web_search_result'
   | 'analyzing_goals'
+  | 'goals_analyzed'
   | 'generating_monthly'
+  | 'monthly_generated'
   | 'generating_weekly'
+  | 'weekly_generated'
   | 'generating_daily'
+  | 'daily_generated'
   | 'validating'
   | 'saving';
+
+// Partial roadmap data types for progressive rendering
+export interface PartialMonthlyGoal {
+  month_number: number;
+  title: string;
+  description: string;
+  total?: number;
+}
+
+export interface PartialWeeklyTask {
+  week_number: number;
+  title: string;
+  description: string;
+}
+
+export interface PartialDailyTask {
+  day_number: number;
+  title: string;
+  description: string;
+}
+
+export interface PartialRoadmap {
+  title?: string;
+  description?: string;
+  monthly_goals: PartialMonthlyGoal[];
+  weekly_tasks: Map<number, PartialWeeklyTask[]>; // month_number -> weekly tasks
+  daily_tasks: Map<string, PartialDailyTask[]>; // "month_week" -> daily tasks
+}
 
 export interface StreamEvent {
   type: StreamEventType;
@@ -238,19 +270,90 @@ export function useRoadmapStreaming() {
     title: string;
   }>();
 
+  // Partial roadmap state for progressive rendering
+  const [partialRoadmap, setPartialRoadmap] = useState<PartialRoadmap>({
+    title: undefined,
+    description: undefined,
+    monthly_goals: [],
+    weekly_tasks: new Map(),
+    daily_tasks: new Map(),
+  });
+
+  const resetPartialRoadmap = useCallback(() => {
+    setPartialRoadmap({
+      title: undefined,
+      description: undefined,
+      monthly_goals: [],
+      weekly_tasks: new Map(),
+      daily_tasks: new Map(),
+    });
+  }, []);
+
+  const handleRoadmapEvent = useCallback((event: StreamEvent) => {
+    switch (event.type) {
+      case 'goals_analyzed':
+        if (event.data) {
+          setPartialRoadmap(prev => ({
+            ...prev,
+            title: event.data?.title as string,
+            description: event.data?.description as string,
+          }));
+        }
+        break;
+
+      case 'monthly_generated':
+        if (event.data?.monthly) {
+          const monthly = event.data.monthly as PartialMonthlyGoal;
+          setPartialRoadmap(prev => ({
+            ...prev,
+            monthly_goals: [...prev.monthly_goals, monthly],
+          }));
+        }
+        break;
+
+      case 'weekly_generated':
+        if (event.data?.weekly && event.data?.month_number) {
+          const weekly = event.data.weekly as PartialWeeklyTask;
+          const monthNum = event.data.month_number as number;
+          setPartialRoadmap(prev => {
+            const newWeeklyTasks = new Map(prev.weekly_tasks);
+            const existing = newWeeklyTasks.get(monthNum) || [];
+            newWeeklyTasks.set(monthNum, [...existing, weekly]);
+            return { ...prev, weekly_tasks: newWeeklyTasks };
+          });
+        }
+        break;
+
+      case 'daily_generated':
+        if (event.data?.daily_tasks && event.data?.month_number && event.data?.week_number) {
+          const dailyTasks = event.data.daily_tasks as PartialDailyTask[];
+          const key = `${event.data.month_number}_${event.data.week_number}`;
+          setPartialRoadmap(prev => {
+            const newDailyTasks = new Map(prev.daily_tasks);
+            newDailyTasks.set(key, dailyTasks);
+            return { ...prev, daily_tasks: newDailyTasks };
+          });
+        }
+        break;
+    }
+  }, []);
+
   const generateRoadmap = useCallback(
     async (data: {
       interview_session_id: string;
       start_date: string;
       use_web_search?: boolean;
     }) => {
-      return streaming.startStream('/roadmaps/generate', data);
+      resetPartialRoadmap();
+      return streaming.startStream('/roadmaps/generate', data, handleRoadmapEvent);
     },
-    [streaming]
+    [streaming, resetPartialRoadmap, handleRoadmapEvent]
   );
 
   return {
     ...streaming,
     generateRoadmap,
+    partialRoadmap,
+    resetPartialRoadmap,
   };
 }

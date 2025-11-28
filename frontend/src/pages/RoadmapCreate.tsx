@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { DeepInterviewStep, InterviewCompleted } from '@/components/interview';
-import { StreamingGeneratingState } from '@/components/roadmap';
+import { StreamingGeneratingState, ProgressiveRoadmapPreview } from '@/components/roadmap';
 import {
   useStartDeepInterview,
   useSubmitInterviewAnswers,
@@ -443,6 +443,65 @@ export function RoadmapCreate() {
   const currentStepIndex = steps.indexOf(step);
   const showProgress = step !== 'generating' && step !== 'completed';
 
+  // Generating step has different layout (full width with split view)
+  if (step === 'generating') {
+    return (
+      <div className="max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left: Progress Panel */}
+          <Card variant="bordered">
+            <CardContent>
+              <StreamingGeneratingState
+                topic={formData.topic}
+                events={roadmapStreaming.events}
+                currentEvent={roadmapStreaming.currentEvent}
+                progress={roadmapStreaming.progress}
+                isStreaming={roadmapStreaming.isStreaming}
+                error={roadmapStreaming.error}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Right: Progressive Roadmap Preview */}
+          <Card variant="bordered">
+            <CardContent>
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Map className="h-5 w-5 text-primary-500" />
+                  로드맵 미리보기
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  생성되는 로드맵을 실시간으로 확인하세요
+                </p>
+              </div>
+              <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
+                <ProgressiveRoadmapPreview
+                  partialRoadmap={roadmapStreaming.partialRoadmap}
+                  isStreaming={roadmapStreaming.isStreaming}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Cancel button */}
+        {roadmapStreaming.isStreaming && (
+          <div className="flex justify-center mt-6">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                roadmapStreaming.abort();
+                setStep('completed');
+              }}
+            >
+              취소
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-2xl mx-auto">
       {/* Progress */}
@@ -511,16 +570,6 @@ export function RoadmapCreate() {
               isGenerating={false}
             />
           )}
-          {step === 'generating' && (
-            <StreamingGeneratingState
-              topic={formData.topic}
-              events={roadmapStreaming.events}
-              currentEvent={roadmapStreaming.currentEvent}
-              progress={roadmapStreaming.progress}
-              isStreaming={roadmapStreaming.isStreaming}
-              error={roadmapStreaming.error}
-            />
-          )}
         </CardContent>
       </Card>
 
@@ -561,21 +610,6 @@ export function RoadmapCreate() {
           <Button variant="ghost" onClick={handleBack}>
             <ArrowLeft className="h-4 w-4 mr-1" />
             이전
-          </Button>
-        </div>
-      )}
-
-      {/* Cancel button for generating step */}
-      {step === 'generating' && roadmapStreaming.isStreaming && (
-        <div className="flex justify-center mt-6">
-          <Button
-            variant="ghost"
-            onClick={() => {
-              roadmapStreaming.abort();
-              setStep('completed');
-            }}
-          >
-            취소
           </Button>
         </div>
       )}

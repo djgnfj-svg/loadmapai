@@ -224,7 +224,11 @@ async def generate_roadmap_streaming(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Generate roadmap from interview with real-time streaming progress."""
+    """Generate roadmap from interview with real-time streaming progress.
+
+    This endpoint streams partial roadmap data as it's generated,
+    allowing the frontend to progressively render the roadmap.
+    """
     stream_id = str(uuid.uuid4())
     manager = StreamingManager()
     register_stream(stream_id, manager)
@@ -252,7 +256,44 @@ async def generate_roadmap_streaming(
                 progress=0
             )
 
-            # Web search if enabled
+            # Import node functions
+            from app.ai.nodes.web_searcher import web_searcher, synthesize_search_context
+            from app.ai.nodes.goal_analyzer import goal_analyzer
+            from app.ai.nodes.monthly_generator import monthly_generator
+            from app.ai.nodes.weekly_generator import weekly_generator as weekly_gen_node
+            from app.ai.nodes.daily_generator import daily_generator as daily_gen_node
+            from app.ai.nodes.validator import validator
+            from app.ai.state import RoadmapGenerationState
+            from app.models.roadmap import RoadmapMode
+
+            # Initialize state
+            state: RoadmapGenerationState = {
+                "topic": session.topic,
+                "duration_months": session.duration_months,
+                "start_date": date.fromisoformat(start_date),
+                "mode": RoadmapMode(session.mode) if isinstance(session.mode, str) else session.mode,
+                "user_id": str(current_user.id),
+                "interview_context": session.compiled_context,
+                "daily_time": f"{session.daily_minutes}분" if session.daily_minutes else None,
+                "daily_available_minutes": session.daily_minutes,
+                "rest_days": session.rest_days or [],
+                "intensity": session.intensity or "moderate",
+                "search_results": None,
+                "search_context": None,
+                "title": None,
+                "description": None,
+                "monthly_goals": [],
+                "weekly_tasks": [],
+                "daily_tasks": [],
+                "current_month": 1,
+                "current_week": 1,
+                "validation_passed": False,
+                "error_message": None,
+                "retry_count": 0,
+                "roadmap_id": None,
+            }
+
+            # Step 1: Web search (if enabled)
             if use_web_search:
                 handler.emit_web_search_start(session.topic)
 
@@ -260,30 +301,98 @@ async def generate_roadmap_streaming(
                 search_results = search_learning_resources(session.topic, num_results=10)
 
                 if search_results:
+                    state["search_results"] = search_results
+                    state["search_context"] = synthesize_search_context(search_results, session.topic)
                     handler.emit_web_search_result(search_results)
 
-            # Analyze goals
+            # Step 2: Goal analysis
             handler.emit_analyzing_goals()
+            state = goal_analyzer(state)
 
-            # Generate roadmap
-            from app.ai.roadmap_graph import generate_roadmap_from_interview
-
-            roadmap_data = await generate_roadmap_from_interview(
-                session=session,
-                start_date=date.fromisoformat(start_date),
-                use_web_search=use_web_search,
-                callbacks=[handler],
-                progress_callback=lambda msg, pct: asyncio.run_coroutine_threadsafe(
-                    manager.emit(StreamEventType.PROGRESS, msg, progress=pct),
-                    loop
-                )
+            # Emit goals analyzed with title/description
+            handler.emit_goals_analyzed(
+                state.get("title", ""),
+                state.get("description", "")
             )
 
-            # Save to DB
+            # Step 3: Monthly generation (with per-month streaming)
+            total_months = state["duration_months"]
+            handler.emit_generating_monthly(1, total_months)
+            state = monthly_generator(state)
+
+            # Emit each monthly goal
+            for monthly in state.get("monthly_goals", []):
+                monthly["total"] = total_months
+                handler.emit_monthly_generated(monthly)
+
+            # Step 4: Weekly generation (with per-week streaming)
+            total_weeks = total_months * 4
+            week_count = 0
+
+            # We need to call weekly_generator which processes all months
+            # But we can emit events after getting the result
+            for month_idx, monthly in enumerate(state.get("monthly_goals", [])):
+                month_num = monthly.get("month_number", month_idx + 1)
+                handler.emit_generating_weekly(1, 4, month_num)
+
+            state = weekly_gen_node(state)
+
+            # Emit each weekly task
+            for monthly_data in state.get("weekly_tasks", []):
+                month_num = monthly_data.get("month_number", 1)
+                for weekly in monthly_data.get("weekly_tasks", []):
+                    week_count += 1
+                    handler.emit_weekly_generated(weekly, month_num)
+
+            # Step 5: Daily generation (with progress streaming)
+            total_items = sum(
+                len(m.get("weekly_tasks", []))
+                for m in state.get("weekly_tasks", [])
+            )
+            current_item = 0
+
+            for monthly_data in state.get("weekly_tasks", []):
+                month_num = monthly_data.get("month_number", 1)
+                for weekly in monthly_data.get("weekly_tasks", []):
+                    current_item += 1
+                    progress_pct = int((current_item / max(total_items, 1)) * 100)
+                    handler.emit_generating_daily(progress_pct, month_num, weekly.get("week_number", 1))
+
+            state = daily_gen_node(state)
+
+            # Emit each daily task set
+            for monthly_daily in state.get("daily_tasks", []):
+                month_num = monthly_daily.get("month_number", 1)
+                for week_data in monthly_daily.get("weeks", []):
+                    week_num = week_data.get("week_number", 1)
+                    daily_tasks = week_data.get("daily_tasks", [])
+                    handler.emit_daily_generated(daily_tasks, month_num, week_num)
+
+            # Step 6: Validation
+            handler.emit_validating()
+            state = validator(state)
+
+            # Step 7: Save to DB
             handler.emit_saving()
 
             from app.services.roadmap_service import RoadmapService
             roadmap_service = RoadmapService(db)
+
+            # Prepare roadmap data
+            roadmap_data = {
+                "topic": state["topic"],
+                "title": state["title"],
+                "description": state["description"],
+                "duration_months": state["duration_months"],
+                "start_date": state["start_date"],
+                "mode": state["mode"],
+                "daily_available_minutes": state.get("daily_available_minutes"),
+                "rest_days": state.get("rest_days"),
+                "intensity": state.get("intensity"),
+                "monthly_goals": state["monthly_goals"],
+                "weekly_tasks": state["weekly_tasks"],
+                "daily_tasks": state["daily_tasks"],
+            }
 
             roadmap = roadmap_service.create_roadmap_from_data(
                 user_id=current_user.id,
@@ -301,6 +410,8 @@ async def generate_roadmap_streaming(
             })
 
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             await manager.error(f"오류 발생: {str(e)}")
         finally:
             unregister_stream(stream_id)

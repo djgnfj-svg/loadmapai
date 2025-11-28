@@ -59,20 +59,36 @@ const EVENT_CONFIG: Record<
     color: 'text-cyan-500',
   },
   analyzing_goals: { icon: Target, label: '목표 분석', color: 'text-orange-500' },
+  goals_analyzed: { icon: Target, label: '목표 분석 완료', color: 'text-green-500' },
   generating_monthly: {
     icon: Calendar,
     label: '월간 계획',
     color: 'text-blue-500',
+  },
+  monthly_generated: {
+    icon: Calendar,
+    label: '월간 계획 완료',
+    color: 'text-green-500',
   },
   generating_weekly: {
     icon: Calendar,
     label: '주간 계획',
     color: 'text-blue-500',
   },
+  weekly_generated: {
+    icon: Calendar,
+    label: '주간 계획 완료',
+    color: 'text-green-500',
+  },
   generating_daily: {
     icon: Calendar,
     label: '일일 계획',
     color: 'text-blue-500',
+  },
+  daily_generated: {
+    icon: Calendar,
+    label: '일일 계획 완료',
+    color: 'text-green-500',
   },
   validating: { icon: CheckCircle2, label: '검증', color: 'text-yellow-500' },
   saving: { icon: Loader2, label: '저장', color: 'text-gray-500' },

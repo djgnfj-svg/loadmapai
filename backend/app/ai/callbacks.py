@@ -212,30 +212,69 @@ class RoadmapStreamingHandler(StreamingCallbackHandler):
             progress=20
         )
 
+    def emit_goals_analyzed(self, title: str, description: str):
+        """Emit goals analyzed with roadmap title/description."""
+        self._emit_sync(
+            StreamEventType.GOALS_ANALYZED,
+            "목표 분석 완료",
+            data={"title": title, "description": description},
+            progress=25
+        )
+
     def emit_generating_monthly(self, month: int, total: int):
         """Emit monthly goal generation."""
         self._emit_sync(
             StreamEventType.GENERATING_MONTHLY,
             f"월간 계획 생성 중... ({month}/{total})",
             data={"month": month, "total": total},
-            progress=30 + int((month / total) * 30)  # 30-60%
+            progress=25 + int((month / total) * 25)  # 25-50%
         )
 
-    def emit_generating_weekly(self, week: int, total: int):
+    def emit_monthly_generated(self, month_data: dict):
+        """Emit generated monthly goal data."""
+        self._emit_sync(
+            StreamEventType.MONTHLY_GENERATED,
+            f"{month_data.get('month_number', '?')}월 계획 완료",
+            data={"monthly": month_data},
+            progress=25 + int((month_data.get('month_number', 1) / month_data.get('total', 1)) * 25)
+        )
+
+    def emit_generating_weekly(self, week: int, total: int, month: int):
         """Emit weekly task generation."""
         self._emit_sync(
             StreamEventType.GENERATING_WEEKLY,
-            f"주간 계획 생성 중... ({week}/{total})",
-            data={"week": week, "total": total},
-            progress=60 + int((week / total) * 20)  # 60-80%
+            f"주간 계획 생성 중... ({month}월 {week}주차)",
+            data={"week": week, "total": total, "month": month},
+            progress=50 + int((week / max(total, 1)) * 25)  # 50-75%
         )
 
-    def emit_generating_daily(self, progress_pct: int):
+    def emit_weekly_generated(self, week_data: dict, month_number: int):
+        """Emit generated weekly task data."""
+        self._emit_sync(
+            StreamEventType.WEEKLY_GENERATED,
+            f"{month_number}월 {week_data.get('week_number', '?')}주차 완료",
+            data={"weekly": week_data, "month_number": month_number},
+        )
+
+    def emit_generating_daily(self, progress_pct: int, month: int = 0, week: int = 0):
         """Emit daily task generation."""
         self._emit_sync(
             StreamEventType.GENERATING_DAILY,
-            "일일 학습 계획 생성 중...",
-            progress=80 + int(progress_pct * 0.1)  # 80-90%
+            f"일일 학습 계획 생성 중... ({month}월 {week}주차)",
+            data={"month": month, "week": week},
+            progress=75 + int(progress_pct * 0.15)  # 75-90%
+        )
+
+    def emit_daily_generated(self, daily_tasks: List[dict], month_number: int, week_number: int):
+        """Emit generated daily tasks data."""
+        self._emit_sync(
+            StreamEventType.DAILY_GENERATED,
+            f"{month_number}월 {week_number}주차 일일 계획 완료",
+            data={
+                "daily_tasks": daily_tasks,
+                "month_number": month_number,
+                "week_number": week_number
+            },
         )
 
     def emit_validating(self):

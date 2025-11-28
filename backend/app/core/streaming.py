@@ -25,9 +25,13 @@ class StreamEventType(str, Enum):
     WEB_SEARCHING = "web_searching"
     WEB_SEARCH_RESULT = "web_search_result"
     ANALYZING_GOALS = "analyzing_goals"
+    GOALS_ANALYZED = "goals_analyzed"  # With title/description
     GENERATING_MONTHLY = "generating_monthly"
+    MONTHLY_GENERATED = "monthly_generated"  # With month data
     GENERATING_WEEKLY = "generating_weekly"
+    WEEKLY_GENERATED = "weekly_generated"  # With week data
     GENERATING_DAILY = "generating_daily"
+    DAILY_GENERATED = "daily_generated"  # With daily data
     VALIDATING = "validating"
     SAVING = "saving"
 
