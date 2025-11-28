@@ -43,8 +43,7 @@ export function Layout() {
       )}
       <main
         className={cn(
-          'pt-16 min-h-screen',
-          'py-8 px-4 sm:px-6 lg:px-8',
+          'min-h-screen pt-20 pb-8 px-4 sm:px-6 lg:px-8',
           isAuthenticated ? 'lg:ml-64' : 'max-w-7xl mx-auto'
         )}
       >

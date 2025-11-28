@@ -196,14 +196,14 @@ export function Dashboard() {
   return (
     <div className="space-y-8">
       {/* Welcome Section */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             안녕하세요, {user?.name}님!
           </h1>
           <p className="text-gray-500 dark:text-gray-400">{today}</p>
         </div>
-        <Link to="/roadmaps/create">
+        <Link to="/roadmaps/create" className="shrink-0">
           <Button variant="primary">
             <Plus className="h-4 w-4 mr-1" />
             새 로드맵
