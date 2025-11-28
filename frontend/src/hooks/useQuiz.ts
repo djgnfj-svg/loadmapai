@@ -83,6 +83,18 @@ export function useGradeQuiz() {
   });
 }
 
+export function useResetQuiz() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (quizId: string) => quizApi.reset(quizId),
+    onSuccess: (_, quizId) => {
+      queryClient.invalidateQueries({ queryKey: ['quiz', quizId] });
+      queryClient.invalidateQueries({ queryKey: ['quizzes'] });
+    },
+  });
+}
+
 export function useSubmitAnswer() {
   return useMutation({
     mutationFn: ({ questionId, answer }: { questionId: string; answer: SubmitAnswerRequest }) =>

@@ -6,7 +6,7 @@ interface QuestionViewProps {
   questionIndex: number;
   totalQuestions: number;
   answer: SubmitAnswerRequest;
-  onAnswerChange: (answer: SubmitAnswerRequest) => void;
+  onAnswerChange: (answer: Partial<SubmitAnswerRequest>) => void;
   isSubmitted?: boolean;
 }
 
@@ -26,12 +26,12 @@ export function QuestionView({
   const handleOptionSelect = (index: number) => {
     if (isSubmitted) return;
     const optionLetter = indexToLetter(index);
-    onAnswerChange({ ...answer, selected_option: optionLetter });
+    onAnswerChange({ selected_option: optionLetter });
   };
 
   const handleTextChange = (text: string) => {
     if (isSubmitted) return;
-    onAnswerChange({ ...answer, answer_text: text });
+    onAnswerChange({ answer_text: text });
   };
 
   return (

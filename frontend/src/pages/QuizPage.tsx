@@ -6,12 +6,14 @@ import { Card, CardContent } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { LoadingScreen } from '@/components/common/Loading';
 import { QuestionView, QuizNavigation } from '@/components/quiz';
+import { useToastStore } from '@/stores/toastStore';
 import type { SubmitAnswerRequest } from '@/types';
 
 export function QuizPage() {
   // taskId is the daily_task_id passed from the roadmap
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
+  const { addToast } = useToastStore();
 
   // First, try to get existing quiz for this task
   const { data: existingQuiz, isLoading: isLoadingTask, error: taskError } = useQuizForDailyTask(taskId || '');
@@ -30,11 +32,15 @@ export function QuizPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Initialize answers when quiz loads
+  // Initialize answers when quiz loads (question_id 포함)
   useEffect(() => {
     if (quiz?.questions) {
       setAnswers(
-        quiz.questions.map(() => ({ answer_text: '', selected_option: '' }))
+        quiz.questions.map((q) => ({
+          question_id: q.id,
+          answer_text: '',
+          selected_option: '',
+        }))
       );
     }
   }, [quiz]);
@@ -55,10 +61,10 @@ export function QuizPage() {
     setIsGenerating(true);
     try {
       await generateQuiz.mutateAsync({ dailyTaskId: taskId, numQuestions: 5 });
-      // The query will automatically refetch
+      addToast({ type: 'success', message: '퀴즈가 생성되었습니다!' });
     } catch (error) {
       console.error('Failed to generate quiz:', error);
-      alert('퀴즈 생성에 실패했습니다.');
+      addToast({ type: 'error', message: '퀴즈 생성에 실패했습니다.' });
     } finally {
       setIsGenerating(false);
     }
@@ -122,9 +128,13 @@ export function QuizPage() {
   const answeredCount = answers.filter(a => a.answer_text || a.selected_option).length;
   const canSubmit = answeredCount === questions.length;
 
-  const handleAnswerChange = (answer: SubmitAnswerRequest) => {
+  const handleAnswerChange = (answer: Partial<SubmitAnswerRequest>) => {
     const newAnswers = [...answers];
-    newAnswers[currentQuestionIndex] = answer;
+    // question_id를 유지하면서 답변만 업데이트
+    newAnswers[currentQuestionIndex] = {
+      ...newAnswers[currentQuestionIndex],
+      ...answer,
+    };
     setAnswers(newAnswers);
   };
 
@@ -141,8 +151,16 @@ export function QuizPage() {
   };
 
   const handleSubmit = async () => {
-    if (!canSubmit) {
-      alert('모든 문제에 답변해주세요.');
+    // 빈 답변 검증
+    const unansweredIndices = answers
+      .map((a, idx) => (!a.answer_text && !a.selected_option) ? idx + 1 : null)
+      .filter((idx): idx is number => idx !== null);
+
+    if (unansweredIndices.length > 0) {
+      addToast({
+        type: 'warning',
+        message: `${unansweredIndices.join(', ')}번 문제에 답변해주세요.`,
+      });
       return;
     }
 
@@ -158,11 +176,16 @@ export function QuizPage() {
       // Grade quiz
       await gradeQuiz.mutateAsync(quizId!);
 
+      addToast({ type: 'success', message: '퀴즈가 제출되었습니다!' });
+
       // Navigate to result page
       navigate(`/quiz/${taskId}/result`);
     } catch (error) {
       console.error('Failed to submit quiz:', error);
-      alert('퀴즈 제출 중 오류가 발생했습니다.');
+      addToast({
+        type: 'error',
+        message: '퀴즈 제출 중 오류가 발생했습니다. 다시 시도해주세요.',
+      });
     } finally {
       setIsSubmitting(false);
     }

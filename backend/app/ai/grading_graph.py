@@ -8,7 +8,7 @@ from app.ai.state import GradingState, AnswerData
 from app.ai.nodes.answer_analyzer import answer_analyzer
 from app.ai.nodes.score_calculator import score_calculator
 from app.ai.nodes.feedback_generator import feedback_generator
-from app.models import Quiz, Question, UserAnswer
+from app.models import Quiz, Question, UserAnswer, DailyTask
 from app.models.quiz import QuizStatus
 
 
@@ -72,6 +72,10 @@ async def grade_quiz(
     if not quiz:
         raise ValueError("Quiz not found")
 
+    # Get daily task for topic context
+    daily_task = db.query(DailyTask).filter(DailyTask.id == quiz.daily_task_id).first()
+    topic = daily_task.title if daily_task else "퀴즈"
+
     questions = db.query(Question).filter(Question.quiz_id == quiz.id).order_by(Question.question_number).all()
     if not questions:
         raise ValueError("No questions found for quiz")
@@ -104,6 +108,7 @@ async def grade_quiz(
         "quiz_id": quiz_id,
         "user_id": user_id,
         "answers": answers,
+        "topic": topic,
         "grading_results": [],
         "total_score": 0.0,
         "correct_count": 0,

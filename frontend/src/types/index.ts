@@ -130,6 +130,7 @@ export interface QuizResult extends Quiz {
 }
 
 export interface SubmitAnswerRequest {
+  question_id: string;  // 필수: 어느 문제에 대한 답변인지 식별
   answer_text?: string;
   selected_option?: string;
 }

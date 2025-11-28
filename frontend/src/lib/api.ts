@@ -155,14 +155,17 @@ export const quizApi = {
   start: (quizId: string) => api.post(`/quizzes/${quizId}/start`),
 
   // Submit all answers
-  submit: (quizId: string, answers: { answer_text?: string; selected_option?: string }[]) =>
+  submit: (quizId: string, answers: { question_id: string; answer_text?: string; selected_option?: string }[]) =>
     api.post(`/quizzes/${quizId}/submit`, { answers }),
 
   // Grade quiz
   grade: (quizId: string) => api.post(`/quizzes/${quizId}/grade`),
 
+  // Reset quiz (다시 풀기)
+  reset: (quizId: string) => api.post(`/quizzes/${quizId}/reset`),
+
   // Submit single answer
-  submitAnswer: (questionId: string, answer: { answer_text?: string; selected_option?: string }) =>
+  submitAnswer: (questionId: string, answer: { question_id: string; answer_text?: string; selected_option?: string }) =>
     api.post(`/quizzes/questions/${questionId}/answer`, answer),
 };
 

@@ -207,6 +207,24 @@ async def grade_quiz_endpoint(
         )
 
 
+@router.post("/{quiz_id}/reset", response_model=QuizResponse)
+async def reset_quiz(
+    quiz_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Reset a quiz: 기존 답변 삭제, 상태를 PENDING으로 변경."""
+    service = QuizService(db)
+    try:
+        quiz = service.reset_quiz(quiz_id, current_user.id)
+        return quiz
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+
+
 @router.post("/questions/{question_id}/answer", response_model=UserAnswerResponse)
 async def submit_single_answer(
     question_id: UUID,

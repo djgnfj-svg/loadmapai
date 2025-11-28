@@ -61,6 +61,7 @@ class UserAnswerResponse(UserAnswerBase):
 
 class SubmitAnswerRequest(BaseModel):
     """Request to submit an answer for a question"""
+    question_id: UUID  # 필수: 어느 문제에 대한 답변인지 식별
     answer_text: Optional[str] = None
     selected_option: Optional[str] = None
 

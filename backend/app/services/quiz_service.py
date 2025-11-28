@@ -126,19 +126,55 @@ class QuizService:
         """Submit all answers and mark quiz as completed."""
         quiz = self.get_quiz(quiz_id, user_id)
         if not quiz:
-            raise ValueError("Quiz not found")
+            raise ValueError("퀴즈를 찾을 수 없습니다.")
+
+        # 상태 검증: 이미 완료되었거나 채점된 퀴즈는 제출 불가
+        if quiz.status in [QuizStatus.COMPLETED, QuizStatus.GRADED]:
+            raise ValueError("이미 완료된 퀴즈입니다. 다시 풀려면 리셋하세요.")
 
         questions = self.db.query(Question).filter(
             Question.quiz_id == quiz_id
         ).order_by(Question.question_number).all()
 
-        # Match answers to questions by order
-        for i, question in enumerate(questions):
-            if i < len(answers):
-                self.submit_answer(question.id, user_id, answers[i])
+        # 답변 개수 검증
+        if len(answers) != len(questions):
+            raise ValueError(f"답변 개수가 일치하지 않습니다. (필요: {len(questions)}, 제출: {len(answers)})")
+
+        # question_id로 매칭하여 답변 저장
+        question_ids = {str(q.id) for q in questions}
+        for answer in answers:
+            if str(answer.question_id) not in question_ids:
+                raise ValueError(f"잘못된 문제 ID: {answer.question_id}")
+            self.submit_answer(answer.question_id, user_id, answer)
 
         # Update quiz status
         quiz.status = QuizStatus.COMPLETED
+        self.db.commit()
+        self.db.refresh(quiz)
+
+        return quiz
+
+    def reset_quiz(self, quiz_id: UUID, user_id: UUID) -> Quiz:
+        """Reset quiz: 기존 답변 삭제, 상태를 PENDING으로 변경."""
+        quiz = self.get_quiz(quiz_id, user_id)
+        if not quiz:
+            raise ValueError("퀴즈를 찾을 수 없습니다.")
+
+        # 기존 UserAnswer 삭제
+        questions = self.db.query(Question).filter(Question.quiz_id == quiz_id).all()
+        question_ids = [q.id for q in questions]
+
+        self.db.query(UserAnswer).filter(
+            UserAnswer.question_id.in_(question_ids),
+            UserAnswer.user_id == user_id
+        ).delete(synchronize_session=False)
+
+        # Quiz 상태 초기화
+        quiz.status = QuizStatus.PENDING
+        quiz.score = None
+        quiz.correct_count = None
+        quiz.feedback_summary = None
+
         self.db.commit()
         self.db.refresh(quiz)
 

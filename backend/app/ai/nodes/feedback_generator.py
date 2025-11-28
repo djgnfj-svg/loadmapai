@@ -31,7 +31,7 @@ def feedback_generator(state: GradingState) -> GradingState:
     ], ensure_ascii=False, indent=2)
 
     prompt = FEEDBACK_SUMMARY_PROMPT.format(
-        topic="퀴즈",  # Could be enhanced with actual topic
+        topic=state.get("topic", "퀴즈"),
         total_questions=state["total_questions"],
         correct_count=state["correct_count"],
         total_score=state["total_score"],

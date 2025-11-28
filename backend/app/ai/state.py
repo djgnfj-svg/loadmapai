@@ -112,6 +112,7 @@ class GradingState(TypedDict):
     quiz_id: str
     user_id: str
     answers: List[AnswerData]
+    topic: str  # Daily task title for context
 
     # Grading results
     grading_results: List[GradingResultData]

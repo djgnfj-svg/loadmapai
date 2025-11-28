@@ -1,23 +1,28 @@
+import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Trophy, Target, TrendingUp, RotateCcw } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { quizApi } from '@/lib/api';
-import { useQuizForDailyTask } from '@/hooks/useQuiz';
+import { useQuizForDailyTask, useResetQuiz } from '@/hooks/useQuiz';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { CircularProgress } from '@/components/common/Progress';
 import { LoadingScreen } from '@/components/common/Loading';
 import { FeedbackView } from '@/components/quiz/FeedbackView';
+import { useToastStore } from '@/stores/toastStore';
 import { cn } from '@/lib/utils';
 import type { QuizResult as QuizResultType } from '@/types';
 
 export function QuizResult() {
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
+  const { addToast } = useToastStore();
+  const [isResetting, setIsResetting] = useState(false);
 
   // First get the quiz for this task
   const { data: quiz, isLoading: isLoadingQuiz } = useQuizForDailyTask(taskId || '');
   const quizId = quiz?.id;
+  const resetQuiz = useResetQuiz();
 
   const { data: result, isLoading: isLoadingResult, error } = useQuery({
     queryKey: ['quiz', quizId, 'result'],
@@ -69,6 +74,30 @@ export function QuizResult() {
   const userAnswerMap = new Map(
     result.user_answers?.map(ua => [ua.question_id, ua]) || []
   );
+
+  // 다시 풀기 핸들러
+  const handleRetry = async () => {
+    if (!quizId) return;
+
+    if (!window.confirm('퀴즈를 다시 풀겠습니까? 기존 답변은 삭제됩니다.')) {
+      return;
+    }
+
+    setIsResetting(true);
+    try {
+      await resetQuiz.mutateAsync(quizId);
+      addToast({ type: 'success', message: '퀴즈가 초기화되었습니다. 다시 풀어보세요!' });
+      navigate(`/quiz/${taskId}`);
+    } catch (error) {
+      console.error('Failed to reset quiz:', error);
+      addToast({
+        type: 'error',
+        message: '퀴즈 초기화에 실패했습니다.',
+      });
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -177,10 +206,12 @@ export function QuizResult() {
         </Link>
         <Button
           variant="primary"
-          onClick={() => navigate(-2)}
+          onClick={handleRetry}
+          isLoading={isResetting}
+          disabled={isResetting}
         >
           <RotateCcw className="h-4 w-4 mr-1" />
-          다시 학습하기
+          다시 풀기
         </Button>
       </div>
     </div>
