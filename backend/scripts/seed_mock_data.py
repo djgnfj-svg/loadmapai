@@ -5,7 +5,7 @@ Seed mock data for test account
 import uuid
 from datetime import date, timedelta
 from app.db import SessionLocal
-from app.models import User, Roadmap, MonthlyGoal, WeeklyTask, DailyTask
+from app.models import User, Roadmap, MonthlyGoal, WeeklyTask, DailyTask, Quiz
 from app.models.roadmap import RoadmapMode, RoadmapStatus
 from app.models.monthly_goal import TaskStatus
 
@@ -51,6 +51,15 @@ def seed_mock_data():
         print(f"Found test user: {user.email} (ID: {user.id})")
 
         # Delete existing data for fresh start
+        # First delete quizzes (to avoid FK constraint issues)
+        existing_quizzes = db.query(Quiz).filter(Quiz.user_id == user.id).all()
+        if existing_quizzes:
+            for q in existing_quizzes:
+                db.delete(q)
+            db.commit()
+            print(f"Deleted {len(existing_quizzes)} existing quizzes")
+
+        # Then delete roadmaps (cascades to monthly_goals, weekly_tasks, daily_tasks)
         existing = db.query(Roadmap).filter(Roadmap.user_id == user.id).all()
         if existing:
             for r in existing:
