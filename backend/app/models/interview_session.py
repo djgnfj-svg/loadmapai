@@ -34,7 +34,15 @@ class InterviewSession(Base, TimestampMixin):
 
     # Stage tracking
     current_stage = Column(Integer, default=1, nullable=False)  # 1, 2, or 3
-    status = Column(SQLEnum(InterviewStatus), default=InterviewStatus.IN_PROGRESS, nullable=False)
+    status = Column(
+        SQLEnum(
+            InterviewStatus,
+            values_callable=lambda obj: [e.value for e in obj],
+            name='interviewstatus'
+        ),
+        default=InterviewStatus.IN_PROGRESS,
+        nullable=False
+    )
 
     # Stage data (JSON blob storing all Q&A per stage)
     # Format: {
