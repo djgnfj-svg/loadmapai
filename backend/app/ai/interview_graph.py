@@ -155,8 +155,17 @@ def start_interview(
     duration_months: int,
     user_id: str,
     session_id: Optional[str] = None,
+    callbacks: Optional[List[Any]] = None,
 ) -> Dict[str, Any]:
     """Start a new interview session and generate Stage 1 questions.
+
+    Args:
+        topic: Learning topic
+        mode: Learning mode (planning/learning)
+        duration_months: Duration in months
+        user_id: User ID
+        session_id: Optional session ID
+        callbacks: Optional list of LangChain callback handlers for streaming
 
     Returns:
         dict with session_id, current_stage, questions, and state
@@ -171,7 +180,8 @@ def start_interview(
 
     # Run the graph to generate initial questions
     graph = create_interview_graph()
-    final_state = graph.invoke(state)
+    config = {"callbacks": callbacks} if callbacks else {}
+    final_state = graph.invoke(state, config=config)
 
     return {
         "session_id": final_state["session_id"],
@@ -185,12 +195,14 @@ def start_interview(
 def submit_answers(
     state: DeepInterviewState,
     answers: List[InterviewAnswerData],
+    callbacks: Optional[List[Any]] = None,
 ) -> Dict[str, Any]:
     """Submit answers and get the next set of questions or completion.
 
     Args:
         state: Current interview state
         answers: User's answers to current questions
+        callbacks: Optional list of LangChain callback handlers for streaming
 
     Returns:
         dict with updated state, questions (if any), and completion status
@@ -200,7 +212,8 @@ def submit_answers(
 
     # Run evaluation graph
     graph = create_evaluation_graph()
-    final_state = graph.invoke(state)
+    config = {"callbacks": callbacks} if callbacks else {}
+    final_state = graph.invoke(state, config=config)
 
     result = {
         "session_id": final_state["session_id"],

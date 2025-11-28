@@ -6,12 +6,13 @@ import { Card, CardContent } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { DeepInterviewStep, InterviewCompleted } from '@/components/interview';
+import { StreamingGeneratingState } from '@/components/roadmap';
 import {
   useStartDeepInterview,
   useSubmitInterviewAnswers,
   useInterviewQuestions,
-  useGenerateRoadmapFromInterview,
 } from '@/hooks';
+import { useRoadmapStreaming } from '@/hooks/useStreaming';
 import { cn } from '@/lib/utils';
 import type { RoadmapMode, InterviewAnswer, InterviewCompletedResponse } from '@/types';
 
@@ -289,60 +290,12 @@ function DurationSelection({
   );
 }
 
-function GeneratingState({ topic, useWebSearch }: { topic: string; useWebSearch: boolean }) {
-  return (
-    <div className="text-center py-12">
-      <div className="relative inline-flex mb-6">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Sparkles className="h-8 w-8 text-primary-600 dark:text-primary-400 animate-pulse" />
-        </div>
-        <svg className="h-24 w-24 animate-spin" viewBox="0 0 100 100">
-          <circle
-            cx="50"
-            cy="50"
-            r="40"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="8"
-            className="text-gray-200 dark:text-dark-600"
-          />
-          <circle
-            cx="50"
-            cy="50"
-            r="40"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="8"
-            strokeDasharray="251.2"
-            strokeDashoffset="188.4"
-            strokeLinecap="round"
-            className="text-primary-600 dark:text-primary-400"
-          />
-        </svg>
-      </div>
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-        AI가 맞춤형 로드맵을 생성 중입니다
-      </h2>
-      <p className="text-gray-500 dark:text-gray-400 mb-4">
-        "{topic}"에 대한 개인 맞춤형 학습 계획을 만들고 있어요.
-      </p>
-      {useWebSearch && (
-        <div className="inline-flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 mb-2">
-          <Globe className="h-4 w-4 animate-pulse" />
-          최신 학습 자료를 검색 중...
-        </div>
-      )}
-      <div className="text-sm text-gray-400 dark:text-gray-500">
-        약 30초~1분 정도 소요됩니다.
-      </div>
-    </div>
-  );
-}
-
 export function RoadmapCreate() {
   const navigate = useNavigate();
   const startInterview = useStartDeepInterview();
-  const generateRoadmap = useGenerateRoadmapFromInterview();
+
+  // Streaming hook for roadmap generation
+  const roadmapStreaming = useRoadmapStreaming();
 
   const [step, setStep] = useState<Step>('mode');
   const [formData, setFormData] = useState<FormData>({
@@ -384,6 +337,23 @@ export function RoadmapCreate() {
     }
   }, [questionsData]);
 
+  // Handle streaming completion
+  useEffect(() => {
+    if (roadmapStreaming.result && !roadmapStreaming.isStreaming) {
+      const result = roadmapStreaming.result as { roadmap_id: string };
+      if (result.roadmap_id) {
+        navigate(`/roadmaps/${result.roadmap_id}`);
+      }
+    }
+  }, [roadmapStreaming.result, roadmapStreaming.isStreaming, navigate]);
+
+  // Handle streaming error
+  useEffect(() => {
+    if (roadmapStreaming.error && !roadmapStreaming.isStreaming) {
+      setStep('completed');
+    }
+  }, [roadmapStreaming.error, roadmapStreaming.isStreaming]);
+
   const canProceed = () => {
     switch (step) {
       case 'mode':
@@ -422,17 +392,14 @@ export function RoadmapCreate() {
     if (!sessionId) return;
 
     setStep('generating');
-    try {
-      const response = await generateRoadmap.mutateAsync({
-        interview_session_id: sessionId,
-        start_date: formData.start_date,
-        use_web_search: formData.use_web_search,
-      });
-      navigate(`/roadmaps/${response.data.roadmap_id}`);
-    } catch (error) {
-      console.error('Failed to generate roadmap:', error);
-      setStep('completed');
-    }
+    roadmapStreaming.reset();
+
+    // Use streaming to generate roadmap
+    await roadmapStreaming.generateRoadmap({
+      interview_session_id: sessionId,
+      start_date: formData.start_date,
+      use_web_search: formData.use_web_search,
+    });
   };
 
   const handleNext = async () => {
@@ -541,13 +508,17 @@ export function RoadmapCreate() {
             <InterviewCompleted
               data={completedData}
               onGenerateRoadmap={handleGenerateRoadmap}
-              isGenerating={generateRoadmap.isPending}
+              isGenerating={false}
             />
           )}
           {step === 'generating' && (
-            <GeneratingState
+            <StreamingGeneratingState
               topic={formData.topic}
-              useWebSearch={formData.use_web_search}
+              events={roadmapStreaming.events}
+              currentEvent={roadmapStreaming.currentEvent}
+              progress={roadmapStreaming.progress}
+              isStreaming={roadmapStreaming.isStreaming}
+              error={roadmapStreaming.error}
             />
           )}
         </CardContent>
@@ -590,6 +561,21 @@ export function RoadmapCreate() {
           <Button variant="ghost" onClick={handleBack}>
             <ArrowLeft className="h-4 w-4 mr-1" />
             이전
+          </Button>
+        </div>
+      )}
+
+      {/* Cancel button for generating step */}
+      {step === 'generating' && roadmapStreaming.isStreaming && (
+        <div className="flex justify-center mt-6">
+          <Button
+            variant="ghost"
+            onClick={() => {
+              roadmapStreaming.abort();
+              setStep('completed');
+            }}
+          >
+            취소
           </Button>
         </div>
       )}
