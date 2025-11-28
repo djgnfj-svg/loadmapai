@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { ChevronDown, Calendar, CheckCircle2 } from 'lucide-react';
+import { ChevronDown, Calendar, CheckCircle2, Pencil } from 'lucide-react';
 import { addMonths, format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { CircularProgress } from '@/components/common/Progress';
 import { WeeklyTaskView } from './WeeklyTaskView';
 import { cn } from '@/lib/utils';
-import type { MonthlyGoalWithWeekly } from '@/types';
+import type { MonthlyGoalWithWeekly, DailyTask, WeeklyTask, MonthlyGoal } from '@/types';
 
 interface MonthlyGoalViewProps {
   month: MonthlyGoalWithWeekly;
@@ -14,6 +14,10 @@ interface MonthlyGoalViewProps {
   defaultExpanded?: boolean;
   onToggleDailyTask: (taskId: string) => void;
   onStartQuiz?: (taskId: string) => void;
+  isEditable?: boolean;
+  onEditDailyTask?: (task: DailyTask, weeklyTaskId: string) => void;
+  onEditWeeklyTask?: (task: WeeklyTask, monthlyGoalId: string) => void;
+  onEditMonthlyGoal?: (goal: MonthlyGoal) => void;
 }
 
 export function MonthlyGoalView({
@@ -23,6 +27,10 @@ export function MonthlyGoalView({
   defaultExpanded = false,
   onToggleDailyTask,
   onStartQuiz,
+  isEditable = false,
+  onEditDailyTask,
+  onEditWeeklyTask,
+  onEditMonthlyGoal,
 }: MonthlyGoalViewProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
@@ -129,14 +137,31 @@ export function MonthlyGoalView({
               </div>
             </div>
 
-            {/* Expand Icon */}
-            <div className={cn(
-              'flex-shrink-0 p-2 rounded-full transition-all duration-300',
-              isExpanded
-                ? 'bg-gray-100 dark:bg-dark-700 rotate-180'
-                : 'bg-gray-50 dark:bg-dark-700'
-            )}>
-              <ChevronDown className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+            {/* Edit & Expand Icons */}
+            <div className="flex items-center gap-2">
+              {isEditable && onEditMonthlyGoal && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEditMonthlyGoal(month);
+                  }}
+                  className={cn(
+                    'p-2 rounded-full transition-all duration-200',
+                    'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200',
+                    'hover:bg-gray-100 dark:hover:bg-dark-600'
+                  )}
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+              )}
+              <div className={cn(
+                'flex-shrink-0 p-2 rounded-full transition-all duration-300',
+                isExpanded
+                  ? 'bg-gray-100 dark:bg-dark-700 rotate-180'
+                  : 'bg-gray-50 dark:bg-dark-700'
+              )}>
+                <ChevronDown className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+              </div>
             </div>
           </div>
         </div>
@@ -171,6 +196,9 @@ export function MonthlyGoalView({
                 defaultExpanded={false}
                 onToggleDailyTask={onToggleDailyTask}
                 onStartQuiz={onStartQuiz}
+                isEditable={isEditable}
+                onEditDailyTask={onEditDailyTask}
+                onEditWeeklyTask={(task) => onEditWeeklyTask?.(task, month.id)}
               />
             ))}
           </div>

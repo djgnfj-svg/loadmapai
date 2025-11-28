@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { ChevronDown, Calendar, CheckCircle2 } from 'lucide-react';
+import { ChevronDown, Calendar, CheckCircle2, Pencil } from 'lucide-react';
 import { Progress } from '@/components/common/Progress';
 import { DailyTaskView } from './DailyTaskView';
 import { cn } from '@/lib/utils';
-import type { WeeklyTaskWithDaily } from '@/types';
+import type { WeeklyTaskWithDaily, DailyTask, WeeklyTask } from '@/types';
 
 interface WeeklyTaskViewProps {
   week: WeeklyTaskWithDaily;
@@ -11,6 +11,9 @@ interface WeeklyTaskViewProps {
   defaultExpanded?: boolean;
   onToggleDailyTask: (taskId: string) => void;
   onStartQuiz?: (taskId: string) => void;
+  isEditable?: boolean;
+  onEditDailyTask?: (task: DailyTask, weeklyTaskId: string) => void;
+  onEditWeeklyTask?: (task: WeeklyTask) => void;
 }
 
 export function WeeklyTaskView({
@@ -19,6 +22,9 @@ export function WeeklyTaskView({
   defaultExpanded = false,
   onToggleDailyTask,
   onStartQuiz,
+  isEditable = false,
+  onEditDailyTask,
+  onEditWeeklyTask,
 }: WeeklyTaskViewProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
@@ -112,13 +118,30 @@ export function WeeklyTaskView({
                   {progress}%
                 </div>
               </div>
-              <div className={cn(
-                'flex-shrink-0 p-2 rounded-full transition-all duration-300',
-                isExpanded
-                  ? cn(currentMode.accentBg, 'rotate-180')
-                  : 'bg-gray-100 dark:bg-dark-700'
-              )}>
-                <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+              <div className="flex items-center gap-1">
+                {isEditable && onEditWeeklyTask && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEditWeeklyTask(week);
+                    }}
+                    className={cn(
+                      'p-1.5 rounded-lg transition-all duration-200',
+                      'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200',
+                      'hover:bg-gray-100 dark:hover:bg-dark-600'
+                    )}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                <div className={cn(
+                  'flex-shrink-0 p-2 rounded-full transition-all duration-300',
+                  isExpanded
+                    ? cn(currentMode.accentBg, 'rotate-180')
+                    : 'bg-gray-100 dark:bg-dark-700'
+                )}>
+                  <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                </div>
               </div>
             </div>
           </div>
@@ -162,6 +185,8 @@ export function WeeklyTaskView({
                   mode={mode}
                   onToggle={onToggleDailyTask}
                   onStartQuiz={onStartQuiz}
+                  isEditable={isEditable}
+                  onEdit={(t) => onEditDailyTask?.(t, week.id)}
                 />
               ))}
             </div>

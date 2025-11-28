@@ -94,6 +94,21 @@ export const authApi = {
   githubLogin: () => `${API_URL}/api/v1/auth/github`,
 };
 
+// Interview Question type
+export interface InterviewQuestion {
+  id: string;
+  question: string;
+  question_type: 'single_choice' | 'multiple_choice' | 'text';
+  options: string[] | null;
+  placeholder: string | null;
+}
+
+// Interview Answer type
+export interface InterviewAnswer {
+  question_id: string;
+  answer: string;
+}
+
 // Roadmap API
 export const roadmapApi = {
   list: (params?: { skip?: number; limit?: number }) =>
@@ -110,6 +125,19 @@ export const roadmapApi = {
 
   generate: (data: { topic: string; duration_months: number; start_date: string; mode: string }) =>
     api.post('/roadmaps/generate', data),
+
+  // Interview-based generation
+  startInterview: (data: { topic: string; mode: string; duration_months: number }) =>
+    api.post<{ questions: InterviewQuestion[] }>('/roadmaps/interview/start', data),
+
+  generateWithContext: (data: {
+    topic: string;
+    duration_months: number;
+    start_date: string;
+    mode: string;
+    interview_answers: InterviewAnswer[];
+    interview_questions: InterviewQuestion[];
+  }) => api.post('/roadmaps/generate-with-context', data),
 
   update: (id: string, data: Partial<{ title: string; status: string }>) =>
     api.patch(`/roadmaps/${id}`, data),
@@ -130,6 +158,50 @@ export const roadmapApi = {
 
   toggleDailyTask: (dailyTaskId: string) =>
     api.patch(`/roadmaps/daily-tasks/${dailyTaskId}/toggle`),
+
+  // ============ Finalization ============
+  finalize: (id: string) =>
+    api.post(`/roadmaps/${id}/finalize`),
+
+  unfinalize: (id: string) =>
+    api.post(`/roadmaps/${id}/unfinalize`),
+
+  // ============ Schedule ============
+  updateSchedule: (id: string, data: { daily_available_minutes?: number; rest_days?: number[]; intensity?: string }) =>
+    api.patch(`/roadmaps/${id}/schedule`, data),
+
+  // ============ CRUD - Monthly Goals ============
+  createMonthlyGoal: (roadmapId: string, data: { month_number: number; title: string; description?: string }) =>
+    api.post(`/roadmaps/${roadmapId}/monthly-goals`, data),
+
+  updateMonthlyGoal: (roadmapId: string, goalId: string, data: { title?: string; description?: string }) =>
+    api.patch(`/roadmaps/${roadmapId}/monthly-goals/${goalId}`, data),
+
+  deleteMonthlyGoal: (roadmapId: string, goalId: string) =>
+    api.delete(`/roadmaps/${roadmapId}/monthly-goals/${goalId}`),
+
+  // ============ CRUD - Weekly Tasks ============
+  createWeeklyTask: (goalId: string, data: { week_number: number; title: string; description?: string }) =>
+    api.post(`/roadmaps/monthly-goals/${goalId}/weekly-tasks`, data),
+
+  updateWeeklyTask: (goalId: string, taskId: string, data: { title?: string; description?: string }) =>
+    api.patch(`/roadmaps/monthly-goals/${goalId}/weekly-tasks/${taskId}`, data),
+
+  deleteWeeklyTask: (goalId: string, taskId: string) =>
+    api.delete(`/roadmaps/monthly-goals/${goalId}/weekly-tasks/${taskId}`),
+
+  // ============ CRUD - Daily Tasks ============
+  createDailyTask: (weeklyId: string, data: { day_number: number; title: string; description?: string; order?: number }) =>
+    api.post(`/roadmaps/weekly-tasks/${weeklyId}/daily-tasks`, data),
+
+  updateDailyTask: (weeklyId: string, taskId: string, data: { title?: string; description?: string; day_number?: number; order?: number }) =>
+    api.patch(`/roadmaps/weekly-tasks/${weeklyId}/daily-tasks/${taskId}`, data),
+
+  deleteDailyTask: (weeklyId: string, taskId: string) =>
+    api.delete(`/roadmaps/weekly-tasks/${weeklyId}/daily-tasks/${taskId}`),
+
+  reorderDailyTasks: (data: { tasks: { id: string; order: number }[] }) =>
+    api.post('/roadmaps/daily-tasks/reorder', data),
 };
 
 // Quiz API
@@ -167,6 +239,29 @@ export const quizApi = {
   // Submit single answer
   submitAnswer: (questionId: string, answer: { question_id: string; answer_text?: string; selected_option?: string }) =>
     api.post(`/quizzes/questions/${questionId}/answer`, answer),
+};
+
+// Roadmap Chat API
+export const chatApi = {
+  // Send chat message for AI editing
+  sendMessage: (roadmapId: string, data: { message: string; context?: { target_type?: string; target_id?: string } }) =>
+    api.post(`/roadmaps/${roadmapId}/chat`, data),
+
+  // Send quick action
+  sendQuickAction: (roadmapId: string, actionName: string) =>
+    api.post(`/roadmaps/${roadmapId}/chat/quick-action`, null, { params: { action_name: actionName } }),
+
+  // Apply AI-suggested changes
+  applyChanges: (roadmapId: string, data: { change_ids: string[]; changes: unknown[] }) =>
+    api.post(`/roadmaps/${roadmapId}/chat/apply`, data),
+
+  // Get chat history
+  getHistory: (roadmapId: string, limit?: number) =>
+    api.get(`/roadmaps/${roadmapId}/chat/history`, { params: { limit } }),
+
+  // Get available quick actions
+  getQuickActions: (roadmapId: string) =>
+    api.get(`/roadmaps/${roadmapId}/chat/quick-actions`),
 };
 
 export default api;

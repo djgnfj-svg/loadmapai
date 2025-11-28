@@ -1,12 +1,16 @@
 import { MonthlyGoalView } from './MonthlyGoalView';
 import { Skeleton } from '@/components/common/Loading';
-import type { RoadmapFull } from '@/types';
+import type { RoadmapFull, DailyTask, WeeklyTask, MonthlyGoal } from '@/types';
 
 interface DrilldownContainerProps {
   roadmap: RoadmapFull;
   isLoading?: boolean;
   onToggleDailyTask: (taskId: string) => void;
   onStartQuiz?: (taskId: string) => void;
+  isEditable?: boolean;
+  onEditDailyTask?: (task: DailyTask, weeklyTaskId: string) => void;
+  onEditWeeklyTask?: (task: WeeklyTask, monthlyGoalId: string) => void;
+  onEditMonthlyGoal?: (goal: MonthlyGoal) => void;
 }
 
 export function DrilldownContainer({
@@ -14,6 +18,10 @@ export function DrilldownContainer({
   isLoading,
   onToggleDailyTask,
   onStartQuiz,
+  isEditable = false,
+  onEditDailyTask,
+  onEditWeeklyTask,
+  onEditMonthlyGoal,
 }: DrilldownContainerProps) {
   if (isLoading) {
     return (
@@ -53,6 +61,10 @@ export function DrilldownContainer({
           defaultExpanded={false}
           onToggleDailyTask={onToggleDailyTask}
           onStartQuiz={onStartQuiz}
+          isEditable={isEditable}
+          onEditDailyTask={onEditDailyTask}
+          onEditWeeklyTask={onEditWeeklyTask}
+          onEditMonthlyGoal={onEditMonthlyGoal}
         />
       ))}
     </div>

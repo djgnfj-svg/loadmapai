@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CheckCircle2, Circle, Sparkles } from 'lucide-react';
+import { CheckCircle2, Circle, Sparkles, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { DailyTask } from '@/types';
 
@@ -8,9 +8,11 @@ interface DailyTaskViewProps {
   mode: 'planning' | 'learning';
   onToggle: (taskId: string) => void;
   onStartQuiz?: (taskId: string) => void;
+  onEdit?: (task: DailyTask) => void;
+  isEditable?: boolean;
 }
 
-export function DailyTaskView({ task, mode, onToggle, onStartQuiz }: DailyTaskViewProps) {
+export function DailyTaskView({ task, mode, onToggle, onStartQuiz, onEdit, isEditable = false }: DailyTaskViewProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   // Mode-specific styles
@@ -79,6 +81,23 @@ export function DailyTaskView({ task, mode, onToggle, onStartQuiz }: DailyTaskVi
 
       {/* Action Area */}
       <div className="flex-shrink-0 flex items-center gap-2">
+        {/* Edit Button */}
+        {isEditable && onEdit && isHovered && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(task);
+            }}
+            className={cn(
+              'p-1.5 rounded-lg transition-all duration-200',
+              'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200',
+              'hover:bg-gray-100 dark:hover:bg-dark-700'
+            )}
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+        )}
+
         {mode === 'learning' && (
           <button
             onClick={(e) => {

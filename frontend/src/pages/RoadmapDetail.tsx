@@ -11,27 +11,74 @@ import {
   Play,
   Map,
   BookOpen,
+  MessageSquare,
+  Edit3,
+  Lock,
+  Unlock,
+  AlertTriangle,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRoadmapFull, useToggleDailyTask, useDeleteRoadmap } from '@/hooks';
+import {
+  useRoadmapFull,
+  useToggleDailyTask,
+  useDeleteRoadmap,
+  useFinalizeRoadmap,
+  useUnfinalizeRoadmap,
+  useUpdateDailyTask,
+  useUpdateWeeklyTask,
+  useUpdateMonthlyGoal,
+  useDeleteDailyTask,
+  useDeleteWeeklyTask,
+  useDeleteMonthlyGoal,
+} from '@/hooks';
 import { roadmapApi } from '@/lib/api';
 import { Card, CardContent } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { CircularProgress, Progress } from '@/components/common/Progress';
 import { LoadingScreen } from '@/components/common/Loading';
 import { DrilldownContainer } from '@/components/tasks';
+import { EditTaskModal, ChatPanel } from '@/components/edit';
 import { cn } from '@/lib/utils';
+import type { DailyTask, WeeklyTask, MonthlyGoal } from '@/types';
+
+// Edit state types
+interface EditingDaily {
+  task: DailyTask;
+  weeklyTaskId: string;
+}
+
+interface EditingWeekly {
+  task: WeeklyTask;
+  monthlyGoalId: string;
+}
 
 export function RoadmapDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [showChatPanel, setShowChatPanel] = useState(false);
+
+  // Edit modal state
+  const [editingDaily, setEditingDaily] = useState<EditingDaily | null>(null);
+  const [editingWeekly, setEditingWeekly] = useState<EditingWeekly | null>(null);
+  const [editingMonthly, setEditingMonthly] = useState<MonthlyGoal | null>(null);
 
   const { data: roadmap, isLoading, error } = useRoadmapFull(id || '');
   const toggleDailyTask = useToggleDailyTask();
   const deleteRoadmap = useDeleteRoadmap();
   const queryClient = useQueryClient();
+
+  // Edit mutations
+  const finalizeRoadmap = useFinalizeRoadmap(id || '');
+  const unfinalizeRoadmap = useUnfinalizeRoadmap(id || '');
+  const updateDailyTask = useUpdateDailyTask(id || '');
+  const updateWeeklyTask = useUpdateWeeklyTask(id || '');
+  const updateMonthlyGoal = useUpdateMonthlyGoal(id || '');
+  const deleteDailyTask = useDeleteDailyTask(id || '');
+  const deleteWeeklyTask = useDeleteWeeklyTask(id || '');
+  const deleteMonthlyGoal = useDeleteMonthlyGoal(id || '');
 
   const updateStatusMutation = useMutation({
     mutationFn: (status: string) => roadmapApi.update(id!, { status }),
@@ -60,6 +107,117 @@ export function RoadmapDetail() {
 
   const handleStartQuiz = (taskId: string) => {
     navigate(`/quiz/${taskId}`);
+  };
+
+  // Edit handlers
+  const handleEditDailyTask = (task: DailyTask, weeklyTaskId: string) => {
+    setEditingDaily({ task, weeklyTaskId });
+  };
+
+  const handleEditWeeklyTask = (task: WeeklyTask, monthlyGoalId: string) => {
+    setEditingWeekly({ task, monthlyGoalId });
+  };
+
+  const handleEditMonthlyGoal = (goal: MonthlyGoal) => {
+    setEditingMonthly(goal);
+  };
+
+  const handleSaveDailyTask = (data: { title: string; description: string; day_number?: number }) => {
+    if (!editingDaily) return;
+    updateDailyTask.mutate(
+      {
+        weeklyId: editingDaily.weeklyTaskId,
+        taskId: editingDaily.task.id,
+        data: {
+          title: data.title,
+          description: data.description,
+          day_number: data.day_number,
+        },
+      },
+      {
+        onSuccess: () => setEditingDaily(null),
+      }
+    );
+  };
+
+  const handleSaveWeeklyTask = (data: { title: string; description: string }) => {
+    if (!editingWeekly) return;
+    updateWeeklyTask.mutate(
+      {
+        goalId: editingWeekly.monthlyGoalId,
+        taskId: editingWeekly.task.id,
+        data: {
+          title: data.title,
+          description: data.description,
+        },
+      },
+      {
+        onSuccess: () => setEditingWeekly(null),
+      }
+    );
+  };
+
+  const handleSaveMonthlyGoal = (data: { title: string; description: string }) => {
+    if (!editingMonthly) return;
+    updateMonthlyGoal.mutate(
+      {
+        goalId: editingMonthly.id,
+        data: {
+          title: data.title,
+          description: data.description,
+        },
+      },
+      {
+        onSuccess: () => setEditingMonthly(null),
+      }
+    );
+  };
+
+  const handleDeleteDailyTask = () => {
+    if (!editingDaily) return;
+    if (window.confirm('정말 이 태스크를 삭제하시겠습니까?')) {
+      deleteDailyTask.mutate(
+        {
+          weeklyId: editingDaily.weeklyTaskId,
+          taskId: editingDaily.task.id,
+        },
+        {
+          onSuccess: () => setEditingDaily(null),
+        }
+      );
+    }
+  };
+
+  const handleDeleteWeeklyTask = () => {
+    if (!editingWeekly) return;
+    if (window.confirm('정말 이 주간 태스크를 삭제하시겠습니까? 하위 일일 태스크도 모두 삭제됩니다.')) {
+      deleteWeeklyTask.mutate(
+        {
+          goalId: editingWeekly.monthlyGoalId,
+          taskId: editingWeekly.task.id,
+        },
+        {
+          onSuccess: () => setEditingWeekly(null),
+        }
+      );
+    }
+  };
+
+  const handleDeleteMonthlyGoal = () => {
+    if (!editingMonthly) return;
+    if (window.confirm('정말 이 월간 목표를 삭제하시겠습니까? 하위 모든 태스크도 삭제됩니다.')) {
+      deleteMonthlyGoal.mutate(editingMonthly.id, {
+        onSuccess: () => setEditingMonthly(null),
+      });
+    }
+  };
+
+  const handleFinalize = () => {
+    if (roadmap?.is_finalized) {
+      unfinalizeRoadmap.mutate();
+    } else {
+      finalizeRoadmap.mutate();
+    }
   };
 
   if (isLoading) {
@@ -270,15 +428,134 @@ export function RoadmapDetail() {
         </CardContent>
       </Card>
 
+      {/* Finalize Warning Banner */}
+      {roadmap.is_finalized && isEditMode && (
+        <div className="bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/30 rounded-xl p-4 flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-medium text-yellow-800 dark:text-yellow-300">
+              확정된 로드맵 수정 중
+            </h3>
+            <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
+              이 로드맵은 확정되었습니다. 수정 시 변경 횟수가 기록됩니다.
+              {roadmap.edit_count_after_finalize && roadmap.edit_count_after_finalize > 0 && (
+                <span className="ml-1">
+                  (현재 {roadmap.edit_count_after_finalize}회 수정됨)
+                </span>
+              )}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Monthly Goals Drilldown */}
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">학습 계획</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">학습 계획</h2>
+          <div className="flex items-center gap-2">
+            {/* Edit Mode Toggle */}
+            <Button
+              variant={isEditMode ? 'primary' : 'ghost'}
+              size="sm"
+              onClick={() => setIsEditMode(!isEditMode)}
+            >
+              <Edit3 className="h-4 w-4 mr-1" />
+              {isEditMode ? '편집 종료' : '편집'}
+            </Button>
+
+            {/* Finalize Toggle */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleFinalize}
+              disabled={finalizeRoadmap.isPending || unfinalizeRoadmap.isPending}
+            >
+              {roadmap.is_finalized ? (
+                <>
+                  <Unlock className="h-4 w-4 mr-1" />
+                  확정 해제
+                </>
+              ) : (
+                <>
+                  <Lock className="h-4 w-4 mr-1" />
+                  확정
+                </>
+              )}
+            </Button>
+
+            {/* AI Chat Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowChatPanel(true)}
+            >
+              <MessageSquare className="h-4 w-4 mr-1" />
+              AI 도우미
+            </Button>
+          </div>
+        </div>
+
         <DrilldownContainer
           roadmap={roadmap}
           onToggleDailyTask={handleToggleDailyTask}
           onStartQuiz={handleStartQuiz}
+          isEditable={isEditMode}
+          onEditDailyTask={handleEditDailyTask}
+          onEditWeeklyTask={handleEditWeeklyTask}
+          onEditMonthlyGoal={handleEditMonthlyGoal}
         />
       </div>
+
+      {/* Edit Modals */}
+      {editingDaily && (
+        <EditTaskModal
+          isOpen={true}
+          onClose={() => setEditingDaily(null)}
+          type="daily"
+          title={editingDaily.task.title}
+          description={editingDaily.task.description || ''}
+          dayNumber={editingDaily.task.day_number}
+          onSave={handleSaveDailyTask}
+          onDelete={handleDeleteDailyTask}
+          isLoading={updateDailyTask.isPending || deleteDailyTask.isPending}
+          showFinalizeWarning={roadmap.is_finalized}
+        />
+      )}
+
+      {editingWeekly && (
+        <EditTaskModal
+          isOpen={true}
+          onClose={() => setEditingWeekly(null)}
+          type="weekly"
+          title={editingWeekly.task.title}
+          description={editingWeekly.task.description || ''}
+          onSave={handleSaveWeeklyTask}
+          onDelete={handleDeleteWeeklyTask}
+          isLoading={updateWeeklyTask.isPending || deleteWeeklyTask.isPending}
+          showFinalizeWarning={roadmap.is_finalized}
+        />
+      )}
+
+      {editingMonthly && (
+        <EditTaskModal
+          isOpen={true}
+          onClose={() => setEditingMonthly(null)}
+          type="monthly"
+          title={editingMonthly.title}
+          description={editingMonthly.description || ''}
+          onSave={handleSaveMonthlyGoal}
+          onDelete={handleDeleteMonthlyGoal}
+          isLoading={updateMonthlyGoal.isPending || deleteMonthlyGoal.isPending}
+          showFinalizeWarning={roadmap.is_finalized}
+        />
+      )}
+
+      {/* AI Chat Panel */}
+      <ChatPanel
+        roadmapId={id || ''}
+        isOpen={showChatPanel}
+        onClose={() => setShowChatPanel(false)}
+      />
     </div>
   );
 }
