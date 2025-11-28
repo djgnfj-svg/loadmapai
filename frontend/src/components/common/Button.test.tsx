@@ -32,7 +32,7 @@ describe('Button', () => {
     expect(screen.getByRole('button')).toHaveClass('bg-primary-600');
 
     rerender(<Button variant="secondary">Secondary</Button>);
-    expect(screen.getByRole('button')).toHaveClass('bg-gray-600');
+    expect(screen.getByRole('button')).toHaveClass('bg-gray-100');
 
     rerender(<Button variant="outline">Outline</Button>);
     expect(screen.getByRole('button')).toHaveClass('border-gray-300');

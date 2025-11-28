@@ -5,30 +5,21 @@ import pytest
 from typing import Generator, Any
 from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.pool import StaticPool
 
-# Set test environment
+# Set test environment before importing app
 os.environ["TESTING"] = "true"
-os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ["SECRET_KEY"] = "test-secret-key-for-testing-only"
 os.environ["ANTHROPIC_API_KEY"] = "test-api-key"
 
 from app.main import app
-from app.db.database import Base, get_db
+from app.db import Base, get_db, engine as app_engine
 from app.models.user import User
 from app.core.security import get_password_hash, create_access_token
 
-
-# Create test database engine
-TEST_DATABASE_URL = "sqlite:///:memory:"
-engine = create_engine(
-    TEST_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# Use the actual database engine (PostgreSQL) for tests
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=app_engine)
 
 
 def override_get_db() -> Generator[Session, None, None]:
@@ -43,13 +34,18 @@ def override_get_db() -> Generator[Session, None, None]:
 @pytest.fixture(scope="function")
 def db() -> Generator[Session, None, None]:
     """Create a fresh database for each test."""
-    Base.metadata.create_all(bind=engine)
+    # Create tables
+    Base.metadata.create_all(bind=app_engine)
     db = TestingSessionLocal()
     try:
         yield db
     finally:
         db.close()
-        Base.metadata.drop_all(bind=engine)
+        # Clean up test data by truncating tables
+        with app_engine.connect() as conn:
+            for table in reversed(Base.metadata.sorted_tables):
+                conn.execute(text(f"TRUNCATE TABLE {table.name} CASCADE"))
+            conn.commit()
 
 
 @pytest.fixture(scope="function")
@@ -79,7 +75,7 @@ def test_user(db: Session) -> User:
 @pytest.fixture
 def test_user_token(test_user: User) -> str:
     """Create a JWT token for test user."""
-    return create_access_token(data={"sub": str(test_user.id)})
+    return create_access_token(subject=str(test_user.id))
 
 
 @pytest.fixture

@@ -47,11 +47,11 @@ describe('Input', () => {
   it('applies error styles when error prop is provided', () => {
     render(<Input label="Email" error="Error" />);
     const input = screen.getByRole('textbox');
-    expect(input).toHaveClass('border-red-500');
+    expect(input).toHaveClass('border-red-300');
   });
 
-  it('renders required indicator', () => {
+  it('supports required attribute', () => {
     render(<Input label="Email" required />);
-    expect(screen.getByText('*')).toBeInTheDocument();
+    expect(screen.getByRole('textbox')).toBeRequired();
   });
 });

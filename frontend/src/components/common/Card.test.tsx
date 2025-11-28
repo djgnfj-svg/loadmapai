@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@/test/test-utils';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './Card';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from './Card';
 
 describe('Card', () => {
   it('renders children', () => {
@@ -23,6 +23,17 @@ describe('Card', () => {
     const { container } = render(<Card className="custom-class">Content</Card>);
     expect(container.firstChild).toHaveClass('custom-class');
   });
+
+  it('applies padding styles', () => {
+    const { container, rerender } = render(<Card padding="sm">Small</Card>);
+    expect(container.firstChild).toHaveClass('p-4');
+
+    rerender(<Card padding="md">Medium</Card>);
+    expect(container.firstChild).toHaveClass('p-6');
+
+    rerender(<Card padding="lg">Large</Card>);
+    expect(container.firstChild).toHaveClass('p-8');
+  });
 });
 
 describe('CardHeader', () => {
@@ -41,13 +52,6 @@ describe('CardTitle', () => {
   it('renders with custom className', () => {
     render(<CardTitle className="custom-class">Title</CardTitle>);
     expect(screen.getByRole('heading')).toHaveClass('custom-class');
-  });
-});
-
-describe('CardDescription', () => {
-  it('renders children', () => {
-    render(<CardDescription>Description text</CardDescription>);
-    expect(screen.getByText(/description text/i)).toBeInTheDocument();
   });
 });
 
@@ -71,7 +75,6 @@ describe('Full Card', () => {
       <Card>
         <CardHeader>
           <CardTitle>Test Title</CardTitle>
-          <CardDescription>Test Description</CardDescription>
         </CardHeader>
         <CardContent>Test Content</CardContent>
         <CardFooter>Test Footer</CardFooter>
@@ -79,7 +82,6 @@ describe('Full Card', () => {
     );
 
     expect(screen.getByText(/test title/i)).toBeInTheDocument();
-    expect(screen.getByText(/test description/i)).toBeInTheDocument();
     expect(screen.getByText(/test content/i)).toBeInTheDocument();
     expect(screen.getByText(/test footer/i)).toBeInTheDocument();
   });

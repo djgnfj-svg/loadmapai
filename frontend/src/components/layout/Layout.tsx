@@ -10,12 +10,10 @@ export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
 
-  // Close sidebar on route change (mobile)
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname]);
 
-  // Close sidebar on window resize to desktop
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 1024) {
@@ -28,7 +26,11 @@ export function Layout() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={cn(
+      'min-h-screen',
+      'bg-gray-50 dark:bg-dark-900',
+      'transition-colors duration-300'
+    )}>
       <Header
         onMenuClick={() => setSidebarOpen(true)}
         showMenuButton={isAuthenticated}

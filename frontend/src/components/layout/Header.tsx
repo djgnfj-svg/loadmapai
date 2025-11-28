@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
-import { Menu, User } from 'lucide-react';
+import { Menu, User, LogOut } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
+import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { cn } from '@/lib/utils';
 
 interface HeaderProps {
@@ -12,37 +13,60 @@ export function Header({ onMenuClick, showMenuButton }: HeaderProps) {
   const { isAuthenticated, user, logout } = useAuthStore();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-30 bg-white border-b border-gray-200">
+    <header className={cn(
+      'fixed top-0 left-0 right-0 z-30',
+      'bg-white/80 dark:bg-dark-900/80 backdrop-blur-xl',
+      'border-b border-gray-200 dark:border-dark-700'
+    )}>
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center gap-4">
-            {/* Mobile menu button */}
             {showMenuButton && (
               <button
                 onClick={onMenuClick}
-                className="p-2 rounded-lg hover:bg-gray-100 lg:hidden"
+                className={cn(
+                  'p-2 rounded-xl lg:hidden',
+                  'hover:bg-gray-100 dark:hover:bg-dark-700',
+                  'transition-colors'
+                )}
                 aria-label="메뉴 열기"
               >
-                <Menu className="h-5 w-5 text-gray-600" />
+                <Menu className="h-5 w-5 text-gray-600 dark:text-gray-400" />
               </button>
             )}
 
-            <Link to="/" className="text-xl font-bold text-primary-600">
-              LoadmapAI
+            <Link to="/" className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center">
+                <span className="text-white font-bold text-sm">L</span>
+              </div>
+              <span className="text-xl font-bold bg-gradient-to-r from-primary-600 to-primary-500 dark:from-primary-400 dark:to-primary-300 bg-clip-text text-transparent">
+                LoadmapAI
+              </span>
             </Link>
 
-            {/* Desktop navigation - hidden on mobile */}
             {isAuthenticated && (
-              <nav className="hidden md:flex ml-6 items-center space-x-4">
+              <nav className="hidden md:flex ml-6 items-center space-x-1">
                 <Link
                   to="/roadmaps"
-                  className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium"
+                  className={cn(
+                    'px-4 py-2 rounded-xl text-sm font-medium',
+                    'text-gray-600 dark:text-gray-400',
+                    'hover:text-gray-900 dark:hover:text-white',
+                    'hover:bg-gray-100 dark:hover:bg-dark-700',
+                    'transition-colors'
+                  )}
                 >
                   로드맵
                 </Link>
                 <Link
                   to="/learning"
-                  className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium"
+                  className={cn(
+                    'px-4 py-2 rounded-xl text-sm font-medium',
+                    'text-gray-600 dark:text-gray-400',
+                    'hover:text-gray-900 dark:hover:text-white',
+                    'hover:bg-gray-100 dark:hover:bg-dark-700',
+                    'transition-colors'
+                  )}
                 >
                   학습
                 </Link>
@@ -50,37 +74,56 @@ export function Header({ onMenuClick, showMenuButton }: HeaderProps) {
             )}
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
+
             {isAuthenticated ? (
               <>
-                {/* User info - hidden on mobile */}
-                <div className="hidden sm:flex items-center gap-2 text-sm text-gray-600">
+                <div className={cn(
+                  'hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl',
+                  'bg-gray-100 dark:bg-dark-700',
+                  'text-sm text-gray-600 dark:text-gray-400'
+                )}>
                   <User className="h-4 w-4" />
                   <span>{user?.name}</span>
                 </div>
                 <button
                   onClick={logout}
                   className={cn(
-                    'px-3 py-1.5 sm:px-4 sm:py-2 text-sm font-medium rounded-md',
-                    'text-gray-700 bg-gray-100 hover:bg-gray-200'
+                    'flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium',
+                    'text-gray-700 dark:text-gray-300',
+                    'bg-gray-100 dark:bg-dark-700',
+                    'hover:bg-gray-200 dark:hover:bg-dark-600',
+                    'transition-colors'
                   )}
                 >
-                  로그아웃
+                  <LogOut className="h-4 w-4" />
+                  <span className="hidden sm:inline">로그아웃</span>
                 </button>
               </>
             ) : (
               <>
                 <Link
                   to="/login"
-                  className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium"
+                  className={cn(
+                    'px-4 py-2 rounded-xl text-sm font-medium',
+                    'text-gray-600 dark:text-gray-400',
+                    'hover:text-gray-900 dark:hover:text-white',
+                    'hover:bg-gray-100 dark:hover:bg-dark-700',
+                    'transition-colors'
+                  )}
                 >
                   로그인
                 </Link>
                 <Link
                   to="/register"
                   className={cn(
-                    'px-3 py-1.5 sm:px-4 sm:py-2 text-sm font-medium rounded-md',
-                    'text-white bg-primary-600 hover:bg-primary-700'
+                    'px-4 py-2 rounded-xl text-sm font-medium',
+                    'text-white',
+                    'bg-gradient-to-r from-primary-600 to-primary-500',
+                    'hover:from-primary-500 hover:to-primary-400',
+                    'shadow-lg shadow-primary-500/25',
+                    'transition-all'
                   )}
                 >
                   회원가입

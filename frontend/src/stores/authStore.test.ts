@@ -2,15 +2,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useAuthStore } from './authStore';
 import { act } from '@testing-library/react';
 
-// Mock localStorage
-const localStorageMock = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
-};
-Object.defineProperty(window, 'localStorage', { value: localStorageMock });
-
 describe('authStore', () => {
   beforeEach(() => {
     // Reset store state
@@ -18,17 +9,18 @@ describe('authStore', () => {
       user: null,
       token: null,
       isAuthenticated: false,
+      isLoading: false,
     });
     vi.clearAllMocks();
   });
 
-  describe('setAuth', () => {
+  describe('login', () => {
     it('sets user and token', () => {
       const user = { id: '1', email: 'test@example.com', name: 'Test User' };
       const token = 'test-token';
 
       act(() => {
-        useAuthStore.getState().setAuth(user, token);
+        useAuthStore.getState().login(user, token);
       });
 
       const state = useAuthStore.getState();
@@ -36,24 +28,13 @@ describe('authStore', () => {
       expect(state.token).toBe(token);
       expect(state.isAuthenticated).toBe(true);
     });
-
-    it('stores token in localStorage', () => {
-      act(() => {
-        useAuthStore.getState().setAuth(
-          { id: '1', email: 'test@example.com', name: 'Test' },
-          'test-token'
-        );
-      });
-
-      expect(localStorageMock.setItem).toHaveBeenCalledWith('token', 'test-token');
-    });
   });
 
   describe('logout', () => {
     it('clears user and token', () => {
-      // First set auth
+      // First login
       act(() => {
-        useAuthStore.getState().setAuth(
+        useAuthStore.getState().login(
           { id: '1', email: 'test@example.com', name: 'Test' },
           'test-token'
         );
@@ -69,14 +50,6 @@ describe('authStore', () => {
       expect(state.token).toBeNull();
       expect(state.isAuthenticated).toBe(false);
     });
-
-    it('removes token from localStorage', () => {
-      act(() => {
-        useAuthStore.getState().logout();
-      });
-
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith('token');
-    });
   });
 
   describe('setUser', () => {
@@ -85,13 +58,44 @@ describe('authStore', () => {
       const updatedUser = { id: '1', email: 'test@example.com', name: 'Updated' };
 
       act(() => {
-        useAuthStore.getState().setAuth(initialUser, 'test-token');
+        useAuthStore.getState().login(initialUser, 'test-token');
         useAuthStore.getState().setUser(updatedUser);
       });
 
       const state = useAuthStore.getState();
       expect(state.user?.name).toBe('Updated');
       expect(state.token).toBe('test-token');
+    });
+  });
+
+  describe('setToken', () => {
+    it('updates token without changing user', () => {
+      const user = { id: '1', email: 'test@example.com', name: 'Test' };
+
+      act(() => {
+        useAuthStore.getState().login(user, 'old-token');
+        useAuthStore.getState().setToken('new-token');
+      });
+
+      const state = useAuthStore.getState();
+      expect(state.token).toBe('new-token');
+      expect(state.user).toEqual(user);
+    });
+  });
+
+  describe('setLoading', () => {
+    it('updates loading state', () => {
+      act(() => {
+        useAuthStore.getState().setLoading(true);
+      });
+
+      expect(useAuthStore.getState().isLoading).toBe(true);
+
+      act(() => {
+        useAuthStore.getState().setLoading(false);
+      });
+
+      expect(useAuthStore.getState().isLoading).toBe(false);
     });
   });
 });

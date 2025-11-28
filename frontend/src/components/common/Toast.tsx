@@ -20,17 +20,33 @@ const icons = {
 };
 
 const styles = {
-  success: 'bg-green-50 border-green-200 text-green-800',
-  error: 'bg-red-50 border-red-200 text-red-800',
-  warning: 'bg-yellow-50 border-yellow-200 text-yellow-800',
-  info: 'bg-blue-50 border-blue-200 text-blue-800',
+  success: cn(
+    'bg-green-50 dark:bg-green-500/10',
+    'border-green-200 dark:border-green-500/30',
+    'text-green-800 dark:text-green-300'
+  ),
+  error: cn(
+    'bg-red-50 dark:bg-red-500/10',
+    'border-red-200 dark:border-red-500/30',
+    'text-red-800 dark:text-red-300'
+  ),
+  warning: cn(
+    'bg-yellow-50 dark:bg-yellow-500/10',
+    'border-yellow-200 dark:border-yellow-500/30',
+    'text-yellow-800 dark:text-yellow-300'
+  ),
+  info: cn(
+    'bg-blue-50 dark:bg-blue-500/10',
+    'border-blue-200 dark:border-blue-500/30',
+    'text-blue-800 dark:text-blue-300'
+  ),
 };
 
 const iconStyles = {
-  success: 'text-green-500',
-  error: 'text-red-500',
-  warning: 'text-yellow-500',
-  info: 'text-blue-500',
+  success: 'text-green-500 dark:text-green-400',
+  error: 'text-red-500 dark:text-red-400',
+  warning: 'text-yellow-500 dark:text-yellow-400',
+  info: 'text-blue-500 dark:text-blue-400',
 };
 
 export function Toast({ id, type, message, duration = 5000, onClose }: ToastProps) {
@@ -55,16 +71,23 @@ export function Toast({ id, type, message, duration = 5000, onClose }: ToastProp
   return (
     <div
       className={cn(
-        'flex items-start gap-3 p-4 rounded-lg border shadow-lg transition-all duration-300',
+        'flex items-start gap-3 p-4 rounded-xl border',
+        'shadow-lg dark:shadow-dark-900/50',
+        'backdrop-blur-sm',
+        'transition-all duration-300',
         styles[type],
         isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full'
       )}
     >
       <Icon className={cn('h-5 w-5 flex-shrink-0 mt-0.5', iconStyles[type])} />
-      <p className="flex-1 text-sm">{message}</p>
+      <p className="flex-1 text-sm font-medium">{message}</p>
       <button
         onClick={handleClose}
-        className="flex-shrink-0 p-1 rounded hover:bg-black/5 transition-colors"
+        className={cn(
+          'flex-shrink-0 p-1 rounded-lg',
+          'hover:bg-black/5 dark:hover:bg-white/10',
+          'transition-colors'
+        )}
       >
         <X className="h-4 w-4" />
       </button>
