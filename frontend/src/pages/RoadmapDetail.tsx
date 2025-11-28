@@ -70,10 +70,10 @@ export function RoadmapDetail() {
   if (error || !roadmap) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
           로드맵을 찾을 수 없습니다
         </h2>
-        <p className="text-gray-500 mb-6">
+        <p className="text-gray-500 dark:text-gray-400 mb-6">
           요청하신 로드맵이 존재하지 않거나 접근 권한이 없습니다.
         </p>
         <Link to="/roadmaps">
@@ -91,9 +91,9 @@ export function RoadmapDetail() {
   const daysRemaining = Math.max(0, differenceInDays(endDate, today));
 
   const statusColors = {
-    active: 'bg-green-100 text-green-800',
-    completed: 'bg-blue-100 text-blue-800',
-    paused: 'bg-yellow-100 text-yellow-800',
+    active: 'bg-green-100 dark:bg-green-500/20 text-green-800 dark:text-green-400',
+    completed: 'bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-400',
+    paused: 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-800 dark:text-yellow-400',
   };
 
   const statusLabels = {
@@ -108,7 +108,7 @@ export function RoadmapDetail() {
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+          className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
         >
           <ArrowLeft className="h-5 w-5" />
           <span>뒤로</span>
@@ -128,14 +128,14 @@ export function RoadmapDetail() {
                 className="fixed inset-0 z-10"
                 onClick={() => setShowMenu(false)}
               />
-              <div className="absolute right-0 mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
+              <div className="absolute right-0 mt-1 w-40 bg-white dark:bg-dark-800 rounded-lg shadow-lg border border-gray-200 dark:border-dark-600 py-1 z-20">
                 {roadmap.status === 'active' ? (
                   <button
                     onClick={() => {
                       updateStatusMutation.mutate('paused');
                       setShowMenu(false);
                     }}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-dark-700 flex items-center gap-2"
                   >
                     <Pause className="h-4 w-4" />
                     일시정지
@@ -146,7 +146,7 @@ export function RoadmapDetail() {
                       updateStatusMutation.mutate('active');
                       setShowMenu(false);
                     }}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-dark-700 flex items-center gap-2"
                   >
                     <Play className="h-4 w-4" />
                     재개하기
@@ -157,7 +157,7 @@ export function RoadmapDetail() {
                     handleDelete();
                     setShowMenu(false);
                   }}
-                  className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                  className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2"
                 >
                   <Trash2 className="h-4 w-4" />
                   삭제
@@ -187,7 +187,7 @@ export function RoadmapDetail() {
                 <span className={cn('px-2 py-0.5 text-xs rounded-full', statusColors[roadmap.status])}>
                   {statusLabels[roadmap.status]}
                 </span>
-                <span className="text-xs text-gray-500 flex items-center gap-1">
+                <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
                   {roadmap.mode === 'learning' ? (
                     <>
                       <BookOpen className="h-3 w-3" />
@@ -202,45 +202,45 @@ export function RoadmapDetail() {
                 </span>
               </div>
 
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                 {roadmap.title}
               </h1>
-              <p className="text-gray-500 mb-4">{roadmap.description}</p>
+              <p className="text-gray-500 dark:text-gray-400 mb-4">{roadmap.description}</p>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div>
-                  <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-1 flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
                     시작일
                   </div>
-                  <div className="text-sm font-medium text-gray-900">
+                  <div className="text-sm font-medium text-gray-900 dark:text-white">
                     {format(startDate, 'yyyy.MM.dd', { locale: ko })}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-1 flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
                     종료일
                   </div>
-                  <div className="text-sm font-medium text-gray-900">
+                  <div className="text-sm font-medium text-gray-900 dark:text-white">
                     {format(endDate, 'yyyy.MM.dd', { locale: ko })}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-1 flex items-center gap-1">
                     <Clock className="h-3 w-3" />
                     기간
                   </div>
-                  <div className="text-sm font-medium text-gray-900">
+                  <div className="text-sm font-medium text-gray-900 dark:text-white">
                     {roadmap.duration_months}개월
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-1 flex items-center gap-1">
                     <Clock className="h-3 w-3" />
                     남은 일수
                   </div>
-                  <div className="text-sm font-medium text-gray-900">
+                  <div className="text-sm font-medium text-gray-900 dark:text-white">
                     {daysRemaining}일
                   </div>
                 </div>
@@ -248,7 +248,7 @@ export function RoadmapDetail() {
 
               {/* Time Progress */}
               <div className="mt-4">
-                <div className="flex justify-between text-xs text-gray-500 mb-1">
+                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
                   <span>진행 기간</span>
                   <span>{elapsedDays}/{totalDays}일</span>
                 </div>
@@ -266,7 +266,7 @@ export function RoadmapDetail() {
 
       {/* Monthly Goals Drilldown */}
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">학습 계획</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">학습 계획</h2>
         <DrilldownContainer
           roadmap={roadmap}
           onToggleDailyTask={handleToggleDailyTask}

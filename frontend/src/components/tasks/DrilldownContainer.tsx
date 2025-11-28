@@ -19,7 +19,7 @@ export function DrilldownContainer({
     return (
       <div className="space-y-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="bg-white rounded-xl border border-gray-200 p-5">
+          <div key={i} className="bg-white dark:bg-dark-800 rounded-xl border border-gray-200 dark:border-dark-600 p-5">
             <div className="flex items-center gap-4">
               <Skeleton className="h-16 w-16 rounded-full" />
               <div className="flex-1">
@@ -36,8 +36,8 @@ export function DrilldownContainer({
 
   if (!roadmap.monthly_goals || roadmap.monthly_goals.length === 0) {
     return (
-      <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-        <p className="text-gray-500">아직 월별 목표가 없습니다.</p>
+      <div className="text-center py-12 bg-white dark:bg-dark-800 rounded-xl border border-gray-200 dark:border-dark-600">
+        <p className="text-gray-500 dark:text-gray-400">아직 월별 목표가 없습니다.</p>
       </div>
     );
   }

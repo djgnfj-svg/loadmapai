@@ -5,8 +5,29 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LoadmapAI - AI 학습 로드맵</title>
+    <script>
+      // Prevent flash of unstyled content (FOUC)
+      (function() {
+        try {
+          const stored = localStorage.getItem('theme-storage');
+          if (stored) {
+            const { state } = JSON.parse(stored);
+            const theme = state?.theme || 'system';
+            let resolvedTheme = theme;
+
+            if (theme === 'system') {
+              resolvedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+
+            if (resolvedTheme === 'dark') {
+              document.documentElement.classList.add('dark');
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
-  <body>
+  <body class="bg-white dark:bg-dark-900 transition-colors">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

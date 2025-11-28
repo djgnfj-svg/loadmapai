@@ -44,10 +44,10 @@ export function QuizPage() {
   if (error || !quiz) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
           퀴즈를 찾을 수 없습니다
         </h2>
-        <p className="text-gray-500 mb-6">
+        <p className="text-gray-500 dark:text-gray-400 mb-6">
           요청하신 퀴즈가 존재하지 않거나 접근 권한이 없습니다.
         </p>
         <Button variant="primary" onClick={() => navigate(-1)}>
@@ -114,14 +114,14 @@ export function QuizPage() {
       <div className="flex items-center justify-between mb-6">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+          className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
         >
           <ArrowLeft className="h-5 w-5" />
           <span>나가기</span>
         </button>
 
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-sm text-gray-500">
+          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <Clock className="h-4 w-4" />
             <span>{answeredCount} / {questions.length} 답변 완료</span>
           </div>

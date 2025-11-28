@@ -8,10 +8,10 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/common/Ca
 import { Button } from '@/components/common/Button';
 import { Progress, CircularProgress } from '@/components/common/Progress';
 import { Skeleton, CardSkeleton } from '@/components/common/Loading';
+import { cn } from '@/lib/utils';
 import type { Roadmap } from '@/types';
 
 function TodayTasks({ roadmaps }: { roadmaps: Roadmap[] }) {
-  // Calculate overall progress
   const totalProgress = roadmaps.length > 0
     ? Math.round(roadmaps.reduce((sum, r) => sum + (r.progress || 0), 0) / roadmaps.length)
     : 0;
@@ -27,15 +27,15 @@ function TodayTasks({ roadmaps }: { roadmaps: Roadmap[] }) {
         <div className="flex items-center gap-6 mb-6">
           <CircularProgress value={totalProgress} size={100} />
           <div>
-            <p className="text-sm text-gray-500">전체 진행률</p>
-            <p className="text-2xl font-bold text-gray-900">{totalProgress}%</p>
-            <p className="text-sm text-gray-500">{activeRoadmaps.length}개 로드맵 진행 중</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">전체 진행률</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalProgress}%</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{activeRoadmaps.length}개 로드맵 진행 중</p>
           </div>
         </div>
 
         {activeRoadmaps.length === 0 ? (
           <div className="text-center py-6">
-            <p className="text-gray-500 mb-4">진행 중인 로드맵이 없습니다.</p>
+            <p className="text-gray-500 dark:text-gray-400 mb-4">진행 중인 로드맵이 없습니다.</p>
             <Link to="/roadmaps/create">
               <Button variant="primary" size="sm">
                 <Plus className="h-4 w-4 mr-1" />
@@ -49,13 +49,17 @@ function TodayTasks({ roadmaps }: { roadmaps: Roadmap[] }) {
               <Link
                 key={roadmap.id}
                 to={`/roadmaps/${roadmap.id}`}
-                className="block p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                className={cn(
+                  'block p-3 rounded-xl transition-colors',
+                  'bg-gray-50 dark:bg-dark-700',
+                  'hover:bg-gray-100 dark:hover:bg-dark-600'
+                )}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-gray-900 truncate">
+                  <span className="font-medium text-gray-900 dark:text-white truncate">
                     {roadmap.title}
                   </span>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
                     {roadmap.mode === 'learning' ? '학습' : '플래닝'}
                   </span>
                 </div>
@@ -71,9 +75,9 @@ function TodayTasks({ roadmaps }: { roadmaps: Roadmap[] }) {
 
 function RoadmapCard({ roadmap }: { roadmap: Roadmap }) {
   const statusColors = {
-    active: 'bg-green-100 text-green-800',
-    completed: 'bg-blue-100 text-blue-800',
-    paused: 'bg-yellow-100 text-yellow-800',
+    active: 'bg-green-100 dark:bg-green-500/20 text-green-800 dark:text-green-400',
+    completed: 'bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-400',
+    paused: 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-800 dark:text-yellow-400',
   };
 
   const statusLabels = {
@@ -84,36 +88,36 @@ function RoadmapCard({ roadmap }: { roadmap: Roadmap }) {
 
   return (
     <Link to={`/roadmaps/${roadmap.id}`}>
-      <Card variant="bordered" className="hover:shadow-md transition-shadow cursor-pointer h-full">
+      <Card variant="bordered" hover className="h-full">
         <CardContent>
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Map className="h-5 w-5 text-primary-600" />
-              <span className={`px-2 py-0.5 text-xs rounded-full ${statusColors[roadmap.status]}`}>
+              <Map className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+              <span className={cn('px-2 py-0.5 text-xs rounded-full', statusColors[roadmap.status])}>
                 {statusLabels[roadmap.status]}
               </span>
             </div>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-gray-500 dark:text-gray-400">
               {roadmap.mode === 'learning' ? '학습 모드' : '플래닝 모드'}
             </span>
           </div>
 
-          <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">
+          <h3 className="font-semibold text-gray-900 dark:text-white mb-1 line-clamp-1">
             {roadmap.title}
           </h3>
-          <p className="text-sm text-gray-500 line-clamp-2 mb-4">
+          <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-4">
             {roadmap.description}
           </p>
 
           <div className="mb-3">
-            <div className="flex justify-between text-xs text-gray-500 mb-1">
+            <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
               <span>진행률</span>
               <span>{roadmap.progress || 0}%</span>
             </div>
             <Progress value={roadmap.progress || 0} size="sm" />
           </div>
 
-          <div className="flex items-center justify-between text-xs text-gray-500">
+          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
             <span>{roadmap.duration_months}개월 과정</span>
             <span>
               {format(new Date(roadmap.start_date), 'yyyy.MM.dd', { locale: ko })} ~
@@ -139,11 +143,11 @@ function RecentRoadmaps({ roadmaps, isLoading }: { roadmaps: Roadmap[]; isLoadin
   if (roadmaps.length === 0) {
     return (
       <Card variant="bordered" className="text-center py-12">
-        <Map className="h-12 w-12 mx-auto text-gray-300 mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">
+        <Map className="h-12 w-12 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
           아직 로드맵이 없습니다
         </h3>
-        <p className="text-gray-500 mb-6">
+        <p className="text-gray-500 dark:text-gray-400 mb-6">
           AI가 당신만의 학습 로드맵을 만들어 드립니다.
         </p>
         <Link to="/roadmaps/create">
@@ -176,10 +180,10 @@ export function Dashboard() {
       {/* Welcome Section */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             안녕하세요, {user?.name}님!
           </h1>
-          <p className="text-gray-500">{today}</p>
+          <p className="text-gray-500 dark:text-gray-400">{today}</p>
         </div>
         <Link to="/roadmaps/create">
           <Button variant="primary">
@@ -203,26 +207,38 @@ export function Dashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Link
                   to="/roadmaps/create"
-                  className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 hover:border-primary-300 hover:bg-primary-50 transition-colors"
+                  className={cn(
+                    'flex items-center gap-4 p-4 rounded-xl',
+                    'border border-gray-200 dark:border-dark-600',
+                    'hover:border-primary-300 dark:hover:border-primary-500',
+                    'hover:bg-primary-50 dark:hover:bg-primary-500/10',
+                    'transition-colors'
+                  )}
                 >
-                  <div className="p-3 rounded-full bg-primary-100">
-                    <Plus className="h-6 w-6 text-primary-600" />
+                  <div className="p-3 rounded-full bg-primary-100 dark:bg-primary-500/20">
+                    <Plus className="h-6 w-6 text-primary-600 dark:text-primary-400" />
                   </div>
                   <div>
-                    <h3 className="font-medium text-gray-900">새 로드맵 생성</h3>
-                    <p className="text-sm text-gray-500">AI로 학습 계획 만들기</p>
+                    <h3 className="font-medium text-gray-900 dark:text-white">새 로드맵 생성</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">AI로 학습 계획 만들기</p>
                   </div>
                 </Link>
                 <Link
                   to="/roadmaps"
-                  className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 hover:border-primary-300 hover:bg-primary-50 transition-colors"
+                  className={cn(
+                    'flex items-center gap-4 p-4 rounded-xl',
+                    'border border-gray-200 dark:border-dark-600',
+                    'hover:border-primary-300 dark:hover:border-primary-500',
+                    'hover:bg-primary-50 dark:hover:bg-primary-500/10',
+                    'transition-colors'
+                  )}
                 >
-                  <div className="p-3 rounded-full bg-green-100">
-                    <Map className="h-6 w-6 text-green-600" />
+                  <div className="p-3 rounded-full bg-green-100 dark:bg-green-500/20">
+                    <Map className="h-6 w-6 text-green-600 dark:text-green-400" />
                   </div>
                   <div>
-                    <h3 className="font-medium text-gray-900">내 로드맵</h3>
-                    <p className="text-sm text-gray-500">진행 중인 로드맵 보기</p>
+                    <h3 className="font-medium text-gray-900 dark:text-white">내 로드맵</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">진행 중인 로드맵 보기</p>
                   </div>
                 </Link>
               </div>
@@ -234,11 +250,11 @@ export function Dashboard() {
       {/* Recent Roadmaps */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">최근 로드맵</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">최근 로드맵</h2>
           {(roadmaps?.length ?? 0) > 0 && (
             <Link
               to="/roadmaps"
-              className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
+              className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 flex items-center gap-1"
             >
               전체 보기
               <ArrowRight className="h-4 w-4" />

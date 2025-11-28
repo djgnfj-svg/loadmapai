@@ -34,17 +34,17 @@ export function QuestionView({
     <div className="space-y-6">
       {/* Question Header */}
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-primary-600">
+        <span className="text-sm font-medium text-primary-600 dark:text-primary-400">
           문제 {questionIndex + 1} / {totalQuestions}
         </span>
-        <span className="text-sm text-gray-500">
+        <span className="text-sm text-gray-500 dark:text-gray-400">
           {question.points}점
         </span>
       </div>
 
       {/* Question Text */}
-      <div className="p-4 bg-gray-50 rounded-lg">
-        <p className="text-lg font-medium text-gray-900">
+      <div className="p-4 bg-gray-50 dark:bg-dark-700 rounded-lg">
+        <p className="text-lg font-medium text-gray-900 dark:text-white">
           {question.question_text}
         </p>
       </div>
@@ -65,14 +65,14 @@ export function QuestionView({
                   className={cn(
                     'w-full text-left p-4 rounded-lg border-2 transition-all',
                     isSelected
-                      ? 'border-primary-500 bg-primary-50'
-                      : 'border-gray-200 hover:border-gray-300',
+                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-500/20'
+                      : 'border-gray-200 dark:border-dark-600 hover:border-gray-300 dark:hover:border-dark-500',
                     isSubmitted && 'cursor-not-allowed opacity-75'
                   )}
                 >
                   <span className={cn(
                     'font-medium',
-                    isSelected ? 'text-primary-700' : 'text-gray-700'
+                    isSelected ? 'text-primary-700 dark:text-primary-400' : 'text-gray-700 dark:text-gray-300'
                   )}>
                     {option}
                   </span>
@@ -92,8 +92,8 @@ export function QuestionView({
               placeholder="답을 입력하세요"
               className={cn(
                 'w-full p-4 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500',
-                'border-gray-200',
-                isSubmitted && 'cursor-not-allowed opacity-75 bg-gray-50'
+                'border-gray-200 dark:border-dark-600 bg-white dark:bg-dark-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500',
+                isSubmitted && 'cursor-not-allowed opacity-75 bg-gray-50 dark:bg-dark-800'
               )}
             />
           </div>
@@ -109,11 +109,11 @@ export function QuestionView({
               rows={6}
               className={cn(
                 'w-full p-4 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500',
-                'border-gray-200 resize-none',
-                isSubmitted && 'cursor-not-allowed opacity-75 bg-gray-50'
+                'border-gray-200 dark:border-dark-600 bg-white dark:bg-dark-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none',
+                isSubmitted && 'cursor-not-allowed opacity-75 bg-gray-50 dark:bg-dark-800'
               )}
             />
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
               {(answer.answer_text || '').length} / 1000자
             </p>
           </div>
@@ -124,9 +124,9 @@ export function QuestionView({
       <div className="flex items-center gap-2">
         <span className={cn(
           'px-2 py-1 text-xs rounded-full',
-          question.question_type === 'multiple_choice' && 'bg-blue-100 text-blue-700',
-          question.question_type === 'short_answer' && 'bg-green-100 text-green-700',
-          question.question_type === 'essay' && 'bg-purple-100 text-purple-700',
+          question.question_type === 'multiple_choice' && 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400',
+          question.question_type === 'short_answer' && 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400',
+          question.question_type === 'essay' && 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400',
         )}>
           {question.question_type === 'multiple_choice' && '객관식'}
           {question.question_type === 'short_answer' && '단답형'}

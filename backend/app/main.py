@@ -33,17 +33,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Session Middleware (for OAuth)
-app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
-
-# CORS 설정
+# CORS 설정 (must be added first, processed last)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_url],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", settings.frontend_url],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+
+# Session Middleware (for OAuth)
+app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
 
 
 @app.get("/")

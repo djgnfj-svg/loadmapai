@@ -30,10 +30,10 @@ export function QuizResult() {
   if (error || !result) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
           결과를 찾을 수 없습니다
         </h2>
-        <p className="text-gray-500 mb-6">
+        <p className="text-gray-500 dark:text-gray-400 mb-6">
           퀴즈 결과를 불러오는 중 오류가 발생했습니다.
         </p>
         <Button variant="primary" onClick={() => navigate(-1)}>
@@ -69,7 +69,7 @@ export function QuizResult() {
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate('/dashboard')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+          className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
         >
           <ArrowLeft className="h-5 w-5" />
           <span>대시보드로</span>
@@ -93,33 +93,33 @@ export function QuizResult() {
               <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
                 <Trophy className={cn(
                   'h-6 w-6',
-                  score >= 70 ? 'text-yellow-500' : 'text-gray-400'
+                  score >= 70 ? 'text-yellow-500' : 'text-gray-400 dark:text-gray-500'
                 )} />
-                <h1 className="text-2xl font-bold text-gray-900">퀴즈 완료!</h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">퀴즈 완료!</h1>
               </div>
 
-              <p className="text-lg text-gray-600 mb-4">
+              <p className="text-lg text-gray-600 dark:text-gray-300 mb-4">
                 {getScoreMessage()}
               </p>
 
               <div className="grid grid-cols-3 gap-4 text-center">
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <div className="text-2xl font-bold text-gray-900">
+                <div className="p-3 bg-gray-50 dark:bg-dark-700 rounded-lg">
+                  <div className="text-2xl font-bold text-gray-900 dark:text-white">
                     {result.correct_count}
                   </div>
-                  <div className="text-xs text-gray-500">정답</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">정답</div>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <div className="text-2xl font-bold text-gray-900">
+                <div className="p-3 bg-gray-50 dark:bg-dark-700 rounded-lg">
+                  <div className="text-2xl font-bold text-gray-900 dark:text-white">
                     {result.total_questions - (result.correct_count || 0)}
                   </div>
-                  <div className="text-xs text-gray-500">오답</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">오답</div>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <div className="text-2xl font-bold text-gray-900">
+                <div className="p-3 bg-gray-50 dark:bg-dark-700 rounded-lg">
+                  <div className="text-2xl font-bold text-gray-900 dark:text-white">
                     {result.total_questions}
                   </div>
-                  <div className="text-xs text-gray-500">총 문제</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">총 문제</div>
                 </div>
               </div>
             </div>
@@ -132,20 +132,20 @@ export function QuizResult() {
         <Card variant="bordered">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5 text-primary-600" />
+              <Target className="h-5 w-5 text-primary-600 dark:text-primary-400" />
               AI 피드백
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-700">{result.feedback_summary}</p>
+            <p className="text-gray-700 dark:text-gray-300">{result.feedback_summary}</p>
           </CardContent>
         </Card>
       )}
 
       {/* Question Results */}
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <TrendingUp className="h-5 w-5 text-primary-600" />
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+          <TrendingUp className="h-5 w-5 text-primary-600 dark:text-primary-400" />
           문제별 결과
         </h2>
 
@@ -162,7 +162,7 @@ export function QuizResult() {
       </div>
 
       {/* Actions */}
-      <div className="flex items-center justify-center gap-4 pt-6 border-t">
+      <div className="flex items-center justify-center gap-4 pt-6 border-t dark:border-dark-600">
         <Link to="/dashboard">
           <Button variant="outline">
             대시보드로 이동

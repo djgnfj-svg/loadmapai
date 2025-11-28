@@ -46,19 +46,19 @@ function ModeSelection({
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">학습 모드 선택</h2>
-        <p className="text-gray-500">어떤 방식으로 학습을 진행하시겠어요?</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">학습 모드 선택</h2>
+        <p className="text-gray-500 dark:text-gray-400">어떤 방식으로 학습을 진행하시겠어요?</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {modes.map((mode) => {
           const isSelected = selected === mode.id;
           const colorClasses = mode.color === 'primary'
-            ? 'border-primary-500 bg-primary-50 ring-primary-500'
-            : 'border-green-500 bg-green-50 ring-green-500';
+            ? 'border-primary-500 bg-primary-50 dark:bg-primary-500/10 ring-primary-500'
+            : 'border-green-500 bg-green-50 dark:bg-green-500/10 ring-green-500';
           const iconColorClasses = mode.color === 'primary'
-            ? 'bg-primary-100 text-primary-600'
-            : 'bg-green-100 text-green-600';
+            ? 'bg-primary-100 dark:bg-primary-500/20 text-primary-600 dark:text-primary-400'
+            : 'bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400';
 
           return (
             <button
@@ -67,19 +67,19 @@ function ModeSelection({
               className={`text-left p-6 rounded-xl border-2 transition-all ${
                 isSelected
                   ? `${colorClasses} ring-2`
-                  : 'border-gray-200 hover:border-gray-300'
+                  : 'border-gray-200 dark:border-dark-600 hover:border-gray-300 dark:hover:border-dark-500'
               }`}
             >
               <div className={`inline-flex p-3 rounded-lg ${iconColorClasses} mb-4`}>
                 <mode.icon className="h-6 w-6" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                 {mode.title}
               </h3>
-              <p className="text-sm text-gray-500 mb-4">{mode.description}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{mode.description}</p>
               <ul className="space-y-2">
                 {mode.features.map((feature, i) => (
-                  <li key={i} className="flex items-center text-sm text-gray-600">
+                  <li key={i} className="flex items-center text-sm text-gray-600 dark:text-gray-300">
                     <span className={`w-1.5 h-1.5 rounded-full mr-2 ${
                       mode.color === 'primary' ? 'bg-primary-500' : 'bg-green-500'
                     }`} />
@@ -114,8 +114,8 @@ function TopicInput({
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">학습 주제</h2>
-        <p className="text-gray-500">어떤 것을 배우고 싶으신가요?</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">학습 주제</h2>
+        <p className="text-gray-500 dark:text-gray-400">어떤 것을 배우고 싶으신가요?</p>
       </div>
 
       <div>
@@ -125,13 +125,13 @@ function TopicInput({
           placeholder="예: React 프론트엔드 개발 마스터하기"
           className="text-lg py-4"
         />
-        <p className="mt-2 text-sm text-gray-500">
+        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
           구체적일수록 더 맞춤화된 로드맵이 생성됩니다.
         </p>
       </div>
 
       <div>
-        <p className="text-sm font-medium text-gray-700 mb-3">추천 주제</p>
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">추천 주제</p>
         <div className="flex flex-wrap gap-2">
           {suggestions.map((suggestion) => (
             <button
@@ -139,8 +139,8 @@ function TopicInput({
               onClick={() => onChange(suggestion)}
               className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
                 value === suggestion
-                  ? 'border-primary-500 bg-primary-50 text-primary-700'
-                  : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-500/20 text-primary-700 dark:text-primary-400'
+                  : 'border-gray-200 dark:border-dark-600 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-dark-500'
               }`}
             >
               {suggestion}
@@ -176,8 +176,8 @@ function DurationSelection({
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">학습 기간</h2>
-        <p className="text-gray-500">얼마 동안 학습하시겠어요?</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">학습 기간</h2>
+        <p className="text-gray-500 dark:text-gray-400">얼마 동안 학습하시겠어요?</p>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
@@ -187,19 +187,19 @@ function DurationSelection({
             onClick={() => onDurationChange(d.months)}
             className={`p-4 rounded-xl border-2 text-center transition-all ${
               duration === d.months
-                ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500'
-                : 'border-gray-200 hover:border-gray-300'
+                ? 'border-primary-500 bg-primary-50 dark:bg-primary-500/10 ring-2 ring-primary-500'
+                : 'border-gray-200 dark:border-dark-600 hover:border-gray-300 dark:hover:border-dark-500'
             }`}
           >
-            <div className="text-2xl font-bold text-gray-900">{d.months}</div>
-            <div className="text-xs text-gray-500">개월</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{d.months}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">개월</div>
           </button>
         ))}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             <Calendar className="inline h-4 w-4 mr-1" />
             시작일
           </label>
@@ -211,11 +211,11 @@ function DurationSelection({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             <Clock className="inline h-4 w-4 mr-1" />
             종료 예정일
           </label>
-          <div className="px-3 py-2 bg-gray-100 rounded-lg text-gray-700">
+          <div className="px-3 py-2 bg-gray-100 dark:bg-dark-700 rounded-lg text-gray-700 dark:text-gray-300">
             {format(endDate, 'yyyy년 M월 d일')}
           </div>
         </div>
@@ -229,7 +229,7 @@ function GeneratingState({ topic }: { topic: string }) {
     <div className="text-center py-12">
       <div className="relative inline-flex mb-6">
         <div className="absolute inset-0 flex items-center justify-center">
-          <Sparkles className="h-8 w-8 text-primary-600 animate-pulse" />
+          <Sparkles className="h-8 w-8 text-primary-600 dark:text-primary-400 animate-pulse" />
         </div>
         <svg className="h-24 w-24 animate-spin" viewBox="0 0 100 100">
           <circle
@@ -239,7 +239,7 @@ function GeneratingState({ topic }: { topic: string }) {
             fill="none"
             stroke="currentColor"
             strokeWidth="8"
-            className="text-gray-200"
+            className="text-gray-200 dark:text-dark-600"
           />
           <circle
             cx="50"
@@ -251,17 +251,17 @@ function GeneratingState({ topic }: { topic: string }) {
             strokeDasharray="251.2"
             strokeDashoffset="188.4"
             strokeLinecap="round"
-            className="text-primary-600"
+            className="text-primary-600 dark:text-primary-400"
           />
         </svg>
       </div>
-      <h2 className="text-xl font-bold text-gray-900 mb-2">
+      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
         AI가 로드맵을 생성 중입니다
       </h2>
-      <p className="text-gray-500 mb-4">
+      <p className="text-gray-500 dark:text-gray-400 mb-4">
         "{topic}"에 대한 맞춤형 학습 계획을 만들고 있어요.
       </p>
-      <div className="text-sm text-gray-400">
+      <div className="text-sm text-gray-400 dark:text-gray-500">
         약 30초~1분 정도 소요됩니다.
       </div>
     </div>
@@ -336,12 +336,12 @@ export function RoadmapCreate() {
               <div
                 key={s}
                 className={`flex-1 h-1 rounded-full mx-1 ${
-                  i <= currentStepIndex ? 'bg-primary-600' : 'bg-gray-200'
+                  i <= currentStepIndex ? 'bg-primary-600 dark:bg-primary-500' : 'bg-gray-200 dark:bg-dark-600'
                 }`}
               />
             ))}
           </div>
-          <div className="text-sm text-gray-500 text-center">
+          <div className="text-sm text-gray-500 dark:text-gray-400 text-center">
             단계 {currentStepIndex + 1} / {steps.length}
           </div>
         </div>
