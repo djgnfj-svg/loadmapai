@@ -34,8 +34,14 @@ from app.services.roadmap_service import (
     WeeklyTaskService,
 )
 from app.api.deps import get_current_user
-from app.ai.roadmap_graph import generate_roadmap, generate_roadmap_with_context
+from app.ai.roadmap_graph import (
+    generate_roadmap,
+    generate_roadmap_with_context,
+    generate_roadmap_from_interview,
+)
 from app.ai.nodes.interview_generator import generate_interview_questions
+from app.services.interview_service import InterviewService
+from app.models.interview_session import InterviewStatus
 
 
 # ============ Interview Request/Response Models ============
@@ -85,6 +91,13 @@ class RoadmapGenerateResponse(BaseModel):
     roadmap_id: str
     title: str
     message: str
+
+
+class RoadmapFromInterviewRequest(BaseModel):
+    """Request to generate roadmap from completed interview session."""
+    interview_session_id: UUID
+    start_date: date
+    use_web_search: bool = True
 
 router = APIRouter()
 
@@ -294,6 +307,81 @@ async def generate_roadmap_with_context_endpoint(
             roadmap_id=result["roadmap_id"],
             title=result["title"],
             message="맞춤형 로드맵이 성공적으로 생성되었습니다.",
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"로드맵 생성 중 오류가 발생했습니다: {str(e)}",
+        )
+
+
+@router.post("/generate-from-interview", response_model=RoadmapGenerateResponse)
+async def generate_roadmap_from_interview_endpoint(
+    data: RoadmapFromInterviewRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Generate a roadmap from a completed deep interview session.
+
+    This endpoint:
+    1. Takes a completed interview session ID
+    2. Uses the compiled interview context
+    3. Optionally performs web search for latest info
+    4. Generates a personalized roadmap
+    """
+    interview_service = InterviewService(db)
+
+    # Get interview session
+    session = interview_service.get_session(data.interview_session_id, current_user.id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="인터뷰 세션을 찾을 수 없습니다.",
+        )
+
+    # Check if interview is completed
+    if session.status != InterviewStatus.COMPLETED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="인터뷰가 완료되지 않았습니다. 먼저 인터뷰를 완료해주세요.",
+        )
+
+    # Check if already has a roadmap
+    if session.roadmap_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="이미 이 인터뷰로 생성된 로드맵이 있습니다.",
+        )
+
+    try:
+        # Get mode enum
+        mode = RoadmapMode.LEARNING if session.mode == "learning" else RoadmapMode.PLANNING
+
+        result = await generate_roadmap_from_interview(
+            topic=session.topic,
+            duration_months=session.duration_months,
+            start_date=data.start_date,
+            mode=mode,
+            user_id=str(current_user.id),
+            compiled_context=session.compiled_context or "",
+            daily_minutes=session.extracted_daily_minutes,
+            rest_days=session.extracted_rest_days,
+            intensity=session.extracted_intensity,
+            db=db,
+            use_web_search=data.use_web_search,
+        )
+
+        # Link roadmap to interview session
+        interview_service.link_roadmap(
+            session_id=session.id,
+            roadmap_id=UUID(result["roadmap_id"]),
+            user_id=current_user.id,
+        )
+
+        return RoadmapGenerateResponse(
+            roadmap_id=result["roadmap_id"],
+            title=result["title"],
+            message="딥 인터뷰 기반 맞춤형 로드맵이 생성되었습니다.",
         )
     except Exception as e:
         raise HTTPException(
