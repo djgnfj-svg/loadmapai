@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { Map, Plus, ArrowRight, CheckCircle2, Circle } from 'lucide-react';
+import { Map, Plus, ArrowRight, CheckCircle2, Circle, BookOpen, Rocket } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useRoadmaps } from '@/hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/common/Card';
@@ -59,8 +59,17 @@ function TodayTasks({ roadmaps }: { roadmaps: Roadmap[] }) {
                   <span className="font-medium text-gray-900 dark:text-white truncate">
                     {roadmap.title}
                   </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    {roadmap.mode === 'learning' ? '학습' : '플래닝'}
+                  <span className={cn(
+                    'flex items-center gap-1 px-2 py-0.5 text-xs rounded-full',
+                    roadmap.mode === 'learning'
+                      ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400'
+                      : 'bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400'
+                  )}>
+                    {roadmap.mode === 'learning' ? (
+                      <><BookOpen className="h-3 w-3" /> 학습</>
+                    ) : (
+                      <><Rocket className="h-3 w-3" /> 플래닝</>
+                    )}
                   </span>
                 </div>
                 <Progress value={roadmap.progress || 0} size="sm" />
@@ -97,8 +106,17 @@ function RoadmapCard({ roadmap }: { roadmap: Roadmap }) {
                 {statusLabels[roadmap.status]}
               </span>
             </div>
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              {roadmap.mode === 'learning' ? '학습 모드' : '플래닝 모드'}
+            <span className={cn(
+              'flex items-center gap-1 px-2 py-0.5 text-xs rounded-full',
+              roadmap.mode === 'learning'
+                ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400'
+                : 'bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400'
+            )}>
+              {roadmap.mode === 'learning' ? (
+                <><BookOpen className="h-3 w-3" /> 학습</>
+              ) : (
+                <><Rocket className="h-3 w-3" /> 플래닝</>
+              )}
             </span>
           </div>
 
