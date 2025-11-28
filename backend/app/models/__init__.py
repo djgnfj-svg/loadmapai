@@ -7,6 +7,7 @@ from app.models.quiz import Quiz, QuizStatus
 from app.models.question import Question, QuestionType
 from app.models.user_answer import UserAnswer
 from app.models.roadmap_conversation import RoadmapConversation
+from app.models.interview_session import InterviewSession, InterviewStatus
 
 __all__ = [
     "User",
@@ -24,4 +25,6 @@ __all__ = [
     "QuestionType",
     "UserAnswer",
     "RoadmapConversation",
+    "InterviewSession",
+    "InterviewStatus",
 ]

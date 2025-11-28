@@ -59,6 +59,21 @@ from app.schemas.quiz import (
     QuizSubmitRequest,
     QuizSubmitResponse,
 )
+from app.schemas.interview import (
+    InterviewQuestionSchema,
+    InterviewAnswerSchema,
+    InterviewStartRequest,
+    InterviewSubmitAnswersRequest,
+    InterviewStageInfo,
+    InterviewQuestionsResponse,
+    InterviewAnswerEvaluationSchema,
+    InterviewScheduleSchema,
+    InterviewCompletedResponse,
+    InterviewSessionResponse,
+    InterviewSessionListResponse,
+    GenerateRoadmapFromInterviewRequest,
+    get_stage_name,
+)
 
 __all__ = [
     # User
@@ -118,4 +133,18 @@ __all__ = [
     "QuizGenerateResponse",
     "QuizSubmitRequest",
     "QuizSubmitResponse",
+    # Interview
+    "InterviewQuestionSchema",
+    "InterviewAnswerSchema",
+    "InterviewStartRequest",
+    "InterviewSubmitAnswersRequest",
+    "InterviewStageInfo",
+    "InterviewQuestionsResponse",
+    "InterviewAnswerEvaluationSchema",
+    "InterviewScheduleSchema",
+    "InterviewCompletedResponse",
+    "InterviewSessionResponse",
+    "InterviewSessionListResponse",
+    "GenerateRoadmapFromInterviewRequest",
+    "get_stage_name",
 ]
