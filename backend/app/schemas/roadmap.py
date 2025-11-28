@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Literal
 from datetime import date, datetime
 from uuid import UUID
 
@@ -15,12 +15,32 @@ class DailyTaskBase(BaseModel):
 
 class DailyTaskCreate(DailyTaskBase):
     day_number: int = Field(..., ge=1, le=7)
+    order: int = Field(default=0, ge=0)
+
+
+class DailyTaskUpdate(BaseModel):
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = None
+    day_number: Optional[int] = Field(None, ge=1, le=7)
+    order: Optional[int] = Field(None, ge=0)
+
+
+class DailyTaskReorder(BaseModel):
+    """일일 태스크 순서 변경"""
+    task_id: UUID
+    new_order: int = Field(..., ge=0)
+
+
+class DailyTaskReorderRequest(BaseModel):
+    """여러 태스크 순서 일괄 변경"""
+    tasks: List[DailyTaskReorder]
 
 
 class DailyTaskResponse(DailyTaskBase):
     id: UUID
     weekly_task_id: UUID
     day_number: int
+    order: int
     status: TaskStatus
     is_checked: bool
     created_at: datetime
@@ -37,6 +57,11 @@ class WeeklyTaskBase(BaseModel):
 
 class WeeklyTaskCreate(WeeklyTaskBase):
     week_number: int = Field(..., ge=1, le=4)
+
+
+class WeeklyTaskUpdate(BaseModel):
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = None
 
 
 class WeeklyTaskResponse(WeeklyTaskBase):
@@ -63,6 +88,11 @@ class MonthlyGoalBase(BaseModel):
 
 class MonthlyGoalCreate(MonthlyGoalBase):
     month_number: int = Field(..., ge=1, le=6)
+
+
+class MonthlyGoalUpdate(BaseModel):
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = None
 
 
 class MonthlyGoalResponse(MonthlyGoalBase):
@@ -97,6 +127,10 @@ class RoadmapCreate(BaseModel):
     duration_months: int = Field(..., ge=1, le=6)
     start_date: date
     mode: RoadmapMode = RoadmapMode.PLANNING
+    # Optional schedule fields (can be set during interview or later)
+    daily_available_minutes: Optional[int] = Field(default=60, ge=15, le=480)
+    rest_days: Optional[List[int]] = Field(default=[])
+    intensity: Optional[Literal['light', 'moderate', 'intense']] = Field(default='moderate')
 
 
 class RoadmapUpdate(BaseModel):
@@ -104,6 +138,13 @@ class RoadmapUpdate(BaseModel):
     description: Optional[str] = None
     status: Optional[RoadmapStatus] = None
     mode: Optional[RoadmapMode] = None
+
+
+class RoadmapScheduleUpdate(BaseModel):
+    """사용자 학습 스케줄 설정"""
+    daily_available_minutes: Optional[int] = Field(None, ge=15, le=480)  # 15분~8시간
+    rest_days: Optional[List[int]] = Field(None)  # [0-6] (0=일요일, 6=토요일)
+    intensity: Optional[Literal['light', 'moderate', 'intense']] = None
 
 
 class RoadmapResponse(RoadmapBase):
@@ -115,11 +156,27 @@ class RoadmapResponse(RoadmapBase):
     mode: RoadmapMode
     status: RoadmapStatus
     progress: int
+    # Finalization fields
+    is_finalized: bool
+    finalized_at: Optional[datetime] = None
+    edit_count_after_finalize: int
+    # Schedule fields
+    daily_available_minutes: Optional[int] = None
+    rest_days: Optional[List[int]] = None
+    intensity: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class RoadmapFinalizeResponse(BaseModel):
+    """확정 응답"""
+    id: UUID
+    is_finalized: bool
+    finalized_at: Optional[datetime] = None
+    message: str
 
 
 class RoadmapWithMonthly(RoadmapResponse):
