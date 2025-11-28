@@ -47,8 +47,9 @@ def upgrade() -> None:
     )
     op.create_index('ix_roadmap_conversations_roadmap_id', 'roadmap_conversations', ['roadmap_id'])
 
-    # Migrate existing ACTIVE roadmaps to is_finalized=true
-    op.execute("UPDATE roadmaps SET is_finalized = true WHERE status = 'active'")
+    # Migrate existing ACTIVE roadmaps to is_finalized=false (not finalized by default)
+    # Note: status is an enum type, so we use the enum value directly
+    op.execute("UPDATE roadmaps SET is_finalized = false")
 
 
 def downgrade() -> None:
