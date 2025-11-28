@@ -238,3 +238,72 @@ export interface FinalizeResponse {
   finalized_at?: string;
   message: string;
 }
+
+// ============ Deep Interview Types ============
+
+export type InterviewStatus = 'in_progress' | 'completed' | 'abandoned';
+export type InterviewQuestionType = 'text' | 'single_choice' | 'multiple_choice';
+
+export interface InterviewQuestion {
+  id: string;
+  question: string;
+  question_type: InterviewQuestionType;
+  options?: string[];
+  placeholder?: string;
+}
+
+export interface InterviewAnswer {
+  question_id: string;
+  answer: string;
+}
+
+export interface InterviewStageInfo {
+  stage: number;
+  questions_count: number;
+  answers_count: number;
+  completed: boolean;
+}
+
+export interface InterviewSchedule {
+  daily_minutes?: number;
+  rest_days?: number[];
+  intensity?: LearningIntensity;
+}
+
+export interface InterviewSession {
+  id: string;
+  user_id: string;
+  topic: string;
+  mode: string;
+  duration_months: number;
+  current_stage: number;
+  status: InterviewStatus;
+  stages: InterviewStageInfo[];
+  is_complete: boolean;
+  created_at: string;
+  updated_at: string;
+  roadmap_id?: string;
+}
+
+export interface InterviewQuestionsResponse {
+  session_id: string;
+  current_stage: number;
+  stage_name: string;
+  questions: InterviewQuestion[];
+  is_complete: boolean;
+  is_followup: boolean;
+}
+
+export interface InterviewCompletedResponse {
+  session_id: string;
+  is_complete: boolean;
+  compiled_context: string;
+  key_insights: string[];
+  schedule: InterviewSchedule;
+  can_generate_roadmap: boolean;
+}
+
+export interface InterviewSessionListResponse {
+  sessions: InterviewSession[];
+  total: number;
+}

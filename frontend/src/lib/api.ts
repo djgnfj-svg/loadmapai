@@ -241,6 +241,41 @@ export const quizApi = {
     api.post(`/quizzes/questions/${questionId}/answer`, answer),
 };
 
+// ============ Deep Interview API ============
+export const interviewApi = {
+  // Start a new deep interview session
+  start: (data: { topic: string; mode: string; duration_months: number }) =>
+    api.post('/interviews/start', data),
+
+  // Submit answers for current questions
+  submitAnswers: (sessionId: string, answers: { question_id: string; answer: string }[]) =>
+    api.post(`/interviews/${sessionId}/submit`, { answers }),
+
+  // Get interview session details
+  get: (sessionId: string) =>
+    api.get(`/interviews/${sessionId}`),
+
+  // Get current questions for a session
+  getQuestions: (sessionId: string) =>
+    api.get(`/interviews/${sessionId}/questions`),
+
+  // List user's interview sessions
+  list: (params?: { skip?: number; limit?: number; status_filter?: string }) =>
+    api.get('/interviews', { params }),
+
+  // Abandon an interview session
+  abandon: (sessionId: string) =>
+    api.post(`/interviews/${sessionId}/abandon`),
+
+  // Delete an interview session
+  delete: (sessionId: string) =>
+    api.delete(`/interviews/${sessionId}`),
+
+  // Generate roadmap from completed interview
+  generateRoadmap: (data: { interview_session_id: string; start_date: string; use_web_search?: boolean }) =>
+    api.post('/roadmaps/generate-from-interview', data),
+};
+
 // Roadmap Chat API
 export const chatApi = {
   // Send chat message for AI editing

@@ -48,3 +48,14 @@ export {
   useSendQuickAction,
   useApplyChanges,
 } from './useRoadmapEdit';
+export {
+  // Deep Interview
+  useInterviewSessions,
+  useInterviewSession,
+  useInterviewQuestions,
+  useStartInterview as useStartDeepInterview,
+  useSubmitInterviewAnswers,
+  useAbandonInterview,
+  useDeleteInterview,
+  useGenerateRoadmapFromInterview,
+} from './useInterview';
