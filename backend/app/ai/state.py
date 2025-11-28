@@ -31,6 +31,15 @@ class RoadmapGenerationState(TypedDict):
     mode: RoadmapMode
     user_id: str
 
+    # Interview context (optional, for personalized generation)
+    interview_context: Optional[str]  # Formatted interview Q&A
+    daily_time: Optional[str]  # Extracted daily time investment
+
+    # Schedule info (extracted from interview or set directly)
+    daily_available_minutes: Optional[int]  # 하루 투자 가능 시간 (분)
+    rest_days: Optional[List[int]]  # 쉬는 요일 [0=일, 6=토]
+    intensity: Optional[str]  # 학습 강도: light/moderate/intense
+
     # Generated content
     title: Optional[str]
     description: Optional[str]
@@ -127,4 +136,35 @@ class GradingState(TypedDict):
 
     # Processing state
     current_answer_index: int
+    error_message: Optional[str]
+
+
+# ============ Interview State ============
+
+class InterviewQuestionData(TypedDict):
+    id: str
+    question: str
+    question_type: str  # "text", "single_choice", "multiple_choice"
+    options: Optional[List[str]]
+    placeholder: Optional[str]
+
+
+class InterviewAnswerData(TypedDict):
+    question_id: str
+    answer: str  # For single_choice/text, the answer value; for multiple_choice, comma-separated
+
+
+class InterviewState(TypedDict):
+    # Input
+    topic: str
+    mode: str  # "learning" or "planning"
+    duration_months: int
+
+    # Generated questions
+    questions: List[InterviewQuestionData]
+
+    # User responses (filled after user answers)
+    answers: List[InterviewAnswerData]
+
+    # Processing
     error_message: Optional[str]

@@ -12,7 +12,7 @@ def save_roadmap(state: RoadmapGenerationState, db: Session) -> RoadmapGeneratio
     # Calculate end date
     end_date = state["start_date"] + timedelta(days=state["duration_months"] * 30)
 
-    # Create roadmap
+    # Create roadmap with schedule info
     roadmap = Roadmap(
         user_id=UUID(state["user_id"]),
         title=state["title"],
@@ -22,6 +22,10 @@ def save_roadmap(state: RoadmapGenerationState, db: Session) -> RoadmapGeneratio
         start_date=state["start_date"],
         end_date=end_date,
         mode=state["mode"],
+        # Schedule fields (from interview or defaults)
+        daily_available_minutes=state.get("daily_available_minutes", 60),
+        rest_days=state.get("rest_days", []),
+        intensity=state.get("intensity", "moderate"),
     )
     db.add(roadmap)
     db.flush()  # Get the roadmap ID
