@@ -286,7 +286,27 @@
 | 87a325f | 4.1-4.4 | 2024 | LangGraph AI 로드맵 생성 시스템 |
 | dab16e2 | 5.1-5.5 | 2024 | 프론트엔드 기본 UI (공통 컴포넌트, 대시보드, 로드맵 페이지) |
 | 0b1bf18 | 6.1-6.6 | 2024 | 러닝 모드 퀴즈 시스템 (LangGraph 문제 생성/채점, API, 프론트엔드) |
-| 069865b | 7.1-7.4 | 2024 | 마무리 (에러 핸들링, 로딩 UI, 반응형 디자인, README) |
+| 7119c57 | 7.1-7.4 | 2024 | 마무리 (에러 핸들링, 로딩 UI, 반응형 디자인, README) |
+| f4f655d | 8 | 2024 | 테스트 코드 추가 (pytest, Vitest) |
+
+---
+
+## Phase 8: 테스트 ✅
+
+### 8.1 Backend 테스트 (pytest)
+- [x] pytest 설정 및 conftest.py
+- [x] 인증 API 테스트 (test_auth.py)
+- [x] 로드맵 API 테스트 (test_roadmaps.py)
+- [x] 퀴즈 API 테스트 (test_quizzes.py)
+- [x] Health check 테스트
+
+### 8.2 Frontend 테스트 (Vitest)
+- [x] Vitest + Testing Library 설정
+- [x] Button 컴포넌트 테스트
+- [x] Input 컴포넌트 테스트
+- [x] Card 컴포넌트 테스트
+- [x] Toast 컴포넌트 테스트
+- [x] Store 테스트 (authStore, toastStore)
 
 ---
 
