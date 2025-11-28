@@ -81,29 +81,57 @@ export interface RoadmapWithMonthly extends Roadmap {
 }
 
 // Learning types
+export type QuestionType = 'multiple_choice' | 'short_answer' | 'essay';
+export type QuizStatus = 'pending' | 'in_progress' | 'completed' | 'graded';
+
 export interface Question {
   id: string;
-  type: 'multiple_choice' | 'short_answer' | 'essay';
+  question_number: number;
+  question_type: QuestionType;
   question_text: string;
   options?: string[];
+  points: number;
+  created_at: string;
+  // For review (after grading)
   correct_answer?: string;
+  explanation?: string;
 }
 
-export interface QuizSession {
+export interface UserAnswer {
   id: string;
-  user_id: string;
-  daily_task_id: string;
-  questions: Question[];
-  status: 'in_progress' | 'completed' | 'graded';
+  question_id: string;
+  answer_text?: string;
+  selected_option?: string;
+  is_correct?: boolean;
   score?: number;
+  feedback?: string;
   created_at: string;
 }
 
-export interface Answer {
-  question_id: string;
-  user_answer: string;
-  is_correct?: boolean;
-  feedback?: string;
+export interface Quiz {
+  id: string;
+  daily_task_id: string;
+  status: QuizStatus;
+  total_questions: number;
+  score?: number;
+  correct_count?: number;
+  feedback_summary?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface QuizWithQuestions extends Quiz {
+  questions: Question[];
+}
+
+export interface QuizResult extends Quiz {
+  questions: Question[];
+  user_answers: UserAnswer[];
+}
+
+export interface SubmitAnswerRequest {
+  answer_text?: string;
+  selected_option?: string;
 }
 
 // API Response types

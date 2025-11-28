@@ -195,48 +195,48 @@
 
 ---
 
-## Phase 6: 러닝 모드 - 퀴즈 시스템
+## Phase 6: 러닝 모드 - 퀴즈 시스템 ✅
 
 ### 6.1 Quiz, Question, UserAnswer 모델
-- [ ] app/models/quiz.py 작성
-- [ ] app/models/question.py 작성
-- [ ] app/models/user_answer.py 작성
-- [ ] 스키마 파일 작성
+- [x] app/models/quiz.py 작성
+- [x] app/models/question.py 작성
+- [x] app/models/user_answer.py 작성
+- [x] 스키마 파일 작성
 - [ ] Alembic 마이그레이션
 
 ### 6.2 LangGraph - 문제 생성 그래프
-- [ ] app/ai/nodes/topic_analyzer.py 작성
-- [ ] app/ai/nodes/question_generator.py 작성 (객관식/단답형/서술형)
-- [ ] app/ai/nodes/quality_validator.py 작성
-- [ ] app/ai/question_graph.py 작성
+- [x] app/ai/nodes/topic_analyzer.py 작성
+- [x] app/ai/nodes/question_generator.py 작성 (객관식/단답형/서술형)
+- [x] app/ai/nodes/quality_validator.py 작성
+- [x] app/ai/question_graph.py 작성
 
 ### 6.3 LangGraph - 채점 그래프
-- [ ] app/ai/nodes/answer_analyzer.py 작성
-- [ ] app/ai/nodes/feedback_generator.py 작성
-- [ ] app/ai/nodes/score_calculator.py 작성
-- [ ] app/ai/grading_graph.py 작성
+- [x] app/ai/nodes/answer_analyzer.py 작성
+- [x] app/ai/nodes/feedback_generator.py 작성
+- [x] app/ai/nodes/score_calculator.py 작성
+- [x] app/ai/grading_graph.py 작성
 
 ### 6.4 퀴즈 API 엔드포인트
-- [ ] GET /api/v1/quizzes/daily-task/{id} 구현
-- [ ] POST /api/v1/quizzes/daily-task/{id}/generate 구현
-- [ ] GET /api/v1/quizzes/{id} 구현
-- [ ] POST /api/v1/quizzes/{id}/start 구현
-- [ ] POST /api/v1/quizzes/{id}/complete 구현
-- [ ] POST /api/v1/questions/{id}/answer 구현
+- [x] GET /api/v1/quizzes/daily-task/{id} 구현
+- [x] POST /api/v1/quizzes/daily-task/{id}/generate 구현
+- [x] GET /api/v1/quizzes/{id} 구현
+- [x] POST /api/v1/quizzes/{id}/start 구현
+- [x] POST /api/v1/quizzes/{id}/complete 구현
+- [x] POST /api/v1/quizzes/{id}/submit 구현
 
 ### 6.5 퀴즈 풀이 페이지
-- [ ] pages/QuizPage.tsx
-- [ ] components/quiz/QuestionView.tsx
-- [ ] components/quiz/AnswerInput.tsx (유형별)
-- [ ] 문제 네비게이션
-- [ ] 제출 기능
+- [x] pages/QuizPage.tsx
+- [x] components/quiz/QuestionView.tsx
+- [x] components/quiz/QuizNavigation.tsx (문제 네비게이션)
+- [x] 문제 네비게이션
+- [x] 제출 기능
 
 ### 6.6 결과/피드백 페이지
-- [ ] pages/QuizResult.tsx
-- [ ] components/quiz/FeedbackView.tsx
-- [ ] 점수 표시
-- [ ] 오답 분석
-- [ ] [복습하기] 버튼
+- [x] pages/QuizResult.tsx
+- [x] components/quiz/FeedbackView.tsx
+- [x] 점수 표시
+- [x] 오답 분석
+- [x] [복습하기] 버튼
 
 ---
 
@@ -285,6 +285,7 @@
 | c2a930b | 3.3-3.4 | 2024 | 로드맵 CRUD API 및 태스크 체크 기능 |
 | 87a325f | 4.1-4.4 | 2024 | LangGraph AI 로드맵 생성 시스템 |
 | dab16e2 | 5.1-5.5 | 2024 | 프론트엔드 기본 UI (공통 컴포넌트, 대시보드, 로드맵 페이지) |
+| 0b6f794 | 6.1-6.6 | 2024 | 러닝 모드 퀴즈 시스템 (LangGraph 문제 생성/채점, API, 프론트엔드) |
 
 ---
 

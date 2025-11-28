@@ -32,6 +32,26 @@ from app.schemas.roadmap import (
     RoadmapWithMonthly,
     RoadmapFull,
 )
+from app.schemas.quiz import (
+    QuestionBase,
+    QuestionCreate,
+    QuestionResponse,
+    QuestionWithAnswer,
+    UserAnswerBase,
+    UserAnswerCreate,
+    UserAnswerResponse,
+    SubmitAnswerRequest,
+    QuizBase,
+    QuizCreate,
+    QuizResponse,
+    QuizWithQuestions,
+    QuizDetail,
+    QuizResult,
+    QuizGenerateRequest,
+    QuizGenerateResponse,
+    QuizSubmitRequest,
+    QuizSubmitResponse,
+)
 
 __all__ = [
     # User
@@ -65,4 +85,23 @@ __all__ = [
     "RoadmapResponse",
     "RoadmapWithMonthly",
     "RoadmapFull",
+    # Quiz
+    "QuestionBase",
+    "QuestionCreate",
+    "QuestionResponse",
+    "QuestionWithAnswer",
+    "UserAnswerBase",
+    "UserAnswerCreate",
+    "UserAnswerResponse",
+    "SubmitAnswerRequest",
+    "QuizBase",
+    "QuizCreate",
+    "QuizResponse",
+    "QuizWithQuestions",
+    "QuizDetail",
+    "QuizResult",
+    "QuizGenerateRequest",
+    "QuizGenerateResponse",
+    "QuizSubmitRequest",
+    "QuizSubmitResponse",
 ]

@@ -47,3 +47,83 @@ class RoadmapGenerationState(TypedDict):
 
     # Final output
     roadmap_id: Optional[str]
+
+
+# ============ Question Generation State ============
+
+class QuestionData(TypedDict):
+    question_type: str  # "multiple_choice", "short_answer", "essay"
+    question_text: str
+    options: Optional[List[str]]  # For multiple choice
+    correct_answer: Optional[str]
+    explanation: Optional[str]
+    points: int
+
+
+class QuestionGenerationState(TypedDict):
+    # Input
+    daily_task_id: str
+    daily_task_title: str
+    daily_task_description: str
+    weekly_task_title: str
+    monthly_goal_title: str
+    roadmap_topic: str
+    num_questions: int
+    user_id: str
+
+    # Analysis results
+    key_concepts: List[str]
+    difficulty_level: str  # "beginner", "intermediate", "advanced"
+    question_focus_areas: List[str]
+
+    # Generated content
+    questions: List[QuestionData]
+
+    # Validation
+    validation_passed: bool
+    error_message: Optional[str]
+    retry_count: int
+
+    # Output
+    quiz_id: Optional[str]
+
+
+# ============ Grading State ============
+
+class AnswerData(TypedDict):
+    question_id: str
+    question_type: str
+    question_text: str
+    correct_answer: Optional[str]
+    user_answer: str
+    selected_option: Optional[str]
+    options: Optional[List[str]]
+
+
+class GradingResultData(TypedDict):
+    question_id: str
+    is_correct: bool
+    score: float  # 0-100, allows partial credit for essay
+    feedback: str
+
+
+class GradingState(TypedDict):
+    # Input
+    quiz_id: str
+    user_id: str
+    answers: List[AnswerData]
+
+    # Grading results
+    grading_results: List[GradingResultData]
+    total_score: float
+    correct_count: int
+    total_questions: int
+
+    # Overall feedback
+    feedback_summary: str
+    strengths: List[str]
+    areas_to_improve: List[str]
+
+    # Processing state
+    current_answer_index: int
+    error_message: Optional[str]

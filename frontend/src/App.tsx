@@ -10,6 +10,8 @@ import {
   RoadmapCreate,
   RoadmapList,
   RoadmapDetail,
+  QuizPage,
+  QuizResult,
 } from '@/pages';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -69,6 +71,22 @@ function App() {
               element={
                 <ProtectedRoute>
                   <RoadmapDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/quiz/:quizId"
+              element={
+                <ProtectedRoute>
+                  <QuizPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/quiz/:quizId/result"
+              element={
+                <ProtectedRoute>
+                  <QuizResult />
                 </ProtectedRoute>
               }
             />

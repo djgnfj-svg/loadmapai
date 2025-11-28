@@ -90,18 +90,38 @@ export const roadmapApi = {
     api.patch(`/roadmaps/daily-tasks/${dailyTaskId}/toggle`),
 };
 
-// Learning API
-export const learningApi = {
-  generateQuiz: (dailyTaskId: string) =>
-    api.post(`/learning/quiz/generate`, { daily_task_id: dailyTaskId }),
+// Quiz API
+export const quizApi = {
+  // List user's quizzes
+  list: (params?: { skip?: number; limit?: number }) =>
+    api.get('/quizzes', { params }),
 
-  getQuiz: (quizId: string) => api.get(`/learning/quiz/${quizId}`),
+  // Get quiz for a daily task
+  getForDailyTask: (dailyTaskId: string) =>
+    api.get(`/quizzes/daily-task/${dailyTaskId}`),
 
-  submitAnswers: (quizId: string, answers: { question_id: string; answer: string }[]) =>
-    api.post(`/learning/quiz/${quizId}/submit`, { answers }),
+  // Generate new quiz for a daily task
+  generate: (dailyTaskId: string, numQuestions: number = 5) =>
+    api.post(`/quizzes/daily-task/${dailyTaskId}/generate`, null, {
+      params: { num_questions: numQuestions }
+    }),
 
-  getHistory: (params?: { page?: number; size?: number }) =>
-    api.get('/learning/history', { params }),
+  // Get quiz with questions
+  get: (quizId: string) => api.get(`/quizzes/${quizId}`),
+
+  // Start quiz
+  start: (quizId: string) => api.post(`/quizzes/${quizId}/start`),
+
+  // Submit all answers
+  submit: (quizId: string, answers: { answer_text?: string; selected_option?: string }[]) =>
+    api.post(`/quizzes/${quizId}/submit`, { answers }),
+
+  // Grade quiz
+  grade: (quizId: string) => api.post(`/quizzes/${quizId}/grade`),
+
+  // Submit single answer
+  submitAnswer: (questionId: string, answer: { answer_text?: string; selected_option?: string }) =>
+    api.post(`/quizzes/questions/${questionId}/answer`, answer),
 };
 
 export default api;
