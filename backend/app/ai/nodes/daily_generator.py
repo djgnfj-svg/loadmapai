@@ -4,7 +4,7 @@ from langchain_core.messages import HumanMessage
 
 from app.config import settings
 from app.ai.state import RoadmapGenerationState
-from app.ai.prompts.templates import DAILY_TASKS_PROMPT
+from app.ai.prompts.templates import DAILY_TASKS_PROMPT, DAILY_TASKS_WITH_CONTEXT_PROMPT
 
 
 def create_llm():
@@ -26,13 +26,26 @@ def daily_generator(state: RoadmapGenerationState) -> RoadmapGenerationState:
         monthly_daily_tasks = []
 
         for weekly_task in monthly_data["weekly_tasks"]:
-            prompt = DAILY_TASKS_PROMPT.format(
-                topic=state["topic"],
-                weekly_task_title=weekly_task["title"],
-                weekly_task_description=weekly_task["description"],
-                month_number=month_number,
-                week_number=weekly_task["week_number"],
-            )
+            # Use context-aware prompt if interview context is available
+            if state.get("interview_context"):
+                prompt = DAILY_TASKS_WITH_CONTEXT_PROMPT.format(
+                    topic=state["topic"],
+                    weekly_task_title=weekly_task["title"],
+                    weekly_task_description=weekly_task["description"],
+                    month_number=month_number,
+                    week_number=weekly_task["week_number"],
+                    mode=state["mode"].value if hasattr(state["mode"], "value") else state["mode"],
+                    interview_context=state["interview_context"],
+                    daily_time=state.get("daily_time", "1~2시간"),
+                )
+            else:
+                prompt = DAILY_TASKS_PROMPT.format(
+                    topic=state["topic"],
+                    weekly_task_title=weekly_task["title"],
+                    weekly_task_description=weekly_task["description"],
+                    month_number=month_number,
+                    week_number=weekly_task["week_number"],
+                )
 
             response = llm.invoke([HumanMessage(content=prompt)])
 

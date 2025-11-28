@@ -4,7 +4,7 @@ from langchain_core.messages import HumanMessage
 
 from app.config import settings
 from app.ai.state import RoadmapGenerationState
-from app.ai.prompts.templates import ROADMAP_TITLE_PROMPT
+from app.ai.prompts.templates import ROADMAP_TITLE_PROMPT, ROADMAP_TITLE_WITH_CONTEXT_PROMPT
 
 
 def create_llm():
@@ -19,10 +19,19 @@ def goal_analyzer(state: RoadmapGenerationState) -> RoadmapGenerationState:
     """Analyze the topic and generate roadmap title and description."""
     llm = create_llm()
 
-    prompt = ROADMAP_TITLE_PROMPT.format(
-        topic=state["topic"],
-        duration_months=state["duration_months"],
-    )
+    # Use context-aware prompt if interview context is available
+    if state.get("interview_context"):
+        prompt = ROADMAP_TITLE_WITH_CONTEXT_PROMPT.format(
+            topic=state["topic"],
+            duration_months=state["duration_months"],
+            mode=state["mode"].value if hasattr(state["mode"], "value") else state["mode"],
+            interview_context=state["interview_context"],
+        )
+    else:
+        prompt = ROADMAP_TITLE_PROMPT.format(
+            topic=state["topic"],
+            duration_months=state["duration_months"],
+        )
 
     response = llm.invoke([HumanMessage(content=prompt)])
 
