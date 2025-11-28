@@ -368,6 +368,28 @@ ROADMAP_TITLE_WITH_CONTEXT_PROMPT = """주제: {topic}
 
 JSON만 응답하세요."""
 
+ROADMAP_TITLE_WITH_SEARCH_PROMPT = """주제: {topic}
+기간: {duration_months}개월
+모드: {mode}
+
+사용자 인터뷰 결과:
+{interview_context}
+
+웹 검색을 통해 수집한 최신 학습 정보:
+{search_context}
+
+위 정보를 종합하여 사용자에게 맞춤화된 학습 로드맵의 제목과 설명을 생성해주세요.
+- 인터뷰 결과를 반영하여 개인화된 내용 포함
+- 웹 검색 결과를 참고하여 최신 트렌드와 권장 학습 경로 반영
+
+응답 형식 (JSON):
+{{
+    "title": "로드맵 제목 (30자 이내)",
+    "description": "로드맵 설명 (200자 이내, 개인화 + 최신 정보 반영)"
+}}
+
+JSON만 응답하세요."""
+
 MONTHLY_GOALS_WITH_CONTEXT_PROMPT = """주제: {topic}
 기간: {duration_months}개월
 로드맵 제목: {title}
