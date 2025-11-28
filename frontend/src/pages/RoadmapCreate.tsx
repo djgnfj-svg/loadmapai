@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, addMonths } from 'date-fns';
-import { Map, BookOpen, Sparkles, Calendar, Clock, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Map, BookOpen, Sparkles, Calendar, Clock, ArrowLeft, ArrowRight, MessageCircle, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
-import { useGenerateRoadmap } from '@/hooks';
+import { useStartInterview, useGenerateRoadmapWithContext } from '@/hooks';
+import { InterviewQuestion, InterviewAnswer } from '@/lib/api';
+import { cn } from '@/lib/utils';
 import type { RoadmapMode } from '@/types';
 
-type Step = 'mode' | 'topic' | 'duration' | 'generating';
+type Step = 'mode' | 'topic' | 'duration' | 'interview' | 'generating';
 
 interface FormData {
   mode: RoadmapMode;
@@ -232,7 +234,108 @@ function DurationSelection({
   );
 }
 
-function GeneratingState({ topic }: { topic: string }) {
+function InterviewStep({
+  questions,
+  answers,
+  onAnswerChange,
+  isLoading,
+}: {
+  questions: InterviewQuestion[];
+  answers: InterviewAnswer[];
+  onAnswerChange: (questionId: string, answer: string) => void;
+  isLoading: boolean;
+}) {
+  if (isLoading) {
+    return (
+      <div className="text-center py-12">
+        <Loader2 className="h-12 w-12 animate-spin text-primary-600 dark:text-primary-400 mx-auto mb-4" />
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+          AI가 질문을 준비 중입니다
+        </h2>
+        <p className="text-gray-500 dark:text-gray-400">
+          맞춤형 로드맵을 위한 질문을 생성하고 있어요...
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary-100 dark:bg-primary-500/20 text-primary-700 dark:text-primary-400 rounded-full mb-4">
+          <MessageCircle className="h-4 w-4" />
+          <span className="text-sm font-medium">AI 인터뷰</span>
+        </div>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+          몇 가지 질문에 답해주세요
+        </h2>
+        <p className="text-gray-500 dark:text-gray-400">
+          더 맞춤화된 로드맵을 만들기 위해 필요한 정보입니다.
+        </p>
+      </div>
+
+      <div className="space-y-6">
+        {questions.map((question, index) => {
+          const currentAnswer = answers.find((a) => a.question_id === question.id)?.answer || '';
+
+          return (
+            <div
+              key={question.id}
+              className={cn(
+                'p-4 rounded-xl border',
+                'border-gray-200 dark:border-dark-600',
+                'bg-white dark:bg-dark-800'
+              )}
+            >
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                <span className="text-primary-600 dark:text-primary-400 mr-2">Q{index + 1}.</span>
+                {question.question}
+              </label>
+
+              {question.question_type === 'text' ? (
+                <textarea
+                  value={currentAnswer}
+                  onChange={(e) => onAnswerChange(question.id, e.target.value)}
+                  placeholder={question.placeholder || '답변을 입력하세요...'}
+                  className={cn(
+                    'w-full px-4 py-3 rounded-lg border',
+                    'border-gray-200 dark:border-dark-600',
+                    'bg-gray-50 dark:bg-dark-700',
+                    'text-gray-900 dark:text-white',
+                    'placeholder-gray-400 dark:placeholder-gray-500',
+                    'focus:outline-none focus:ring-2 focus:ring-primary-500',
+                    'resize-none'
+                  )}
+                  rows={3}
+                />
+              ) : (
+                <div className="space-y-2">
+                  {question.options?.map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => onAnswerChange(question.id, option)}
+                      className={cn(
+                        'w-full text-left px-4 py-3 rounded-lg border transition-all',
+                        currentAnswer === option
+                          ? 'border-primary-500 bg-primary-50 dark:bg-primary-500/10 text-primary-700 dark:text-primary-400'
+                          : 'border-gray-200 dark:border-dark-600 hover:border-gray-300 dark:hover:border-dark-500 text-gray-700 dark:text-gray-300'
+                      )}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function GeneratingState({ topic, hasContext }: { topic: string; hasContext: boolean }) {
   return (
     <div className="text-center py-12">
       <div className="relative inline-flex mb-6">
@@ -264,10 +367,10 @@ function GeneratingState({ topic }: { topic: string }) {
         </svg>
       </div>
       <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-        AI가 로드맵을 생성 중입니다
+        {hasContext ? 'AI가 맞춤형 로드맵을 생성 중입니다' : 'AI가 로드맵을 생성 중입니다'}
       </h2>
       <p className="text-gray-500 dark:text-gray-400 mb-4">
-        "{topic}"에 대한 맞춤형 학습 계획을 만들고 있어요.
+        "{topic}"에 대한 {hasContext ? '개인 맞춤형' : ''} 학습 계획을 만들고 있어요.
       </p>
       <div className="text-sm text-gray-400 dark:text-gray-500">
         약 30초~1분 정도 소요됩니다.
@@ -278,7 +381,8 @@ function GeneratingState({ topic }: { topic: string }) {
 
 export function RoadmapCreate() {
   const navigate = useNavigate();
-  const generateRoadmap = useGenerateRoadmap();
+  const startInterview = useStartInterview();
+  const generateWithContext = useGenerateRoadmapWithContext();
 
   const [step, setStep] = useState<Step>('mode');
   const [formData, setFormData] = useState<FormData>({
@@ -287,6 +391,9 @@ export function RoadmapCreate() {
     duration_months: 3,
     start_date: format(new Date(), 'yyyy-MM-dd'),
   });
+  const [interviewQuestions, setInterviewQuestions] = useState<InterviewQuestion[]>([]);
+  const [interviewAnswers, setInterviewAnswers] = useState<InterviewAnswer[]>([]);
+  const [isLoadingInterview, setIsLoadingInterview] = useState(false);
 
   const canProceed = () => {
     switch (step) {
@@ -296,9 +403,26 @@ export function RoadmapCreate() {
         return formData.topic.length >= 2;
       case 'duration':
         return formData.duration_months > 0 && !!formData.start_date;
+      case 'interview':
+        // All questions must have answers
+        return interviewQuestions.every((q) =>
+          interviewAnswers.some((a) => a.question_id === q.id && a.answer.trim().length > 0)
+        );
       default:
         return false;
     }
+  };
+
+  const handleAnswerChange = (questionId: string, answer: string) => {
+    setInterviewAnswers((prev) => {
+      const existing = prev.findIndex((a) => a.question_id === questionId);
+      if (existing >= 0) {
+        const updated = [...prev];
+        updated[existing] = { question_id: questionId, answer };
+        return updated;
+      }
+      return [...prev, { question_id: questionId, answer }];
+    });
   };
 
   const handleNext = async () => {
@@ -307,18 +431,55 @@ export function RoadmapCreate() {
     } else if (step === 'topic') {
       setStep('duration');
     } else if (step === 'duration') {
+      // Start interview
+      setStep('interview');
+      setIsLoadingInterview(true);
+      try {
+        const response = await startInterview.mutateAsync({
+          topic: formData.topic,
+          mode: formData.mode,
+          duration_months: formData.duration_months,
+        });
+        setInterviewQuestions(response.data.questions);
+        // Initialize answers
+        setInterviewAnswers(response.data.questions.map((q) => ({ question_id: q.id, answer: '' })));
+      } catch (error) {
+        console.error('Failed to start interview:', error);
+        // Fallback: skip interview and generate directly
+        setStep('generating');
+        try {
+          const genResponse = await generateWithContext.mutateAsync({
+            topic: formData.topic,
+            duration_months: formData.duration_months,
+            start_date: formData.start_date,
+            mode: formData.mode,
+            interview_answers: [],
+            interview_questions: [],
+          });
+          navigate(`/roadmaps/${genResponse.data.roadmap_id}`);
+        } catch (genError) {
+          console.error('Failed to generate roadmap:', genError);
+          setStep('duration');
+        }
+      } finally {
+        setIsLoadingInterview(false);
+      }
+    } else if (step === 'interview') {
+      // Generate roadmap with context
       setStep('generating');
       try {
-        const response = await generateRoadmap.mutateAsync({
+        const response = await generateWithContext.mutateAsync({
           topic: formData.topic,
           duration_months: formData.duration_months,
           start_date: formData.start_date,
           mode: formData.mode,
+          interview_answers: interviewAnswers,
+          interview_questions: interviewQuestions,
         });
         navigate(`/roadmaps/${response.data.roadmap_id}`);
       } catch (error) {
         console.error('Failed to generate roadmap:', error);
-        setStep('duration');
+        setStep('interview');
       }
     }
   };
@@ -328,11 +489,14 @@ export function RoadmapCreate() {
       setStep('mode');
     } else if (step === 'duration') {
       setStep('topic');
+    } else if (step === 'interview') {
+      setStep('duration');
     }
   };
 
-  const steps = ['mode', 'topic', 'duration'];
+  const steps = ['mode', 'topic', 'duration', 'interview'];
   const currentStepIndex = steps.indexOf(step);
+  const progressSteps = step === 'generating' ? steps : steps;
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -340,7 +504,7 @@ export function RoadmapCreate() {
       {step !== 'generating' && (
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
-            {steps.map((s, i) => (
+            {progressSteps.map((s, i) => (
               <div
                 key={s}
                 className={`flex-1 h-1 rounded-full mx-1 ${
@@ -350,7 +514,7 @@ export function RoadmapCreate() {
             ))}
           </div>
           <div className="text-sm text-gray-500 dark:text-gray-400 text-center">
-            단계 {currentStepIndex + 1} / {steps.length}
+            단계 {currentStepIndex + 1} / {progressSteps.length}
           </div>
         </div>
       )}
@@ -381,12 +545,25 @@ export function RoadmapCreate() {
               }
             />
           )}
-          {step === 'generating' && <GeneratingState topic={formData.topic} />}
+          {step === 'interview' && (
+            <InterviewStep
+              questions={interviewQuestions}
+              answers={interviewAnswers}
+              onAnswerChange={handleAnswerChange}
+              isLoading={isLoadingInterview}
+            />
+          )}
+          {step === 'generating' && (
+            <GeneratingState
+              topic={formData.topic}
+              hasContext={interviewAnswers.length > 0}
+            />
+          )}
         </CardContent>
       </Card>
 
       {/* Navigation */}
-      {step !== 'generating' && (
+      {step !== 'generating' && !isLoadingInterview && (
         <div className="flex justify-between mt-6">
           <Button
             variant="ghost"
@@ -399,12 +576,17 @@ export function RoadmapCreate() {
             variant="primary"
             onClick={handleNext}
             disabled={!canProceed()}
-            isLoading={generateRoadmap.isPending}
+            isLoading={startInterview.isPending || generateWithContext.isPending}
           >
-            {step === 'duration' ? (
+            {step === 'interview' ? (
               <>
                 <Sparkles className="h-4 w-4 mr-1" />
-                AI 로드맵 생성
+                맞춤형 로드맵 생성
+              </>
+            ) : step === 'duration' ? (
+              <>
+                <MessageCircle className="h-4 w-4 mr-1" />
+                다음 (AI 인터뷰)
               </>
             ) : (
               <>
