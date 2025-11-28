@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Send, Clock } from 'lucide-react';
-import { useQuiz, useStartQuiz, useSubmitQuiz, useGradeQuiz } from '@/hooks/useQuiz';
+import { ArrowLeft, ArrowRight, Send, Clock, Sparkles } from 'lucide-react';
+import { useQuiz, useQuizForDailyTask, useStartQuiz, useSubmitQuiz, useGradeQuiz, useGenerateQuiz } from '@/hooks/useQuiz';
 import { Card, CardContent } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { LoadingScreen } from '@/components/common/Loading';
@@ -9,17 +9,26 @@ import { QuestionView, QuizNavigation } from '@/components/quiz';
 import type { SubmitAnswerRequest } from '@/types';
 
 export function QuizPage() {
-  const { quizId } = useParams<{ quizId: string }>();
+  // taskId is the daily_task_id passed from the roadmap
+  const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
 
-  const { data: quiz, isLoading, error } = useQuiz(quizId || '');
+  // First, try to get existing quiz for this task
+  const { data: existingQuiz, isLoading: isLoadingTask, error: taskError } = useQuizForDailyTask(taskId || '');
+
+  // If we have a quiz ID, fetch the full quiz with questions
+  const quizId = existingQuiz?.id;
+  const { data: quiz, isLoading: isLoadingQuiz, error: quizError } = useQuiz(quizId || '');
+
   const startQuiz = useStartQuiz();
   const submitQuiz = useSubmitQuiz();
   const gradeQuiz = useGradeQuiz();
+  const generateQuiz = useGenerateQuiz();
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<SubmitAnswerRequest[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Initialize answers when quiz loads
   useEffect(() => {
@@ -32,23 +41,74 @@ export function QuizPage() {
 
   // Start quiz if pending
   useEffect(() => {
-    if (quiz && quiz.status === 'pending') {
-      startQuiz.mutate(quizId!);
+    if (quiz && quiz.status === 'pending' && quizId) {
+      startQuiz.mutate(quizId);
     }
   }, [quiz, quizId]);
+
+  const isLoading = isLoadingTask || (quizId && isLoadingQuiz);
+
+  // Handle generating new quiz when none exists
+  const handleGenerateQuiz = async () => {
+    if (!taskId) return;
+
+    setIsGenerating(true);
+    try {
+      await generateQuiz.mutateAsync({ dailyTaskId: taskId, numQuestions: 5 });
+      // The query will automatically refetch
+    } catch (error) {
+      console.error('Failed to generate quiz:', error);
+      alert('퀴즈 생성에 실패했습니다.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   if (isLoading) {
     return <LoadingScreen message="퀴즈를 불러오는 중..." />;
   }
 
-  if (error || !quiz) {
+  // No quiz exists for this task - offer to generate
+  if (taskError || (!existingQuiz && !isLoadingTask)) {
+    return (
+      <div className="max-w-md mx-auto text-center py-12">
+        <div className="bg-white dark:bg-dark-800 rounded-2xl p-8 shadow-lg">
+          <div className="w-16 h-16 bg-primary-100 dark:bg-primary-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Sparkles className="h-8 w-8 text-primary-600 dark:text-primary-400" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+            퀴즈 준비하기
+          </h2>
+          <p className="text-gray-500 dark:text-gray-400 mb-6">
+            이 학습 내용에 대한 퀴즈가 아직 없습니다.<br />
+            AI가 맞춤형 퀴즈를 생성해드릴까요?
+          </p>
+          <div className="flex gap-3 justify-center">
+            <Button variant="outline" onClick={() => navigate(-1)}>
+              돌아가기
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleGenerateQuiz}
+              isLoading={isGenerating}
+            >
+              <Sparkles className="h-4 w-4 mr-1" />
+              퀴즈 생성
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (quizError || !quiz) {
     return (
       <div className="text-center py-12">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-          퀴즈를 찾을 수 없습니다
+          퀴즈를 불러올 수 없습니다
         </h2>
         <p className="text-gray-500 dark:text-gray-400 mb-6">
-          요청하신 퀴즈가 존재하지 않거나 접근 권한이 없습니다.
+          잠시 후 다시 시도해주세요.
         </p>
         <Button variant="primary" onClick={() => navigate(-1)}>
           돌아가기
@@ -99,7 +159,7 @@ export function QuizPage() {
       await gradeQuiz.mutateAsync(quizId!);
 
       // Navigate to result page
-      navigate(`/quiz/${quizId}/result`);
+      navigate(`/quiz/${taskId}/result`);
     } catch (error) {
       console.error('Failed to submit quiz:', error);
       alert('퀴즈 제출 중 오류가 발생했습니다.');

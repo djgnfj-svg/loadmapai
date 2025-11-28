@@ -42,21 +42,15 @@ export function DrilldownContainer({
     );
   }
 
-  // Find the current month based on progress or default to first incomplete
-  const currentMonthIndex = roadmap.monthly_goals.findIndex((m) => {
-    const allDailyTasks = m.weekly_tasks?.flatMap(w => w.daily_tasks || []) || [];
-    const completedCount = allDailyTasks.filter(t => t.is_checked).length;
-    return completedCount < allDailyTasks.length;
-  });
-
   return (
     <div className="space-y-4">
-      {roadmap.monthly_goals.map((month, index) => (
+      {roadmap.monthly_goals.map((month) => (
         <MonthlyGoalView
           key={month.id}
           month={month}
           mode={roadmap.mode}
-          defaultExpanded={index === currentMonthIndex || index === 0}
+          startDate={roadmap.start_date}
+          defaultExpanded={false}
           onToggleDailyTask={onToggleDailyTask}
           onStartQuiz={onStartQuiz}
         />

@@ -93,7 +93,7 @@ function App() {
               }
             />
             <Route
-              path="/quiz/:quizId"
+              path="/quiz/:taskId"
               element={
                 <ProtectedRoute>
                   <QuizPage />
@@ -101,7 +101,7 @@ function App() {
               }
             />
             <Route
-              path="/quiz/:quizId/result"
+              path="/quiz/:taskId/result"
               element={
                 <ProtectedRoute>
                   <QuizResult />

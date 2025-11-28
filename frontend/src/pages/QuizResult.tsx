@@ -2,6 +2,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Trophy, Target, TrendingUp, RotateCcw } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { quizApi } from '@/lib/api';
+import { useQuizForDailyTask } from '@/hooks/useQuiz';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { CircularProgress } from '@/components/common/Progress';
@@ -11,10 +12,14 @@ import { cn } from '@/lib/utils';
 import type { QuizResult as QuizResultType } from '@/types';
 
 export function QuizResult() {
-  const { quizId } = useParams<{ quizId: string }>();
+  const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
 
-  const { data: result, isLoading, error } = useQuery({
+  // First get the quiz for this task
+  const { data: quiz, isLoading: isLoadingQuiz } = useQuizForDailyTask(taskId || '');
+  const quizId = quiz?.id;
+
+  const { data: result, isLoading: isLoadingResult, error } = useQuery({
     queryKey: ['quiz', quizId, 'result'],
     queryFn: async () => {
       const response = await quizApi.grade(quizId!);
@@ -22,6 +27,8 @@ export function QuizResult() {
     },
     enabled: !!quizId,
   });
+
+  const isLoading = isLoadingQuiz || isLoadingResult;
 
   if (isLoading) {
     return <LoadingScreen message="결과를 불러오는 중..." />;

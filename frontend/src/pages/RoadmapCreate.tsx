@@ -28,17 +28,25 @@ function ModeSelection({
     {
       id: 'planning' as RoadmapMode,
       title: '플래닝 모드',
-      description: '매일 해야 할 일을 체크하며 목표를 달성해 나가세요.',
+      description: '프로젝트, 자격증 준비, 운동 등 실천 위주의 목표에 적합합니다. 매일 해야 할 일을 체크하며 꾸준히 목표를 달성해 나가세요.',
       icon: Map,
-      features: ['일별 태스크 체크리스트', '진행률 트래킹', '유연한 일정 관리'],
+      features: [
+        '월별 → 주별 → 일별 세분화된 태스크',
+        '체크리스트로 진행률 자동 계산',
+        '프로젝트/자격증/운동 계획에 최적',
+      ],
       color: 'primary',
     },
     {
       id: 'learning' as RoadmapMode,
       title: '러닝 모드',
-      description: 'AI가 생성한 퀴즈로 학습 내용을 점검하세요.',
+      description: '새로운 지식을 학습하고 이해도를 검증하고 싶을 때 적합합니다. AI가 학습 내용을 기반으로 퀴즈를 생성하고 피드백을 제공합니다.',
       icon: BookOpen,
-      features: ['AI 퀴즈 자동 생성', '객관식/단답형/서술형', '피드백 및 복습'],
+      features: [
+        '학습 주제별 AI 퀴즈 자동 생성',
+        '객관식/단답형/서술형 문제 지원',
+        '오답 해설 및 맞춤형 피드백 제공',
+      ],
       color: 'green',
     },
   ];
