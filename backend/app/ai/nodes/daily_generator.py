@@ -9,7 +9,7 @@ from app.ai.prompts.templates import DAILY_TASKS_PROMPT, DAILY_TASKS_WITH_CONTEX
 
 def create_llm():
     return ChatAnthropic(
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-4-5-20250929",
         anthropic_api_key=settings.anthropic_api_key,
         temperature=0.7,
     )

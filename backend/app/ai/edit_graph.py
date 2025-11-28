@@ -64,7 +64,7 @@ class EditState(TypedDict):
 def create_llm():
     """Create Claude LLM instance."""
     return ChatAnthropic(
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-4-5-20250929",
         anthropic_api_key=settings.anthropic_api_key,
         temperature=0.7,
     )
