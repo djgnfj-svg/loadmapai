@@ -5,28 +5,20 @@ import type {
   RoadmapMode,
   RefinementEvent,
   RoadmapItemWithStatus,
+  SmartStatus,
+  SmartCoverage,
+  EnhancedDraftRoadmap,
+  InterviewFeedback,
+  InformationLevel,
 } from '../types';
 import { createEmptyProgressiveRoadmap } from '../mocks/data/roadmapMockData';
 import { useAuthStore } from '../stores/authStore';
 
 const API_BASE = '/api/v1';
 
-// 피드백 타입
-export interface AIFeedback {
-  honest_opinion: string;
-  encouragement: string;
-  suggestions: string[];
-}
-
-// 드래프트 로드맵 타입
-export interface DraftRoadmap {
-  completion_percentage: number;
-  months: Array<{
-    month: number;
-    title: string;
-    overview: string;
-  }>;
-}
+// Re-export types for backward compatibility
+export type AIFeedback = InterviewFeedback;
+export type DraftRoadmap = EnhancedDraftRoadmap;
 
 interface UseProgressiveRoadmapOptions {
   onComplete?: (roadmapId: string) => void;
@@ -46,14 +38,20 @@ interface UseProgressiveRoadmapReturn {
   isSubmitting: boolean;
   isReadyForGeneration: boolean;  // 배치 제출 완료 후 true
 
-  // 다중 라운드 인터뷰 상태 (NEW)
+  // 다중 라운드 인터뷰 상태
   currentRound: number;
   maxRounds: number;
   feedback: AIFeedback | null;
   draftRoadmap: DraftRoadmap | null;
-  informationLevel: 'insufficient' | 'minimal' | 'sufficient' | 'complete' | null;
+  informationLevel: InformationLevel | null;
   aiRecommendsComplete: boolean;
   canComplete: boolean;
+
+  // SMART 추적 (NEW)
+  smartStatus: SmartStatus | null;
+  smartCoverage: SmartCoverage | null;
+  keyResults: string[];
+  smartCompletionPercentage: number;  // 0-100, SMART 수집 진행률
 
   // 액션
   startSession: (params: {
@@ -62,7 +60,7 @@ interface UseProgressiveRoadmapReturn {
     durationMonths: number;
   }) => Promise<void>;
   setAnswer: (questionId: string, answer: string) => void;
-  submitRoundAnswers: (userWantsComplete?: boolean) => Promise<void>;  // NEW: 라운드별 제출
+  submitRoundAnswers: (userWantsComplete?: boolean) => Promise<void>;
   submitAllAnswers: () => Promise<void>;  // 레거시: 배치 제출
   generateFinalRoadmap: () => Promise<void>;
   reset: () => void;
@@ -85,14 +83,19 @@ export function useProgressiveRoadmap(
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isReadyForGeneration, setIsReadyForGeneration] = useState(false);
 
-  // 다중 라운드 인터뷰 상태 (NEW)
+  // 다중 라운드 인터뷰 상태
   const [currentRound, setCurrentRound] = useState(1);
   const [maxRounds, setMaxRounds] = useState(10);
   const [feedback, setFeedback] = useState<AIFeedback | null>(null);
   const [draftRoadmap, setDraftRoadmap] = useState<DraftRoadmap | null>(null);
-  const [informationLevel, setInformationLevel] = useState<'insufficient' | 'minimal' | 'sufficient' | 'complete' | null>(null);
+  const [informationLevel, setInformationLevel] = useState<InformationLevel | null>(null);
   const [aiRecommendsComplete, setAiRecommendsComplete] = useState(false);
   const [canComplete, setCanComplete] = useState(false);
+
+  // SMART 추적 상태 (NEW)
+  const [smartStatus, setSmartStatus] = useState<SmartStatus | null>(null);
+  const [smartCoverage, setSmartCoverage] = useState<SmartCoverage | null>(null);
+  const [keyResults, setKeyResults] = useState<string[]>([]);
 
   // 참조
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -190,17 +193,36 @@ export function useProgressiveRoadmap(
             setProgress(event.progress);
           }
 
+          // Handle SMART status updates
+          if (event.type === 'smart_status_updated' && event.data) {
+            const data = event.data as { smart_status: SmartStatus };
+            setSmartStatus(data.smart_status);
+          }
+
           if (event.type === 'complete' && event.data) {
             console.log('[startSession] Complete event received!');
             const data = event.data as {
               session_id: string;
               questions: InterviewQuestion[];
               skeleton?: ProgressiveRoadmap;
+              smart_status?: SmartStatus;
+              smart_coverage?: SmartCoverage;
+              key_results?: string[];
             };
             setSessionId(data.session_id);
             setQuestions(data.questions);
             if (data.skeleton) {
               setRoadmap(data.skeleton);
+            }
+            // Set initial SMART tracking state
+            if (data.smart_status) {
+              setSmartStatus(data.smart_status);
+            }
+            if (data.smart_coverage) {
+              setSmartCoverage(data.smart_coverage);
+            }
+            if (data.key_results) {
+              setKeyResults(data.key_results);
             }
           }
         });
@@ -356,6 +378,24 @@ export function useProgressiveRoadmap(
           setProgress(event.progress);
         }
 
+        // Handle SMART status updates during analysis
+        if (event.type === 'smart_status_updated' && event.data) {
+          const data = event.data as { smart_status: SmartStatus };
+          setSmartStatus(data.smart_status);
+        }
+
+        // Handle Key Results generation
+        if (event.type === 'key_results_generated' && event.data) {
+          const data = event.data as { key_results: string[] };
+          setKeyResults(data.key_results);
+        }
+
+        // Handle draft roadmap updates
+        if (event.type === 'draft_roadmap_updated' && event.data) {
+          const data = event.data as { draft_roadmap: DraftRoadmap };
+          setDraftRoadmap(data.draft_roadmap);
+        }
+
         if (event.type === 'complete' && event.data) {
           const data = event.data as {
             session_id: string;
@@ -365,19 +405,31 @@ export function useProgressiveRoadmap(
             questions?: InterviewQuestion[];
             feedback?: AIFeedback;
             draft_roadmap?: DraftRoadmap;
-            information_level?: 'insufficient' | 'minimal' | 'sufficient' | 'complete';
+            information_level?: InformationLevel;
             ai_recommends_complete?: boolean;
             can_complete?: boolean;
+            // SMART tracking
+            smart_status?: SmartStatus;
+            key_results?: string[];
             // 완료 시 추가 필드
             compiled_context?: string;
             key_insights?: string[];
             schedule?: object;
           };
 
+          // Update SMART tracking
+          if (data.smart_status) {
+            setSmartStatus(data.smart_status);
+          }
+          if (data.key_results) {
+            setKeyResults(data.key_results);
+          }
+
           if (data.is_complete) {
             // 인터뷰 완료 - 로드맵 생성 준비
             setIsReadyForGeneration(true);
             setFeedback(data.feedback || null);
+            setDraftRoadmap(data.draft_roadmap || null);
           } else {
             // 다음 라운드
             setCurrentRound(data.current_round || currentRound + 1);
@@ -541,7 +593,18 @@ export function useProgressiveRoadmap(
     setInformationLevel(null);
     setAiRecommendsComplete(false);
     setCanComplete(false);
+    // SMART 상태 리셋
+    setSmartStatus(null);
+    setSmartCoverage(null);
+    setKeyResults([]);
   }, []);
+
+  // SMART 완료 퍼센트 계산 (collected된 요소 비율)
+  const smartCompletionPercentage = smartStatus
+    ? Math.round(
+        (Object.values(smartStatus).filter((s) => s.collected).length / 5) * 100
+      )
+    : 0;
 
   return {
     sessionId,
@@ -562,6 +625,11 @@ export function useProgressiveRoadmap(
     informationLevel,
     aiRecommendsComplete,
     canComplete,
+    // SMART 추적
+    smartStatus,
+    smartCoverage,
+    keyResults,
+    smartCompletionPercentage,
     // 액션
     startSession,
     setAnswer,

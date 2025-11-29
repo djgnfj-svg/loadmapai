@@ -63,7 +63,13 @@ async def start_interview_streaming(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Start interview with real-time streaming progress."""
+    """Start interview with real-time streaming progress.
+
+    Enhanced with:
+    - Web search at interview start for better question context
+    - SMART status tracking
+    - Progressive draft roadmap
+    """
     stream_id = str(uuid.uuid4())
     manager = StreamingManager()
     register_stream(stream_id, manager)
@@ -97,10 +103,38 @@ async def start_interview_streaming(
             )
             print("[DEBUG] START event emitted")
 
+            # Web search at interview start (for better question context)
+            search_context = ""
             await manager.emit(
-                StreamEventType.PROGRESS,
-                "질문 생성 중...",
-                progress=10
+                StreamEventType.WEB_SEARCH_STARTED,
+                "학습 자료를 검색하고 있습니다...",
+                progress=5
+            )
+
+            try:
+                from app.ai.nodes.web_searcher import search_for_interview
+                search_context = await loop.run_in_executor(
+                    None,
+                    lambda: search_for_interview(
+                        topic=request.topic,
+                        mode=request.mode,
+                        duration_months=request.duration_months,
+                    )
+                )
+                await manager.emit(
+                    StreamEventType.WEB_SEARCH_COMPLETED,
+                    "검색 완료",
+                    progress=15,
+                    data={"has_context": bool(search_context)}
+                )
+            except Exception as search_error:
+                print(f"[DEBUG] Web search error (continuing): {search_error}")
+                search_context = ""
+
+            await manager.emit(
+                StreamEventType.GENERATING_QUESTIONS,
+                "SMART 기반 질문 생성 중...",
+                progress=20
             )
 
             # Generate questions with streaming
@@ -119,9 +153,19 @@ async def start_interview_streaming(
                     user_id=str(user_id),
                     session_id=session_id,
                     callbacks=[handler],
+                    search_context=search_context,  # Pass web search context
                 )
             )
             print(f"[DEBUG] LLM call completed, result keys: {result.keys() if result else 'None'}")
+
+            # Emit SMART status
+            smart_status = result.get("smart_status", {})
+            await manager.emit(
+                StreamEventType.SMART_STATUS_UPDATED,
+                "SMART 상태 초기화",
+                progress=80,
+                data={"smart_status": smart_status}
+            )
 
             # Update DB with fresh session
             await manager.emit(
@@ -148,6 +192,10 @@ async def start_interview_streaming(
                 "session_id": session_id,
                 "current_round": result.get("current_round", 1),
                 "questions": result["questions"],
+                # SMART tracking fields
+                "smart_status": smart_status,
+                "smart_coverage": result.get("smart_coverage", {}),
+                "key_results": result.get("key_results", []),
             })
             print("[DEBUG] Complete event emitted")
 
@@ -236,6 +284,37 @@ async def submit_answers_streaming(
                 )
             )
 
+            # Emit SMART tracking events
+            smart_status = result.get("smart_status", {})
+            key_results = result.get("key_results", [])
+            draft_roadmap = result.get("draft_roadmap", {})
+
+            # Emit SMART status update
+            await manager.emit(
+                StreamEventType.SMART_STATUS_UPDATED,
+                "SMART 상태 업데이트",
+                progress=50,
+                data={"smart_status": smart_status}
+            )
+
+            # Emit Key Results if generated
+            if key_results:
+                await manager.emit(
+                    StreamEventType.KEY_RESULTS_GENERATED,
+                    "핵심 목표 생성 완료",
+                    progress=55,
+                    data={"key_results": key_results}
+                )
+
+            # Emit draft roadmap update
+            if draft_roadmap:
+                await manager.emit(
+                    StreamEventType.DRAFT_ROADMAP_UPDATED,
+                    "로드맵 초안 업데이트",
+                    progress=60,
+                    data={"draft_roadmap": draft_roadmap}
+                )
+
             # Update stage progress
             if result["is_complete"]:
                 handler.emit_compiling()
@@ -243,9 +322,13 @@ async def submit_answers_streaming(
                 # 다음 라운드 질문 준비 완료
                 current_round = result.get("current_round", 1)
                 await manager.emit(
-                    StreamEventType.PROGRESS,
-                    f"라운드 {current_round} 질문 준비 완료",
-                    progress=70
+                    StreamEventType.ROUND_ANALYSIS_COMPLETE,
+                    f"라운드 {current_round} 분석 완료",
+                    progress=70,
+                    data={
+                        "feedback": result.get("feedback"),
+                        "information_level": result.get("information_level"),
+                    }
                 )
 
             # Save with fresh DB session
@@ -274,9 +357,12 @@ async def submit_answers_streaming(
                     "compiled_context": result.get("compiled_context", ""),
                     "key_insights": result.get("key_insights", []),
                     "schedule": result.get("schedule", {}),
-                    # NEW: 최종 피드백
+                    # SMART tracking
+                    "smart_status": smart_status,
+                    "key_results": key_results,
+                    # Feedback and draft
                     "feedback": result.get("feedback"),
-                    "draft_roadmap": result.get("draft_roadmap"),
+                    "draft_roadmap": draft_roadmap,
                 })
             else:
                 await manager.complete(data={
@@ -284,15 +370,18 @@ async def submit_answers_streaming(
                     "is_complete": False,
                     "current_round": result.get("current_round", 1),
                     "max_rounds": result.get("max_rounds", 10),
-                    "questions": result.get("questions", []),  # .get() 사용
+                    "questions": result.get("questions", []),
                     "is_followup": result.get("is_followup", False),
                     # 종료 관련
                     "is_terminated": result.get("is_terminated", False),
                     "termination_reason": result.get("termination_reason"),
                     "error_message": result.get("error_message"),
-                    # NEW: 라운드 분석 결과
+                    # SMART tracking
+                    "smart_status": smart_status,
+                    "key_results": key_results,
+                    # 라운드 분석 결과
                     "feedback": result.get("feedback"),
-                    "draft_roadmap": result.get("draft_roadmap"),
+                    "draft_roadmap": draft_roadmap,
                     "information_level": result.get("information_level"),
                     "ai_recommends_complete": result.get("ai_recommends_complete", False),
                     "can_complete": result.get("can_complete", False),

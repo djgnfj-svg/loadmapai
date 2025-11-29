@@ -21,6 +21,15 @@ class StreamEventType(str, Enum):
     ADVANCING_STAGE = "advancing_stage"
     COMPILING_CONTEXT = "compiling_context"
 
+    # SMART Interview specific (NEW)
+    WEB_SEARCH_STARTED = "web_search_started"  # Interview start web search
+    WEB_SEARCH_COMPLETED = "web_search_completed"  # Search results ready
+    SMART_STATUS_UPDATED = "smart_status_updated"  # SMART tracking update
+    KEY_RESULTS_GENERATED = "key_results_generated"  # OKR Key Results
+    DRAFT_ROADMAP_UPDATED = "draft_roadmap_updated"  # Progressive draft update
+    ROUND_ANALYSIS_COMPLETE = "round_analysis_complete"  # After each answer round
+    INTERVIEW_FEEDBACK = "interview_feedback"  # AI feedback message
+
     # Roadmap specific
     WEB_SEARCHING = "web_searching"
     WEB_SEARCH_RESULT = "web_search_result"

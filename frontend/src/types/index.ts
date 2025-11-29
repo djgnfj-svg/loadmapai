@@ -239,6 +239,57 @@ export interface FinalizeResponse {
   message: string;
 }
 
+// ============ SMART Interview Types ============
+
+export type SmartElement = 'specific' | 'measurable' | 'achievable' | 'relevant' | 'time_bound';
+
+export interface SmartElementStatus {
+  collected: boolean;
+  summary: string;
+  confidence: number;  // 0-1
+}
+
+export interface SmartStatus {
+  specific: SmartElementStatus;
+  measurable: SmartElementStatus;
+  achievable: SmartElementStatus;
+  relevant: SmartElementStatus;
+  time_bound: SmartElementStatus;
+}
+
+export interface SmartCoverage {
+  specific: boolean;
+  measurable: boolean;
+  achievable: boolean;
+  relevant: boolean;
+  time_bound: boolean;
+}
+
+export interface DraftWeek {
+  week: number;
+  theme: string;
+  daily_example?: string;
+}
+
+export interface DraftMonth {
+  month: number;
+  title: string;
+  key_result_focus: string;
+  weeks: DraftWeek[];
+}
+
+export interface EnhancedDraftRoadmap {
+  completion_percentage: number;
+  key_results_focus: string[];
+  months: DraftMonth[];
+}
+
+export interface InterviewFeedback {
+  honest_opinion: string;
+  encouragement: string;
+  suggestions: string[];
+}
+
 // ============ Deep Interview Types ============
 
 export type InterviewStatus = 'in_progress' | 'completed' | 'abandoned' | 'terminated';
@@ -251,10 +302,14 @@ export interface InterviewQuestion {
   question_type: InterviewQuestionType;
   options?: string[];
   placeholder?: string;
+  // SMART element this question targets
+  smart_element?: SmartElement;
+  purpose?: string;  // AI-generated purpose of the question
   // For follow-up questions
   original_question_id?: string;
   context?: string;  // e.g., "이전에 'X'라고 답변하셨는데..."
   is_retry?: boolean;
+  is_proactive?: boolean;  // Proactive question from round analysis
 }
 
 export interface InterviewAnswer {
@@ -295,6 +350,8 @@ export interface InterviewSession {
   roadmap_id?: string;
 }
 
+export type InformationLevel = 'minimal' | 'sufficient' | 'complete';
+
 export interface InterviewQuestionsResponse {
   session_id: string;
   current_round: number;
@@ -305,8 +362,20 @@ export interface InterviewQuestionsResponse {
   is_terminated?: boolean;
   termination_reason?: string;
   warning_message?: string;
+  error_message?: string;
   ambiguous_count?: number;
   invalid_count?: number;
+  // SMART tracking fields
+  smart_status?: SmartStatus;
+  smart_coverage?: SmartCoverage;
+  key_results?: string[];
+  // Round analysis results
+  feedback?: InterviewFeedback;
+  draft_roadmap?: EnhancedDraftRoadmap;
+  information_level?: InformationLevel;
+  ai_recommends_complete?: boolean;
+  can_complete?: boolean;
+  continue_reason?: string;
 }
 
 export interface InterviewCompletedResponse {
@@ -317,6 +386,12 @@ export interface InterviewCompletedResponse {
   key_insights: string[];
   schedule: InterviewSchedule;
   can_generate_roadmap: boolean;
+  // SMART tracking fields
+  smart_status?: SmartStatus;
+  key_results?: string[];
+  // Final feedback and draft
+  feedback?: InterviewFeedback;
+  draft_roadmap?: EnhancedDraftRoadmap;
 }
 
 export interface InterviewSessionListResponse {
@@ -417,10 +492,21 @@ export interface ProgressiveSessionState {
   topic: string;
   mode: RoadmapMode;
   durationMonths: number;
+  currentRound: number;
+  maxRounds: number;
   currentQuestions: InterviewQuestion[];
   answeredQuestions: Map<string, string>;
   roadmap: ProgressiveRoadmap | null;
   isStreaming: boolean;
   progress: number;
   error: string | null;
+  // SMART tracking
+  smartStatus: SmartStatus | null;
+  keyResults: string[];
+  // Round analysis
+  feedback: InterviewFeedback | null;
+  draftRoadmap: EnhancedDraftRoadmap | null;
+  informationLevel: InformationLevel | null;
+  canComplete: boolean;
+  aiRecommendsComplete: boolean;
 }

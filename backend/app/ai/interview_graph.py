@@ -24,6 +24,7 @@ from app.ai.prompts.interview_prompts import (
     ROUND_ANALYSIS_PROMPT,
     get_mode_description,
 )
+from app.ai.prompts.topic_questions import get_topic_examples
 
 
 # ============ Constants ============
@@ -43,19 +44,34 @@ def generate_interview_questions(
     topic: str,
     mode: str,
     duration_months: int,
-) -> List[Dict[str, Any]]:
-    """Generate all interview questions in one batch using AI.
+    search_context: str = "",
+) -> Dict[str, Any]:
+    """Generate SMART-based interview questions using AI.
+
+    Args:
+        topic: Learning topic
+        mode: "learning" or "planning"
+        duration_months: Duration in months
+        search_context: Web search results for context (optional)
+
+    Returns:
+        Dict with questions and smart_coverage
 
     Raises:
         InterviewGenerationError: If AI fails to generate questions.
     """
     llm = create_llm()
 
+    # Get topic-specific examples
+    topic_examples = get_topic_examples(topic)
+
     prompt = COMPREHENSIVE_INTERVIEW_PROMPT.format(
         topic=topic,
         mode=mode,
         mode_description=get_mode_description(mode),
         duration_months=duration_months,
+        search_context=search_context if search_context else "(웹 검색 결과 없음)",
+        topic_examples=topic_examples,
     )
 
     try:
@@ -72,8 +88,23 @@ def generate_interview_questions(
                 q["id"] = f"q_{i}"
             if "question_type" not in q:
                 q["question_type"] = "text"
+            # Preserve smart_element if present
+            if "smart_element" not in q:
+                q["smart_element"] = None
 
-        return questions
+        # Extract SMART coverage from response
+        smart_coverage = result.get("smart_coverage", {
+            "specific": False,
+            "measurable": False,
+            "achievable": False,
+            "relevant": False,
+            "time_bound": True,  # Duration is already set
+        })
+
+        return {
+            "questions": questions,
+            "smart_coverage": smart_coverage,
+        }
 
     except json.JSONDecodeError as e:
         raise InterviewGenerationError(f"AI 응답 파싱 실패: {str(e)}")
@@ -245,7 +276,7 @@ def check_termination(
     }
 
 
-# ============ Round Analysis (NEW) ============
+# ============ Round Analysis (SMART-Enhanced) ============
 
 def analyze_round(
     topic: str,
@@ -255,22 +286,25 @@ def analyze_round(
     all_questions: List[Dict[str, Any]],
     all_answers: List[Dict[str, str]],
 ) -> Dict[str, Any]:
-    """Analyze current round and provide feedback, proactive questions, and draft roadmap.
+    """Analyze current round with SMART framework and provide feedback.
 
-    This function enables:
+    Enhanced features:
+    - SMART status tracking (Specific, Measurable, Achievable, Relevant, Time-bound)
+    - OKR Key Results generation
+    - Detailed draft roadmap (monthly + weekly + daily example)
     - Honest feedback about difficulties, realistic timelines
-    - Proactive questions (not just for ambiguous answers)
-    - Progressive draft roadmap generation
+    - Proactive questions targeting missing SMART elements
     """
     llm = create_llm(temperature=0.5)  # Balanced for analysis
 
-    # Build conversation history
+    # Build conversation history with SMART element tags
     answer_map = {a["question_id"]: a["answer"] for a in all_answers}
     conversation_lines = []
 
     for q in all_questions:
         answer = answer_map.get(q["id"], "(미응답)")
-        conversation_lines.append(f"Q: {q['question']}")
+        smart_tag = f"[{q.get('smart_element', '?')}] " if q.get('smart_element') else ""
+        conversation_lines.append(f"{smart_tag}Q: {q['question']}")
         conversation_lines.append(f"A: {answer}")
         conversation_lines.append("")
 
@@ -287,7 +321,15 @@ def analyze_round(
         response = llm.invoke([HumanMessage(content=prompt)])
         result = parse_json_response(response.content)
 
-        # Ensure all required fields exist
+        # Ensure all required fields exist with SMART structure
+        result.setdefault("smart_status", {
+            "specific": {"collected": False, "summary": "", "confidence": 0},
+            "measurable": {"collected": False, "summary": "", "confidence": 0},
+            "achievable": {"collected": False, "summary": "", "confidence": 0},
+            "relevant": {"collected": False, "summary": "", "confidence": 0},
+            "time_bound": {"collected": True, "summary": f"{duration_months}개월", "confidence": 1.0},
+        })
+        result.setdefault("key_results", [])
         result.setdefault("information_level", "minimal")
         result.setdefault("feedback", {
             "honest_opinion": "",
@@ -297,23 +339,33 @@ def analyze_round(
         result.setdefault("proactive_questions", [])
         result.setdefault("draft_roadmap", {
             "completion_percentage": 0,
+            "key_results_focus": [],
             "months": []
         })
         result.setdefault("should_continue", True)
         result.setdefault("continue_reason", "")
 
-        # Assign IDs to proactive questions if missing
+        # Assign IDs and smart_element to proactive questions if missing
         for i, q in enumerate(result["proactive_questions"]):
             if "id" not in q:
                 q["id"] = f"proactive_{current_round}_{i}"
-            q["question_type"] = q.get("question_type", "text")
+            q["question_type"] = q.get("question_type", "single_choice")
             q["is_proactive"] = True
+            # Keep smart_element from AI response
 
         return result
 
     except (json.JSONDecodeError, KeyError) as e:
-        # Fallback: continue with minimal analysis
+        # Fallback: continue with minimal SMART analysis
         return {
+            "smart_status": {
+                "specific": {"collected": False, "summary": "", "confidence": 0},
+                "measurable": {"collected": False, "summary": "", "confidence": 0},
+                "achievable": {"collected": False, "summary": "", "confidence": 0},
+                "relevant": {"collected": False, "summary": "", "confidence": 0},
+                "time_bound": {"collected": True, "summary": f"{duration_months}개월", "confidence": 1.0},
+            },
+            "key_results": [],
             "information_level": "minimal",
             "feedback": {
                 "honest_opinion": "분석 중 오류가 발생했습니다.",
@@ -323,6 +375,7 @@ def analyze_round(
             "proactive_questions": [],
             "draft_roadmap": {
                 "completion_percentage": 0,
+                "key_results_focus": [],
                 "months": []
             },
             "should_continue": True,
@@ -427,12 +480,47 @@ def start_interview(
     user_id: str,
     session_id: Optional[str] = None,
     callbacks: Optional[List[Any]] = None,
+    search_context: str = "",
 ) -> Dict[str, Any]:
-    """Start a new interview session and generate all questions."""
+    """Start a new interview session and generate SMART-based questions.
+
+    Args:
+        topic: Learning topic
+        mode: "learning" or "planning"
+        duration_months: Duration in months
+        user_id: User identifier
+        session_id: Optional session ID (generated if not provided)
+        callbacks: Optional LangChain callbacks
+        search_context: Web search results for context (optional)
+
+    Returns:
+        Dict with session info, questions, and initial SMART status
+    """
     sid = session_id or str(uuid.uuid4())
 
-    # Generate all questions at once
-    questions = generate_interview_questions(topic, mode, duration_months)
+    # Generate SMART-based questions
+    question_result = generate_interview_questions(
+        topic=topic,
+        mode=mode,
+        duration_months=duration_months,
+        search_context=search_context,
+    )
+
+    questions = question_result["questions"]
+    smart_coverage = question_result["smart_coverage"]
+
+    # Initial SMART status (time_bound is already set by duration)
+    initial_smart_status = {
+        "specific": {"collected": False, "summary": "", "confidence": 0},
+        "measurable": {"collected": False, "summary": "", "confidence": 0},
+        "achievable": {"collected": False, "summary": "", "confidence": 0},
+        "relevant": {"collected": False, "summary": "", "confidence": 0},
+        "time_bound": {
+            "collected": True,
+            "summary": f"{duration_months}개월",
+            "confidence": 1.0,
+        },
+    }
 
     # Create state
     state = {
@@ -461,6 +549,11 @@ def start_interview(
         "extracted_rest_days": None,
         "extracted_intensity": None,
         "error_message": None,
+        # SMART tracking
+        "smart_status": initial_smart_status,
+        "smart_coverage": smart_coverage,
+        "key_results": [],
+        "search_context": search_context,
         # Legacy fields for compatibility
         "current_stage": 1,
         "stages_completed": [],
@@ -477,6 +570,10 @@ def start_interview(
         "is_complete": False,
         "is_followup": False,
         "warning_message": None,
+        # SMART-related fields
+        "smart_status": initial_smart_status,
+        "smart_coverage": smart_coverage,
+        "key_results": [],
         "state": state,
     }
 
@@ -584,10 +681,12 @@ def submit_answers(
         all_answers=state.get("all_answers", []),
     )
 
-    # Store analysis in state
+    # Store analysis in state (including SMART tracking)
     state["last_feedback"] = round_analysis["feedback"]
     state["last_draft_roadmap"] = round_analysis["draft_roadmap"]
     state["information_level"] = round_analysis["information_level"]
+    state["smart_status"] = round_analysis["smart_status"]
+    state["key_results"] = round_analysis.get("key_results", [])
 
     # ===== Decide: Complete or Continue =====
     info_level = round_analysis["information_level"]
@@ -667,7 +766,10 @@ def submit_answers(
         "questions": next_questions,
         "is_complete": False,
         "is_followup": bool(ambiguous_ids or invalid_ids),
-        # NEW fields
+        # SMART tracking fields
+        "smart_status": round_analysis["smart_status"],
+        "key_results": round_analysis.get("key_results", []),
+        # Feedback and draft roadmap
         "feedback": round_analysis["feedback"],
         "draft_roadmap": round_analysis["draft_roadmap"],
         "information_level": info_level,
@@ -722,12 +824,17 @@ def _complete_interview(
     state["stages_completed"] = [1]
     state["current_stage"] = 1
 
-    # Include final feedback if available
+    # Include final feedback, SMART status, key_results if available
     final_feedback = None
     final_draft_roadmap = None
+    final_smart_status = state.get("smart_status", {})
+    final_key_results = state.get("key_results", [])
+
     if round_analysis:
         final_feedback = round_analysis.get("feedback")
         final_draft_roadmap = round_analysis.get("draft_roadmap")
+        final_smart_status = round_analysis.get("smart_status", final_smart_status)
+        final_key_results = round_analysis.get("key_results", final_key_results)
     elif state.get("last_feedback"):
         final_feedback = state.get("last_feedback")
         final_draft_roadmap = state.get("last_draft_roadmap")
@@ -746,7 +853,10 @@ def _complete_interview(
             "rest_days": context_result["extracted_rest_days"],
             "intensity": context_result["extracted_intensity"],
         },
-        # NEW: Include final feedback and draft for completion message
+        # SMART tracking fields
+        "smart_status": final_smart_status,
+        "key_results": final_key_results,
+        # Feedback and draft roadmap
         "feedback": final_feedback,
         "draft_roadmap": final_draft_roadmap,
         "state": state,

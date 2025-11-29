@@ -106,6 +106,93 @@ def _synthesize_search_results(results: List[Dict[str, Any]], topic: str) -> str
         return "\n".join([f"- {r.get('title', '')}" for r in results[:5]])
 
 
+# ============ Interview-specific Web Search ============
+
+def search_for_interview(
+    topic: str,
+    mode: str = "learning",
+    duration_months: int = 3,
+) -> str:
+    """Search for learning resources at interview start.
+
+    Optimized for speed - runs a single focused query and returns
+    a concise context string for use in interview question generation.
+
+    Args:
+        topic: Learning topic
+        mode: "learning" or "planning"
+        duration_months: Duration in months
+
+    Returns:
+        Concise context string with:
+        - Recommended learning path/curriculum
+        - Key milestones and checkpoints
+        - Common pitfalls and tips
+        - Relevant resources
+    """
+    search_tool = _get_tavily_search()
+
+    if not search_tool:
+        return ""
+
+    # Single focused query for speed
+    query = f"{topic} learning roadmap curriculum 2025 best practices"
+
+    try:
+        results = search_tool.invoke(query)
+        if not isinstance(results, list) or not results:
+            return ""
+
+        # Take top 5 results for concise summary
+        top_results = results[:5]
+
+        # Synthesize with interview-focused prompt
+        llm = create_llm()
+
+        results_text = ""
+        for i, result in enumerate(top_results, 1):
+            title = result.get("title", "")
+            content = result.get("content", "")[:400]
+            results_text += f"\n{i}. {title}\n   {content}\n"
+
+        synthesis_prompt = f"""다음은 "{topic}" 학습에 대한 검색 결과입니다.
+학습 기간: {duration_months}개월
+모드: {mode}
+
+{results_text}
+
+위 검색 결과를 바탕으로 인터뷰 질문 생성에 필요한 핵심 정보만 추출하세요:
+
+1. **추천 학습 경로** (단계별 순서)
+2. **핵심 마일스톤** ({duration_months}개월 기준)
+3. **흔한 실수와 팁**
+4. **필수 도구/자료**
+
+간결하게 bullet point로 정리하세요. 150단어 이내."""
+
+        response = llm.invoke([HumanMessage(content=synthesis_prompt)])
+        return response.content
+
+    except Exception as e:
+        print(f"Interview search error: {e}")
+        return ""
+
+
+def _generate_interview_search_queries(topic: str, mode: str) -> List[str]:
+    """Generate search queries for interview context."""
+    base_queries = [
+        f"{topic} learning roadmap step by step",
+        f"{topic} curriculum beginner to advanced",
+    ]
+
+    if mode == "learning":
+        base_queries.append(f"{topic} study guide how long to learn")
+    else:
+        base_queries.append(f"{topic} project ideas portfolio career")
+
+    return base_queries
+
+
 def web_searcher(state: RoadmapGenerationState) -> RoadmapGenerationState:
     """Search the web for relevant learning resources and roadmaps.
 
