@@ -135,10 +135,18 @@ export function createEmptyProgressiveRoadmap(
     for (let w = 1; w <= 4; w++) {
       const days: ProgressiveDailyTask[] = [];
       for (let d = 1; d <= 7; d++) {
+        // 새 형식: tasks 배열 사용 (1-3개 Task)
+        const taskCount = Math.floor(Math.random() * 3) + 1;
+        const tasks = [];
+        for (let t = 0; t < taskCount; t++) {
+          tasks.push({
+            title: createUndefinedItem(),
+            description: createUndefinedItem(),
+          });
+        }
         days.push({
           day_number: d,
-          title: createUndefinedItem(),
-          description: createUndefinedItem(),
+          tasks,
         });
       }
       weeks.push({

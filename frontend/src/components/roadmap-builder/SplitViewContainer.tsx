@@ -110,6 +110,7 @@ export function SplitViewContainer({
             roadmap={roadmap}
             isStreaming={isStreaming}
             progress={progress}
+            draftRoadmap={draftRoadmap}
             className="h-full"
           />
         )}
@@ -139,6 +140,7 @@ export function SplitViewContainer({
             roadmap={roadmap}
             isStreaming={isStreaming}
             progress={progress}
+            draftRoadmap={draftRoadmap}
             className="h-full"
           />
         </div>

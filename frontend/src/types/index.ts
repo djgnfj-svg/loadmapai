@@ -366,10 +366,17 @@ export interface RoadmapItemWithStatus {
   isNew?: boolean;  // 방금 업데이트됨 (애니메이션용)
 }
 
+export interface ProgressiveDailyTaskItem {
+  title: RoadmapItemWithStatus;
+  description?: RoadmapItemWithStatus;
+}
+
 export interface ProgressiveDailyTask {
   day_number: number;
-  title: RoadmapItemWithStatus;
-  description: RoadmapItemWithStatus;
+  tasks: ProgressiveDailyTaskItem[];  // 하루에 여러 Task 가능
+  // Legacy support (단일 Task 형식)
+  title?: RoadmapItemWithStatus;
+  description?: RoadmapItemWithStatus;
 }
 
 export interface ProgressiveWeeklyTask {
