@@ -32,6 +32,13 @@ class SkeletonGenerateRequest(BaseModel):
     duration_months: int
 
 
+class RefineOnAnswerRequest(BaseModel):
+    """Request model for progressive roadmap refinement."""
+    session_id: str
+    question_id: str
+    answer: str
+
+
 class RoadmapGenerateRequest(BaseModel):
     """Request model for roadmap generation from interview."""
     interview_session_id: str
@@ -493,3 +500,158 @@ async def generate_roadmap_skeleton(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"스켈레톤 생성 실패: {str(e)}",
         )
+
+
+@router.post("/roadmaps/refine")
+async def refine_roadmap_on_answer(
+    request: RefineOnAnswerRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Refine roadmap progressively based on user's answer to a question.
+
+    This endpoint streams refinement events as SSE, allowing the frontend
+    to update the roadmap preview in real-time.
+    """
+    stream_id = str(uuid.uuid4())
+    manager = StreamingManager()
+    register_stream(stream_id, manager)
+
+    async def generate():
+        try:
+            await manager.emit(
+                StreamEventType.START,
+                "답변을 분석하여 로드맵을 구체화합니다...",
+                progress=0
+            )
+
+            # Get interview session
+            service = InterviewService(db)
+            session = service.get_session(request.session_id, current_user.id)
+
+            if not session:
+                await manager.error("인터뷰 세션을 찾을 수 없습니다.")
+                return
+
+            await manager.emit(
+                StreamEventType.PROGRESS,
+                "질문과 답변을 분석 중...",
+                progress=20
+            )
+
+            # Mock refinement logic - in production, this would call the AI
+            # to generate refinements based on the answer
+            refinements = generate_mock_refinements(
+                request.question_id,
+                request.answer,
+                session.duration_months
+            )
+
+            # Stream each refinement
+            total = len(refinements)
+            for i, refinement in enumerate(refinements):
+                progress = 30 + int((i / max(total, 1)) * 60)
+
+                await manager.emit(
+                    StreamEventType.PROGRESS,
+                    f"로드맵 구체화 중... ({i + 1}/{total})",
+                    progress=progress,
+                    data={"type": "refined", "data": refinement}
+                )
+                await asyncio.sleep(0.1)  # Small delay for visual effect
+
+            await manager.emit(
+                StreamEventType.PROGRESS,
+                "저장 중...",
+                progress=95
+            )
+
+            await manager.complete(data={
+                "session_id": request.session_id,
+                "refinements_applied": total,
+            })
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            await manager.error(f"오류 발생: {str(e)}")
+        finally:
+            unregister_stream(stream_id)
+
+    background_tasks.add_task(generate)
+
+    return StreamingResponse(
+        manager.stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
+
+
+def generate_mock_refinements(question_id: str, answer: str, duration_months: int) -> list:
+    """Generate mock refinement events based on question and answer.
+
+    In production, this would be replaced with actual AI-generated refinements.
+    """
+    refinements = []
+
+    # Map question IDs to refinement types
+    if "goal" in question_id or "목표" in question_id:
+        # Refine title and description
+        refinements.append({
+            "type": "title",
+            "value": f"{answer} 마스터 로드맵",
+            "path": {}
+        })
+        refinements.append({
+            "type": "description",
+            "value": f"{answer}을(를) 체계적으로 학습하기 위한 맞춤형 커리큘럼입니다.",
+            "path": {}
+        })
+
+    elif "time" in question_id or "시간" in question_id:
+        # Refine daily task descriptions based on available time
+        for month in range(1, min(duration_months + 1, 4)):
+            refinements.append({
+                "type": "monthly",
+                "field": "description",
+                "value": f"하루 {answer} 학습 기준 월간 목표",
+                "path": {"month_number": month}
+            })
+
+    elif "level" in question_id or "수준" in question_id:
+        # Refine monthly goals based on skill level
+        level_prefix = "기초부터 " if "초급" in answer or "입문" in answer else "심화 "
+        for month in range(1, min(duration_months + 1, 4)):
+            refinements.append({
+                "type": "monthly",
+                "field": "title",
+                "value": f"{level_prefix}단계 {month}: 핵심 개념 학습",
+                "path": {"month_number": month}
+            })
+
+    elif "focus" in question_id or "집중" in question_id:
+        # Refine weekly tasks based on focus area
+        for month in range(1, min(duration_months + 1, 3)):
+            for week in range(1, 5):
+                refinements.append({
+                    "type": "weekly",
+                    "field": "title",
+                    "value": f"{answer} 관련 주차 {week} 과제",
+                    "path": {"month_number": month, "week_number": week}
+                })
+
+    else:
+        # Generic refinements for other questions
+        refinements.append({
+            "type": "monthly",
+            "field": "description",
+            "value": f"사용자 맞춤 설정 반영: {answer[:50]}...",
+            "path": {"month_number": 1}
+        })
+
+    return refinements
