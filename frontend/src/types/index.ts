@@ -275,6 +275,7 @@ export interface DraftMonth {
   month: number;
   title: string;
   key_result_focus: string;
+  overview?: string;  // Alias for backward compatibility
   weeks: DraftWeek[];
 }
 

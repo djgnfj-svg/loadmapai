@@ -655,8 +655,13 @@ function resetIsNewFlags(roadmap: ProgressiveRoadmap): ProgressiveRoadmap {
         title: { ...week.title, isNew: false },
         daily_tasks: week.daily_tasks.map((day) => ({
           ...day,
-          title: { ...day.title, isNew: false },
-          description: { ...day.description, isNew: false },
+          ...(day.title && { title: { ...day.title, isNew: false } }),
+          ...(day.description && { description: { ...day.description, isNew: false } }),
+          tasks: day.tasks?.map((task) => ({
+            ...task,
+            title: { ...task.title, isNew: false },
+            ...(task.description && { description: { ...task.description, isNew: false } }),
+          })) || [],
         })),
       })),
     })),
