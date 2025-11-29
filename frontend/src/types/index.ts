@@ -323,3 +323,35 @@ export interface InterviewSessionListResponse {
   sessions: InterviewSession[];
   total: number;
 }
+
+// ============ Roadmap Skeleton Types ============
+
+export interface SkeletonWeek {
+  week_number: number;
+  title: string;
+}
+
+export interface SkeletonMonth {
+  month_number: number;
+  title: string;
+  description: string;
+  weeks: SkeletonWeek[];
+}
+
+export interface RoadmapSkeleton {
+  months: SkeletonMonth[];
+}
+
+export interface SkeletonGenerateRequest {
+  topic: string;
+  mode: RoadmapMode;
+  duration_months: number;
+}
+
+export interface SkeletonGenerateResponse {
+  success: boolean;
+  skeleton: RoadmapSkeleton;
+  topic: string;
+  mode: string;
+  duration_months: number;
+}

@@ -76,8 +76,8 @@ async def start_interview(
 
         return InterviewQuestionsResponse(
             session_id=session.id,
-            current_stage=result["current_stage"],
-            stage_name=get_stage_name(result["current_stage"]),
+            current_stage=result.get("current_round", 1),
+            stage_name=f"라운드 {result.get('current_round', 1)}",
             questions=questions,
             is_complete=False,
             is_followup=False,
@@ -167,11 +167,11 @@ async def submit_answers(
 
         return InterviewQuestionsResponse(
             session_id=session.id,
-            current_stage=result["current_stage"],
-            stage_name=get_stage_name(result["current_stage"]),
+            current_stage=result.get("current_round", 1),
+            stage_name=f"라운드 {result.get('current_round', 1)}",
             questions=questions,
             is_complete=False,
-            is_followup=is_followup,
+            is_followup=result.get("is_followup", is_followup),
         )
 
     except Exception as e:

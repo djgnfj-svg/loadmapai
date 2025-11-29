@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, addMonths } from 'date-fns';
-import { Map, BookOpen, Sparkles, Calendar, Clock, ArrowLeft, ArrowRight, MessageCircle, Globe } from 'lucide-react';
+import { Map, BookOpen, Calendar, Clock, ArrowLeft, ArrowRight, MessageCircle, Globe } from 'lucide-react';
 import { Card, CardContent } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
-import { DeepInterviewStep, InterviewCompleted } from '@/components/interview';
+import { InterviewWithPreview } from '@/components/interview';
 import { StreamingGeneratingState, ProgressiveRoadmapPreview } from '@/components/roadmap';
 import {
   useStartDeepInterview,
@@ -16,7 +16,7 @@ import { useRoadmapStreaming } from '@/hooks/useStreaming';
 import { cn } from '@/lib/utils';
 import type { RoadmapMode, InterviewAnswer, InterviewCompletedResponse } from '@/types';
 
-type Step = 'mode' | 'topic' | 'duration' | 'interview' | 'completed' | 'generating';
+type Step = 'mode' | 'topic' | 'duration' | 'building' | 'generating';
 
 interface FormData {
   mode: RoadmapMode;
@@ -25,6 +25,46 @@ interface FormData {
   start_date: string;
   use_web_search: boolean;
 }
+
+// Mode-specific text configuration
+const MODE_PAGE_TEXT = {
+  learning: {
+    topicTitle: '학습 주제',
+    topicSubtitle: '어떤 것을 배우고 싶으신가요?',
+    topicPlaceholder: '예: React 프론트엔드 개발 마스터하기',
+    topicHint: '구체적일수록 더 맞춤화된 학습 로드맵이 생성됩니다.',
+    topicSuggestionsTitle: '추천 학습 주제',
+    topicSuggestions: [
+      'React 프론트엔드 개발',
+      'Python 데이터 분석',
+      '알고리즘 코딩 테스트',
+      '영어 회화',
+      'AWS 클라우드 자격증',
+      '주식 투자 기초',
+    ],
+    durationTitle: '학습 기간',
+    durationSubtitle: '얼마 동안 학습하시겠어요?',
+    webSearchDescription: '최신 강의, 자료, 학습 경로를 검색하여 반영합니다',
+  },
+  planning: {
+    topicTitle: '목표 설정',
+    topicSubtitle: '어떤 목표를 달성하고 싶으신가요?',
+    topicPlaceholder: '예: 3개월 안에 포트폴리오 웹사이트 완성하기',
+    topicHint: '구체적일수록 더 맞춤화된 실행 계획이 생성됩니다.',
+    topicSuggestionsTitle: '추천 목표',
+    topicSuggestions: [
+      '포트폴리오 웹사이트 제작',
+      '정보처리기사 자격증 취득',
+      '다이어트 10kg 감량',
+      '토익 900점 달성',
+      '사이드 프로젝트 런칭',
+      '독서 50권 완독',
+    ],
+    durationTitle: '실행 기간',
+    durationSubtitle: '얼마 동안 진행하시겠어요?',
+    webSearchDescription: '최신 자료, 방법론, 참고 경로를 검색하여 반영합니다',
+  },
+};
 
 function ModeSelection({
   selected,
@@ -63,8 +103,8 @@ function ModeSelection({
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">학습 모드 선택</h2>
-        <p className="text-gray-500 dark:text-gray-400">어떤 방식으로 학습을 진행하시겠어요?</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">모드 선택</h2>
+        <p className="text-gray-500 dark:text-gray-400">어떤 방식으로 진행하시겠어요?</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -115,42 +155,37 @@ function ModeSelection({
 function TopicInput({
   value,
   onChange,
+  mode,
 }: {
   value: string;
   onChange: (value: string) => void;
+  mode: RoadmapMode;
 }) {
-  const suggestions = [
-    'React 프론트엔드 개발',
-    'Python 데이터 분석',
-    '알고리즘 코딩 테스트',
-    '영어 회화',
-    'AWS 클라우드 자격증',
-    '주식 투자 기초',
-  ];
+  const text = MODE_PAGE_TEXT[mode];
 
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">학습 주제</h2>
-        <p className="text-gray-500 dark:text-gray-400">어떤 것을 배우고 싶으신가요?</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{text.topicTitle}</h2>
+        <p className="text-gray-500 dark:text-gray-400">{text.topicSubtitle}</p>
       </div>
 
       <div>
         <Input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="예: React 프론트엔드 개발 마스터하기"
+          placeholder={text.topicPlaceholder}
           className="text-lg py-4"
         />
         <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-          구체적일수록 더 맞춤화된 로드맵이 생성됩니다.
+          {text.topicHint}
         </p>
       </div>
 
       <div>
-        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">추천 주제</p>
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">{text.topicSuggestionsTitle}</p>
         <div className="flex flex-wrap gap-2">
-          {suggestions.map((suggestion) => (
+          {text.topicSuggestions.map((suggestion) => (
             <button
               key={suggestion}
               onClick={() => onChange(suggestion)}
@@ -176,6 +211,7 @@ function DurationSelection({
   onDurationChange,
   onStartDateChange,
   onWebSearchChange,
+  mode,
 }: {
   duration: number;
   startDate: string;
@@ -183,7 +219,9 @@ function DurationSelection({
   onDurationChange: (duration: number) => void;
   onStartDateChange: (date: string) => void;
   onWebSearchChange: (enabled: boolean) => void;
+  mode: RoadmapMode;
 }) {
+  const text = MODE_PAGE_TEXT[mode];
   const durations = [
     { months: 1, label: '1개월', description: '집중 학습' },
     { months: 2, label: '2개월', description: '기초부터 차근차근' },
@@ -197,8 +235,8 @@ function DurationSelection({
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">학습 기간</h2>
-        <p className="text-gray-500 dark:text-gray-400">얼마 동안 학습하시겠어요?</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{text.durationTitle}</h2>
+        <p className="text-gray-500 dark:text-gray-400">{text.durationSubtitle}</p>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
@@ -271,7 +309,7 @@ function DurationSelection({
                 실시간 웹 검색
               </div>
               <div className="text-sm text-gray-500 dark:text-gray-400">
-                최신 강의, 자료, 학습 경로를 검색하여 반영합니다
+                {text.webSearchDescription}
               </div>
             </div>
           </div>
@@ -323,7 +361,7 @@ export function RoadmapCreate() {
   useEffect(() => {
     if (questionsData) {
       if (questionsData.is_complete) {
-        // Interview completed - fetch completed data
+        // Interview completed - set completed data (stay in building step)
         setCompletedData({
           session_id: questionsData.session_id,
           is_complete: true,
@@ -332,7 +370,6 @@ export function RoadmapCreate() {
           schedule: {},
           can_generate_roadmap: true,
         });
-        setStep('completed');
       }
     }
   }, [questionsData]);
@@ -347,10 +384,10 @@ export function RoadmapCreate() {
     }
   }, [roadmapStreaming.result, roadmapStreaming.isStreaming, navigate]);
 
-  // Handle streaming error
+  // Handle streaming error - stay in building step to show error
   useEffect(() => {
     if (roadmapStreaming.error && !roadmapStreaming.isStreaming) {
-      setStep('completed');
+      // Error will be shown in the InterviewWithPreview component
     }
   }, [roadmapStreaming.error, roadmapStreaming.isStreaming]);
 
@@ -377,7 +414,7 @@ export function RoadmapCreate() {
       // Check if interview is complete
       if (response.data.is_complete) {
         setCompletedData(response.data as InterviewCompletedResponse);
-        setStep('completed');
+        // Stay in building step - InterviewWithPreview handles the completed state
       } else {
         // Refetch questions for next stage
         await refetchQuestions();
@@ -408,8 +445,8 @@ export function RoadmapCreate() {
     } else if (step === 'topic') {
       setStep('duration');
     } else if (step === 'duration') {
-      // Start deep interview
-      setStep('interview');
+      // Start deep interview and show building step
+      setStep('building');
       try {
         setInterviewError(null);
         const response = await startInterview.mutateAsync({
@@ -430,18 +467,17 @@ export function RoadmapCreate() {
       setStep('mode');
     } else if (step === 'duration') {
       setStep('topic');
-    } else if (step === 'interview') {
+    } else if (step === 'building') {
       setStep('duration');
       setSessionId(null);
       setInterviewError(null);
-    } else if (step === 'completed') {
-      setStep('interview');
+      setCompletedData(null);
     }
   };
 
-  const steps = ['mode', 'topic', 'duration', 'interview'];
+  const steps = ['mode', 'topic', 'duration', 'building'];
   const currentStepIndex = steps.indexOf(step);
-  const showProgress = step !== 'generating' && step !== 'completed';
+  const showProgress = step !== 'generating';
 
   // Generating step has different layout (full width with split view)
   if (step === 'generating') {
@@ -491,7 +527,7 @@ export function RoadmapCreate() {
               variant="ghost"
               onClick={() => {
                 roadmapStreaming.abort();
-                setStep('completed');
+                setStep('building');
               }}
             >
               취소
@@ -503,11 +539,14 @@ export function RoadmapCreate() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className={cn(
+      'mx-auto',
+      step === 'building' ? 'max-w-6xl' : 'max-w-2xl'
+    )}>
       {/* Progress */}
       {showProgress && (
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-2 max-w-2xl mx-auto">
             {steps.map((s, i) => (
               <div
                 key={s}
@@ -523,58 +562,67 @@ export function RoadmapCreate() {
         </div>
       )}
 
-      <Card variant="bordered">
-        <CardContent>
-          {step === 'mode' && (
-            <ModeSelection
-              selected={formData.mode}
-              onSelect={(mode) => setFormData({ ...formData, mode })}
-            />
-          )}
-          {step === 'topic' && (
-            <TopicInput
-              value={formData.topic}
-              onChange={(topic) => setFormData({ ...formData, topic })}
-            />
-          )}
-          {step === 'duration' && (
-            <DurationSelection
-              duration={formData.duration_months}
-              startDate={formData.start_date}
-              useWebSearch={formData.use_web_search}
-              onDurationChange={(duration_months) =>
-                setFormData({ ...formData, duration_months })
-              }
-              onStartDateChange={(start_date) =>
-                setFormData({ ...formData, start_date })
-              }
-              onWebSearchChange={(use_web_search) =>
-                setFormData({ ...formData, use_web_search })
-              }
-            />
-          )}
-          {step === 'interview' && (
-            <DeepInterviewStep
-              sessionId={sessionId}
+      {/* Mode, Topic, Duration Steps */}
+      {step !== 'building' && (
+        <Card variant="bordered">
+          <CardContent>
+            {step === 'mode' && (
+              <ModeSelection
+                selected={formData.mode}
+                onSelect={(mode) => setFormData({ ...formData, mode })}
+              />
+            )}
+            {step === 'topic' && (
+              <TopicInput
+                value={formData.topic}
+                onChange={(topic) => setFormData({ ...formData, topic })}
+                mode={formData.mode}
+              />
+            )}
+            {step === 'duration' && (
+              <DurationSelection
+                duration={formData.duration_months}
+                startDate={formData.start_date}
+                useWebSearch={formData.use_web_search}
+                onDurationChange={(duration_months) =>
+                  setFormData({ ...formData, duration_months })
+                }
+                onStartDateChange={(start_date) =>
+                  setFormData({ ...formData, start_date })
+                }
+                onWebSearchChange={(use_web_search) =>
+                  setFormData({ ...formData, use_web_search })
+                }
+                mode={formData.mode}
+              />
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Building Step - Full Width with Split View */}
+      {step === 'building' && (
+        <Card variant="bordered">
+          <CardContent className="min-h-[500px]">
+            <InterviewWithPreview
+              topic={formData.topic}
+              durationMonths={formData.duration_months}
+              mode={formData.mode}
               questionsData={questionsData || null}
-              isLoading={startInterview.isPending || isLoadingQuestions}
-              error={interviewError}
+              isLoadingQuestions={startInterview.isPending || isLoadingQuestions}
+              questionError={interviewError}
               onSubmitAnswers={handleAnswersSubmit}
               isSubmitting={submitAnswers.isPending}
-            />
-          )}
-          {step === 'completed' && completedData && (
-            <InterviewCompleted
-              data={completedData}
+              completedData={completedData}
               onGenerateRoadmap={handleGenerateRoadmap}
-              isGenerating={false}
+              isGenerating={roadmapStreaming.isStreaming}
             />
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Navigation */}
-      {step !== 'generating' && step !== 'interview' && step !== 'completed' && (
+      {step !== 'building' && (
         <div className="flex justify-between mt-6">
           <Button
             variant="ghost"
@@ -604,8 +652,8 @@ export function RoadmapCreate() {
         </div>
       )}
 
-      {/* Back button for interview step */}
-      {step === 'interview' && !startInterview.isPending && !isLoadingQuestions && (
+      {/* Back button for building step */}
+      {step === 'building' && !startInterview.isPending && !isLoadingQuestions && !completedData && (
         <div className="flex justify-start mt-6">
           <Button variant="ghost" onClick={handleBack}>
             <ArrowLeft className="h-4 w-4 mr-1" />

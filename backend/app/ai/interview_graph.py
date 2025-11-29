@@ -41,14 +41,34 @@ def create_llm(temperature: float = 0.7):
     )
 
 
+def parse_json_response(content: str) -> dict:
+    """Parse JSON from AI response, stripping markdown code blocks if present."""
+    # Strip markdown code blocks if present
+    if "```json" in content:
+        content = content.split("```json")[1].split("```")[0]
+    elif "```" in content:
+        content = content.split("```")[1].split("```")[0]
+
+    return json.loads(content.strip())
+
+
 # ============ Question Generation ============
+
+class InterviewGenerationError(Exception):
+    """Raised when AI fails to generate interview questions."""
+    pass
+
 
 def generate_interview_questions(
     topic: str,
     mode: str,
     duration_months: int,
 ) -> List[Dict[str, Any]]:
-    """Generate all interview questions in one batch using AI."""
+    """Generate all interview questions in one batch using AI.
+
+    Raises:
+        InterviewGenerationError: If AI fails to generate questions.
+    """
     llm = create_llm()
 
     prompt = COMPREHENSIVE_INTERVIEW_PROMPT.format(
@@ -60,8 +80,11 @@ def generate_interview_questions(
 
     try:
         response = llm.invoke([HumanMessage(content=prompt)])
-        result = json.loads(response.content)
+        result = parse_json_response(response.content)
         questions = result.get("questions", [])
+
+        if not questions:
+            raise InterviewGenerationError("AI가 질문을 생성하지 못했습니다.")
 
         # Ensure all questions have required fields
         for i, q in enumerate(questions):
@@ -72,49 +95,10 @@ def generate_interview_questions(
 
         return questions
 
-    except (json.JSONDecodeError, KeyError) as e:
-        return get_fallback_questions(topic)
-
-
-def get_fallback_questions(topic: str) -> List[Dict[str, Any]]:
-    """Return fallback questions if AI generation fails."""
-    return [
-        {
-            "id": "current_level",
-            "question": f"{topic} 관련 현재 실력은 어느 정도인가요?",
-            "question_type": "single_choice",
-            "options": ["처음 시작", "기초는 알아요", "어느 정도 해봤어요", "꽤 잘해요"],
-            "required_field": "current_level"
-        },
-        {
-            "id": "specific_goal",
-            "question": f"{topic}을(를) 통해 무엇을 이루고 싶으신가요?",
-            "question_type": "text",
-            "placeholder": "구체적인 목표를 알려주세요",
-            "required_field": "specific_goal"
-        },
-        {
-            "id": "daily_time",
-            "question": "하루에 얼마나 시간을 투자할 수 있나요?",
-            "question_type": "single_choice",
-            "options": ["30분 이하", "30분~1시간", "1~2시간", "2~3시간", "3시간 이상"],
-            "required_field": "daily_time"
-        },
-        {
-            "id": "rest_days",
-            "question": "일주일 중 쉬는 날은 언제인가요?",
-            "question_type": "single_choice",
-            "options": ["쉬는 날 없이 매일", "주말(토,일) 휴식", "일요일만 휴식", "토요일만 휴식"],
-            "required_field": "rest_days"
-        },
-        {
-            "id": "intensity",
-            "question": "원하는 학습 강도는요?",
-            "question_type": "single_choice",
-            "options": ["천천히 꼼꼼하게", "적당한 속도로", "빠르고 도전적으로"],
-            "required_field": "intensity"
-        },
-    ]
+    except json.JSONDecodeError as e:
+        raise InterviewGenerationError(f"AI 응답 파싱 실패: {str(e)}")
+    except KeyError as e:
+        raise InterviewGenerationError(f"AI 응답 형식 오류: {str(e)}")
 
 
 # ============ Answer Evaluation ============
@@ -152,7 +136,7 @@ def evaluate_answers(
 
     try:
         response = llm.invoke([HumanMessage(content=prompt)])
-        result = json.loads(response.content)
+        result = parse_json_response(response.content)
         return result
     except (json.JSONDecodeError, KeyError) as e:
         # Fallback: assume all sufficient
@@ -211,7 +195,7 @@ def generate_followup_questions(
 
     try:
         response = llm.invoke([HumanMessage(content=prompt)])
-        result = json.loads(response.content)
+        result = parse_json_response(response.content)
         return result
     except (json.JSONDecodeError, KeyError) as e:
         # Fallback: simple retry questions
@@ -269,7 +253,7 @@ def check_termination(
 
         try:
             response = llm.invoke([HumanMessage(content=prompt)])
-            return json.loads(response.content)
+            return parse_json_response(response.content)
         except (json.JSONDecodeError, KeyError):
             pass
 
@@ -320,7 +304,7 @@ def compile_interview_context(
 
     try:
         response = llm.invoke([HumanMessage(content=prompt)])
-        result = json.loads(response.content)
+        result = parse_json_response(response.content)
         schedule = result.get("extracted_schedule", {})
 
         return {
@@ -343,58 +327,28 @@ def extract_context_from_answers(
     """Fallback context extraction from answers."""
     answer_map = {a["question_id"]: a["answer"] for a in answers}
 
-    # Extract daily minutes
-    daily_time = answer_map.get("daily_time", "1~2시간")
-    if "30분 이하" in daily_time:
-        daily_minutes = 30
-    elif "30분~1시간" in daily_time:
-        daily_minutes = 45
-    elif "1~2시간" in daily_time:
-        daily_minutes = 90
-    elif "2~3시간" in daily_time:
-        daily_minutes = 150
-    else:
-        daily_minutes = 180
-
-    # Extract rest days
-    rest_days_answer = answer_map.get("rest_days", "주말(토,일) 휴식")
-    if "매일" in rest_days_answer:
-        rest_days = []
-    elif "주말" in rest_days_answer or "토,일" in rest_days_answer:
-        rest_days = [5, 6]
-    elif "일요일" in rest_days_answer:
-        rest_days = [6]
-    elif "토요일" in rest_days_answer:
-        rest_days = [5]
-    else:
-        rest_days = [6]
-
-    # Extract intensity
-    intensity_answer = answer_map.get("intensity", "적당한 속도로")
-    if "천천히" in intensity_answer or "꼼꼼" in intensity_answer:
-        intensity = "light"
-    elif "빠르" in intensity_answer or "도전" in intensity_answer:
-        intensity = "intense"
-    else:
-        intensity = "moderate"
-
-    # Build context
+    # Build context from all Q&A
     context_parts = []
+    key_insights = []
     for q in questions:
         q_id = q["id"].replace("_followup", "")
         answer = answer_map.get(q["id"], answer_map.get(q_id, ""))
         if answer:
             context_parts.append(f"- {q['question']}: {answer}")
+            # First meaningful answer becomes a key insight
+            if len(key_insights) < 3 and len(answer) > 5:
+                key_insights.append(answer[:100])
 
+    # Default schedule (will be refined by AI during context compilation)
     return {
         "compiled_context": "\n".join(context_parts),
-        "key_insights": [answer_map.get("specific_goal", "")],
-        "extracted_daily_minutes": daily_minutes,
-        "extracted_rest_days": rest_days,
-        "extracted_intensity": intensity,
+        "key_insights": key_insights,
+        "extracted_daily_minutes": 60,  # Default 1 hour
+        "extracted_rest_days": [5, 6],  # Default weekends
+        "extracted_intensity": "moderate",
         "roadmap_requirements": {
-            "current_level": answer_map.get("current_level", "beginner"),
-            "specific_goal": answer_map.get("specific_goal", ""),
+            "primary_goal": answer_map.get("main_goal", ""),
+            "current_situation": answer_map.get("current_situation", ""),
         },
     }
 

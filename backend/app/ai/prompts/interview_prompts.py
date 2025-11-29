@@ -1,114 +1,86 @@
-"""AI-driven comprehensive interview prompts for roadmap generation.
+"""AI-driven interview prompts for roadmap generation.
 
-The AI generates all necessary questions in a single batch,
-focusing on objective (multiple choice) questions for easy user experience.
+AI generates questions freely based on the topic to create the best possible roadmap.
+No hardcoded questions - AI decides what's important to ask.
 """
 
-# ============ AI-Driven Comprehensive Interview ============
+# ============ AI-Driven Interview ============
 
-COMPREHENSIVE_INTERVIEW_PROMPT = """당신은 최고의 학습 로드맵 생성 전문가입니다.
-사용자에게 완벽한 맞춤형 로드맵을 만들기 위해 필요한 모든 정보를 수집해야 합니다.
+COMPREHENSIVE_INTERVIEW_PROMPT = """당신은 최고의 로드맵 설계 전문가입니다.
+사용자에게 완벽한 맞춤형 로드맵을 만들기 위해 필요한 정보를 수집하세요.
 
 === 사용자 요청 ===
 주제: {topic}
 모드: {mode} ({mode_description})
 기간: {duration_months}개월
 
-=== 당신의 임무 ===
-이 주제에 대한 최적의 로드맵을 생성하기 위해 반드시 알아야 할 모든 것을 질문하세요.
-질문은 대부분 객관식(single_choice)으로 만들어 사용자가 쉽게 답할 수 있게 하세요.
+=== 당신의 역할 ===
+"{topic}"에 대한 최고의 로드맵을 만들기 위해 정말 중요한 것들만 질문하세요.
+당신은 이 분야의 전문가입니다. 무엇을 알아야 좋은 로드맵을 설계할 수 있는지 스스로 판단하세요.
 
-=== 필수 수집 정보 ===
-다음 정보는 반드시 수집해야 합니다:
+=== 질문 설계 원칙 ===
 
-1. **현재 수준** (required_field: "current_level")
-   - 이 주제에 대한 사용자의 현재 실력
+1. **주제 맞춤 질문**
+   - "{topic}"을 잘 가르치려면 무엇을 알아야 할까요?
+   - 이 분야에서 초보자가 흔히 하는 실수나 함정은?
+   - 사용자의 현재 상황을 파악하기 위해 필요한 정보는?
 
-2. **구체적 목표** (required_field: "specific_goal")
-   - "{topic}" 내에서 특히 무엇을 이루고 싶은지
-   - 예: "React"라면 → 취업용 포트폴리오? SaaS 개발? 등
+2. **목표 파악**
+   - 같은 주제라도 목표에 따라 로드맵이 완전히 달라집니다
+   - 예: "영어" → 여행회화? TOEIC? 비즈니스 영어? 원서 읽기?
+   - 예: "프로그래밍" → 취업? 사이드 프로젝트? 자동화?
 
-3. **학습 가능 시간** (required_field: "daily_time")
-   - 하루에 투자 가능한 시간
+3. **현실적 제약**
+   - 사용자가 실제로 실천할 수 있는 계획을 세우기 위해 필요한 정보
+   - 단, 너무 세부적인 스케줄 질문은 피하세요 (AI가 나중에 조정 가능)
 
-4. **휴식일** (required_field: "rest_days")
-   - 일주일 중 쉬는 날
+=== 피해야 할 질문 ===
+- "하루에 몇 시간 투자하실 건가요?" (너무 뻔함)
+- "쉬는 날은 언제인가요?" (로드맵과 무관)
+- "학습 강도는 어느 정도가 좋을까요?" (사용자가 판단하기 어려움)
+- 철학적/추상적 질문 ("왜 이걸 배우고 싶으신가요?")
+- 뻔한 질문 (답이 거의 정해져 있는 질문)
 
-5. **학습 강도** (required_field: "intensity")
-   - 원하는 난이도와 속도
+=== 좋은 질문 예시 ===
+- [프로그래밍] "현재 어떤 프로젝트나 결과물을 만들고 싶으신가요?"
+- [프로그래밍] "선호하는 학습 방식이 있나요? (강의/책/직접 만들기)"
+- [영어] "영어가 당장 필요한 상황이 있나요? (여행, 업무, 시험 등)"
+- [자격증] "시험 일정이 정해져 있나요?"
+- [운동] "이전에 시도해봤는데 포기한 경험이 있다면, 이유가 뭐였나요?"
+- [악기] "연주하고 싶은 곡이나 장르가 있나요?"
 
-=== 주제별 맞춤 질문 ===
-위 필수 정보 외에, "{topic}"에 특화된 추가 질문을 2-3개 생성하세요.
-예시:
-- 프로그래밍: 선호하는 학습 방식? (강의/책/프로젝트)
-- 자격증: 시험 예정일? 이전 시험 경험?
-- 언어: 목표 수준? (일상회화/비즈니스/학술)
-- 운동: 현재 체력 수준? 부상 이력?
-- 악기: 목표 곡? 연주 경험?
-
-=== 질문 작성 규칙 ===
-1. 총 6-8개의 질문을 생성하세요
-2. 최소 5개는 객관식(single_choice)으로 만드세요
-3. 선택지는 구체적이고 실용적으로 작성하세요
-4. 사용자가 쉽게 선택할 수 있는 4-5개의 선택지를 제공하세요
-5. 질문은 친근하지만 전문적인 톤으로 작성하세요
-6. 쓸데없는 철학적 질문 금지 (예: "왜 이게 중요한가요?")
-7. 로드맵 생성에 직접 도움이 되는 실용적 질문만
+=== 질문 형식 규칙 ===
+1. 4-6개의 질문만 생성하세요 (너무 많으면 사용자가 지침)
+2. 대부분 객관식(single_choice)으로 만들어 빠르게 답할 수 있게 하세요
+3. 선택지는 현실적이고 구체적으로 작성하세요
+4. "기타" 선택지를 적절히 활용하세요
+5. 정말 열린 답변이 필요한 경우만 텍스트(text) 타입 사용
 
 === 응답 형식 (JSON) ===
 {{
     "questions": [
         {{
-            "id": "current_level",
-            "question": "현재 {topic} 관련 실력은 어느 정도인가요?",
+            "id": "고유_아이디",
+            "question": "질문 텍스트",
             "question_type": "single_choice",
-            "options": ["처음 시작", "기초는 알아요", "어느 정도 해봤어요", "꽤 잘해요"],
-            "required_field": "current_level"
+            "options": ["선택지1", "선택지2", "선택지3", "선택지4"]
         }},
         {{
-            "id": "specific_goal",
-            "question": "{topic}을(를) 통해 구체적으로 무엇을 하고 싶으신가요?",
-            "question_type": "single_choice",
-            "options": ["옵션1", "옵션2", "옵션3", "옵션4", "기타 (직접 입력)"],
-            "required_field": "specific_goal"
-        }},
-        {{
-            "id": "daily_time",
-            "question": "하루에 얼마나 시간을 투자할 수 있나요?",
-            "question_type": "single_choice",
-            "options": ["30분 이하", "30분~1시간", "1~2시간", "2~3시간", "3시간 이상"],
-            "required_field": "daily_time"
-        }},
-        {{
-            "id": "rest_days",
-            "question": "일주일 중 쉬는 날은 언제인가요?",
-            "question_type": "single_choice",
-            "options": ["쉬는 날 없이 매일", "주말(토,일) 휴식", "일요일만 휴식", "토요일만 휴식", "평일 중 하루"],
-            "required_field": "rest_days"
-        }},
-        {{
-            "id": "intensity",
-            "question": "원하는 학습 강도는요?",
-            "question_type": "single_choice",
-            "options": ["천천히 꼼꼼하게", "적당한 속도로", "빠르고 도전적으로"],
-            "required_field": "intensity"
-        }},
-        // ... 주제별 맞춤 질문 2-3개 추가
+            "id": "다른_아이디",
+            "question": "주관식이 필요한 질문",
+            "question_type": "text",
+            "placeholder": "힌트 텍스트"
+        }}
     ]
 }}
-
-=== 중요 ===
-- 모든 required_field는 반드시 포함되어야 합니다
-- "{topic}"에 맞는 현실적이고 구체적인 선택지를 제공하세요
-- 사용자가 5분 내에 모든 답변을 완료할 수 있어야 합니다
 
 JSON만 출력하세요."""
 
 
 # ============ Context Compilation ============
 
-COMPILE_CONTEXT_PROMPT = """당신은 학습 로드맵 생성 전문가입니다.
-인터뷰 결과를 로드맵 생성에 최적화된 형태로 정리해야 합니다.
+COMPILE_CONTEXT_PROMPT = """당신은 로드맵 설계 전문가입니다.
+인터뷰 결과를 바탕으로 로드맵 생성 AI에게 전달할 컨텍스트를 작성하세요.
 
 === 인터뷰 결과 ===
 주제: {topic}
@@ -117,34 +89,40 @@ COMPILE_CONTEXT_PROMPT = """당신은 학습 로드맵 생성 전문가입니다
 
 {interview_qa}
 
-=== 출력 형식 (JSON) ===
+=== 당신의 임무 ===
+위 인터뷰 내용을 분석하여:
+1. 사용자에게 맞는 로드맵을 설계하기 위한 핵심 정보를 정리
+2. 학습 스케줄 추정 (인터뷰에서 힌트를 얻었다면)
+3. 로드맵에 반영해야 할 구체적 요구사항 도출
+
+=== 스케줄 추정 가이드 ===
+인터뷰에서 시간 관련 정보가 없었다면 합리적으로 추정하세요:
+- 직장인/학생이 언급됨 → 하루 1시간 내외
+- 풀타임 학습 가능 언급 → 하루 3-4시간
+- 기타 → 하루 1-2시간을 기본값으로
+
+휴식일은 특별한 언급이 없으면 주말(토,일)로 설정하세요.
+
+=== 응답 형식 (JSON) ===
 {{
-    "compiled_context": "로드맵 생성 AI에게 전달할 상세 컨텍스트 (한국어, 마크다운 형식)",
+    "compiled_context": "로드맵 생성 AI에게 전달할 상세 컨텍스트 (한국어)",
     "key_insights": [
         "핵심 인사이트 1",
         "핵심 인사이트 2",
         "핵심 인사이트 3"
     ],
     "extracted_schedule": {{
-        "daily_minutes": 숫자(분 단위),
+        "daily_minutes": 숫자(분 단위, 30-240 사이),
         "rest_days": [0-6 숫자 배열, 0=월요일, 6=일요일],
         "intensity": "light" | "moderate" | "intense"
     }},
     "roadmap_requirements": {{
-        "current_level": "beginner" | "elementary" | "intermediate" | "advanced",
-        "specific_goal": "사용자의 구체적 목표",
+        "primary_goal": "사용자의 핵심 목표",
+        "current_situation": "현재 상황 요약",
         "focus_areas": ["집중해야 할 영역들"],
-        "learning_style": "사용자 선호 학습 방식",
-        "constraints": ["고려해야 할 제약사항들"]
+        "special_considerations": ["특별히 고려할 사항들"]
     }}
 }}
-
-=== compiled_context 작성 가이드 ===
-로드맵 생성 AI가 읽을 것이므로 다음을 명확히 포함:
-- 사용자의 현재 수준과 목표
-- 구체적으로 달성해야 할 것
-- 시간 제약 및 학습 가능 일정
-- 특별히 주의할 사항
 
 JSON만 출력하세요."""
 
@@ -165,20 +143,19 @@ BATCH_ANSWER_EVALUATION_PROMPT = """당신은 인터뷰 답변 품질 평가 전
 === 평가 기준 ===
 
 **1. 충분 (sufficient)**
-- 로드맵 생성에 필요한 정보가 명확함
+- 로드맵 생성에 도움이 되는 정보가 있음
 - 객관식에서 유효한 선택지를 골랐음
-- 텍스트 답변이 구체적이고 실용적임
+- 텍스트 답변이 이해 가능하고 의미가 있음
 
 **2. 애매 (ambiguous)**
-- 정보가 있지만 불명확하거나 너무 일반적임
-- 예: "앱 만들기" (어떤 앱?), "잘하고 싶어요" (구체적으로 뭘?)
-- 예: "적당히", "그냥", "아무거나"
+- 정보가 있지만 너무 일반적이거나 불명확함
+- 예: "그냥 잘하고 싶어요", "아무거나", "적당히"
 
 **3. 이상 (invalid)**
-- 스팸: "ㅋㅋㅋ", "asdf", 의미없는 문자
+- 스팸: 의미없는 문자 (ㅋㅋ, asdf, 등)
 - 무관: 질문과 전혀 관련없는 답변
 - 적대적: 욕설, 비꼬는 답변
-- 너무 짧음: 1-2글자로 성의없는 답변 ("ㅇㅇ", "몰라")
+- 너무 짧음: 1-2글자로 성의없는 답변
 
 === 응답 형식 (JSON) ===
 {{
@@ -186,7 +163,7 @@ BATCH_ANSWER_EVALUATION_PROMPT = """당신은 인터뷰 답변 품질 평가 전
         {{
             "question_id": "질문 ID",
             "status": "sufficient" | "ambiguous" | "invalid",
-            "extracted_value": "답변에서 추출한 핵심 정보 (있다면)",
+            "extracted_value": "답변에서 추출한 핵심 정보",
             "issue": "문제점 설명 (ambiguous/invalid인 경우)",
             "issue_type": null | "too_vague" | "too_short" | "spam" | "irrelevant" | "hostile"
         }}
@@ -199,9 +176,8 @@ BATCH_ANSWER_EVALUATION_PROMPT = """당신은 인터뷰 답변 품질 평가 전
 
 === 중요 ===
 - 객관식에서 제공된 선택지를 고른 경우 → sufficient
-- 객관식에서 "기타"를 선택하고 내용이 구체적 → sufficient
-- 객관식에서 "기타"를 선택하고 내용이 모호 → ambiguous
-- 텍스트 답변은 엄격하게 평가 (로드맵 생성에 실제로 도움되는지)
+- 너무 엄격하게 평가하지 마세요. 로드맵 생성에 참고할 수 있으면 OK
+- 완벽한 답변을 기대하지 마세요
 
 JSON만 출력하세요."""
 
@@ -220,17 +196,10 @@ FOLLOWUP_QUESTIONS_PROMPT = """당신은 인터뷰 전문가입니다.
 {items_needing_followup}
 
 === 후속 질문 작성 규칙 ===
-1. 이전 답변을 참조하여 더 구체적으로 물어보세요
-2. 가능하면 객관식으로 만들어 쉽게 답할 수 있게 하세요
-3. 이상한 답변(invalid)에는 친절하지만 단호하게 재질문
-4. "아까 X라고 하셨는데, 좀 더 구체적으로..." 형식 권장
-5. 질문당 하나의 정보만 물어보세요
-
-=== 이상한 답변 유형별 대응 ===
-- too_vague: "좀 더 구체적으로 알려주시면 더 좋은 로드맵을 만들 수 있어요"
-- too_short: "조금만 더 자세히 답변해 주세요"
-- spam/irrelevant: "질문을 다시 확인해 주세요: [원래 질문]"
-- hostile: 무시하고 중립적으로 재질문
+1. 같은 질문을 그대로 반복하지 마세요
+2. 선택지를 제공해서 쉽게 답할 수 있게 하세요
+3. 이전 답변을 언급하며 부드럽게 다시 물어보세요
+4. 꼭 필요한 정보가 아니면 건너뛰어도 됩니다
 
 === 응답 형식 (JSON) ===
 {{
@@ -238,14 +207,14 @@ FOLLOWUP_QUESTIONS_PROMPT = """당신은 인터뷰 전문가입니다.
         {{
             "id": "원래_질문_id_followup",
             "original_question_id": "원래 질문 ID",
-            "question": "후속 질문 텍스트",
-            "question_type": "single_choice" | "text",
-            "options": ["선택지1", "선택지2", ...],
-            "context": "이전에 'X'라고 답변하셨는데...",
+            "question": "후속 질문",
+            "question_type": "single_choice",
+            "options": ["선택지1", "선택지2", "선택지3"],
+            "context": "이전 답변 참조 문구",
             "is_retry": true
         }}
     ],
-    "warning_message": "연속으로 이상한 답변 시 표시할 경고 (있다면, 없으면 null)"
+    "warning_message": null
 }}
 
 JSON만 출력하세요."""
@@ -265,16 +234,16 @@ TERMINATION_CHECK_PROMPT = """인터뷰 강제 종료 여부를 판단하세요.
 {invalid_history}
 
 === 판단 기준 ===
-- 연속 3회 이상 이상한 답변 → 강제 종료 권장
-- 전체의 50% 이상이 이상한 답변 → 강제 종료 권장
-- 적대적 답변 2회 이상 → 강제 종료 권장
+- 연속 3회 이상 이상한 답변 → 종료
+- 적대적 답변 2회 이상 → 종료
+- 그 외에는 웬만하면 계속 진행 (로드맵 생성은 가능)
 
 === 응답 형식 (JSON) ===
 {{
     "should_terminate": true | false,
     "reason": "종료 사유 (있다면)",
-    "final_warning": "마지막 경고 메시지 (종료 직전이라면)",
-    "can_continue_with_defaults": true | false
+    "final_warning": null,
+    "can_continue_with_defaults": true
 }}
 
 JSON만 출력하세요."""
@@ -291,3 +260,61 @@ MODE_DESCRIPTIONS = {
 def get_mode_description(mode: str) -> str:
     """Get description for the given mode."""
     return MODE_DESCRIPTIONS.get(mode, MODE_DESCRIPTIONS["learning"])
+
+
+# ============ Roadmap Skeleton Generation ============
+
+SKELETON_GENERATION_PROMPT = """당신은 로드맵 구조 설계 전문가입니다.
+주어진 주제와 기간을 바탕으로 로드맵의 뼈대(월별/주차별 제목)를 생성하세요.
+
+=== 요청 정보 ===
+주제: {topic}
+모드: {mode} ({mode_description})
+기간: {duration_months}개월
+
+=== 생성 규칙 ===
+
+1. **월별 목표 제목**
+   - 각 월에 적합한 학습/실행 단계 제목 생성
+   - 자연스러운 진행 순서 (기초 → 심화 → 응용 등)
+   - 예: "기초 개념 익히기", "핵심 기술 습득", "실전 프로젝트"
+
+2. **주차별 제목**
+   - 해당 월의 목표를 4주로 나눠 구체화
+   - 점진적인 난이도 상승
+   - 예: "환경 설정", "첫 번째 기능 구현", "테스트 작성"
+
+3. **모드별 특성 반영**
+   - learning: 학습, 이해, 복습 중심 용어
+   - planning: 실행, 완료, 달성 중심 용어
+
+=== 응답 형식 (JSON) ===
+{{
+    "months": [
+        {{
+            "month_number": 1,
+            "title": "월별 목표 제목",
+            "description": "이 달에 달성할 핵심 목표 한 줄 설명",
+            "weeks": [
+                {{
+                    "week_number": 1,
+                    "title": "주차 제목"
+                }},
+                {{
+                    "week_number": 2,
+                    "title": "주차 제목"
+                }},
+                {{
+                    "week_number": 3,
+                    "title": "주차 제목"
+                }},
+                {{
+                    "week_number": 4,
+                    "title": "주차 제목"
+                }}
+            ]
+        }}
+    ]
+}}
+
+JSON만 출력하세요."""

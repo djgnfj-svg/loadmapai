@@ -269,6 +269,50 @@ describe('DeepInterviewStep', () => {
     expect(screen.getByText('(다시 답변해 주세요)')).toBeInTheDocument();
     expect(screen.getByText('이전에 "ㅋㅋ"라고 답변하셨는데...')).toBeInTheDocument();
   });
+
+  it('shows learning mode text by default', () => {
+    render(
+      <DeepInterviewStep
+        questionsData={mockQuestionsData}
+        isLoading={false}
+        error={null}
+        onSubmitAnswers={mockOnSubmitAnswers}
+        isSubmitting={false}
+      />
+    );
+
+    expect(screen.getByText('학습 계획을 위한 정보 수집')).toBeInTheDocument();
+  });
+
+  it('shows planning mode text when mode is planning', () => {
+    render(
+      <DeepInterviewStep
+        questionsData={mockQuestionsData}
+        isLoading={false}
+        error={null}
+        onSubmitAnswers={mockOnSubmitAnswers}
+        isSubmitting={false}
+        mode="planning"
+      />
+    );
+
+    expect(screen.getByText('실행 계획을 위한 정보 수집')).toBeInTheDocument();
+  });
+
+  it('shows planning mode loading text', () => {
+    render(
+      <DeepInterviewStep
+        questionsData={null}
+        isLoading={true}
+        error={null}
+        onSubmitAnswers={mockOnSubmitAnswers}
+        isSubmitting={false}
+        mode="planning"
+      />
+    );
+
+    expect(screen.getByText('계획 수립에 최적화된 질문을 준비하고 있어요...')).toBeInTheDocument();
+  });
 });
 
 describe('InterviewCompleted', () => {
@@ -421,5 +465,49 @@ describe('InterviewCompleted', () => {
 
     // Should not show insights section when empty
     expect(screen.queryByText('핵심 인사이트')).not.toBeInTheDocument();
+  });
+
+  it('shows learning mode text by default', () => {
+    render(
+      <InterviewCompleted
+        data={mockCompletedData}
+        onGenerateRoadmap={mockOnGenerateRoadmap}
+        isGenerating={false}
+      />
+    );
+
+    expect(screen.getByText('학습 스케줄')).toBeInTheDocument();
+    expect(screen.getByText('하루 학습')).toBeInTheDocument();
+    expect(screen.getByText('학습 강도')).toBeInTheDocument();
+    expect(screen.getByText('맞춤형 학습 로드맵 생성하기')).toBeInTheDocument();
+  });
+
+  it('shows planning mode text when mode is planning', () => {
+    render(
+      <InterviewCompleted
+        data={mockCompletedData}
+        onGenerateRoadmap={mockOnGenerateRoadmap}
+        isGenerating={false}
+        mode="planning"
+      />
+    );
+
+    expect(screen.getByText('실행 스케줄')).toBeInTheDocument();
+    expect(screen.getByText('하루 작업')).toBeInTheDocument();
+    expect(screen.getByText('작업 강도')).toBeInTheDocument();
+    expect(screen.getByText('맞춤형 실행 계획 생성하기')).toBeInTheDocument();
+  });
+
+  it('shows planning mode generating text', () => {
+    render(
+      <InterviewCompleted
+        data={mockCompletedData}
+        onGenerateRoadmap={mockOnGenerateRoadmap}
+        isGenerating={true}
+        mode="planning"
+      />
+    );
+
+    expect(screen.getByText('계획 생성 중...')).toBeInTheDocument();
   });
 });

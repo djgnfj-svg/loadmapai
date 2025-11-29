@@ -7,15 +7,48 @@ import type {
   InterviewAnswer,
   InterviewQuestionsResponse,
   InterviewCompletedResponse,
+  RoadmapMode,
 } from '@/types';
 
+// Mode-specific text configuration
+const MODE_TEXT = {
+  learning: {
+    title: '학습 계획을 위한 정보 수집',
+    subtitle: 'AI가 최적의 학습 계획을 만들기 위해 필요한 정보입니다',
+    loadingTitle: 'AI가 맞춤 질문을 생성 중입니다',
+    loadingSubtitle: '학습에 최적화된 질문을 준비하고 있어요...',
+    followupLoadingSubtitle: '더 정확한 학습 계획을 위해 확인이 필요해요...',
+    followupSubtitle: '더 정확한 학습 계획을 위해 확인이 필요해요',
+    scheduleTitle: '학습 스케줄',
+    dailyLabel: '하루 학습',
+    intensityLabel: '학습 강도',
+    generateButton: '맞춤형 학습 로드맵 생성하기',
+    generatingButton: '로드맵 생성 중...',
+    forcedCompletionNotice: '더 정확한 학습 로드맵을 원하시면 새 인터뷰를 시작해 주세요.',
+  },
+  planning: {
+    title: '실행 계획을 위한 정보 수집',
+    subtitle: 'AI가 최적의 실행 계획을 만들기 위해 필요한 정보입니다',
+    loadingTitle: 'AI가 맞춤 질문을 생성 중입니다',
+    loadingSubtitle: '계획 수립에 최적화된 질문을 준비하고 있어요...',
+    followupLoadingSubtitle: '더 정확한 실행 계획을 위해 확인이 필요해요...',
+    followupSubtitle: '더 정확한 실행 계획을 위해 확인이 필요해요',
+    scheduleTitle: '실행 스케줄',
+    dailyLabel: '하루 작업',
+    intensityLabel: '작업 강도',
+    generateButton: '맞춤형 실행 계획 생성하기',
+    generatingButton: '계획 생성 중...',
+    forcedCompletionNotice: '더 정확한 실행 계획을 원하시면 새 인터뷰를 시작해 주세요.',
+  },
+};
+
 interface DeepInterviewStepProps {
-  sessionId: string | null;
   questionsData: InterviewQuestionsResponse | null;
   isLoading: boolean;
   error: string | null;
   onSubmitAnswers: (answers: InterviewAnswer[]) => void;
   isSubmitting: boolean;
+  mode?: RoadmapMode;
 }
 
 export function DeepInterviewStep({
@@ -24,8 +57,10 @@ export function DeepInterviewStep({
   error,
   onSubmitAnswers,
   isSubmitting,
+  mode = 'learning',
 }: DeepInterviewStepProps) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const text = MODE_TEXT[mode];
 
   // Reset answers when questions change
   useEffect(() => {
@@ -47,10 +82,10 @@ export function DeepInterviewStep({
           </div>
         </div>
         <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-          {questionsData?.is_followup ? 'AI가 추가 질문을 준비 중입니다' : 'AI가 맞춤 질문을 생성 중입니다'}
+          {questionsData?.is_followup ? 'AI가 추가 질문을 준비 중입니다' : text.loadingTitle}
         </h2>
         <p className="text-gray-500 dark:text-gray-400">
-          {questionsData?.is_followup ? '더 정확한 로드맵을 위해 확인이 필요해요...' : '주제에 최적화된 질문을 준비하고 있어요...'}
+          {questionsData?.is_followup ? text.followupLoadingSubtitle : text.loadingSubtitle}
         </p>
       </div>
     );
@@ -145,7 +180,7 @@ export function DeepInterviewStep({
           </span>
         </div>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          {is_followup ? '조금 더 자세히 알려주세요' : '로드맵을 위한 정보 수집'}
+          {is_followup ? '조금 더 자세히 알려주세요' : text.title}
         </h2>
         <p className="text-gray-500 dark:text-gray-400">
           {is_followup ? (
@@ -153,10 +188,10 @@ export function DeepInterviewStep({
               {ambiguous_count && ambiguous_count > 0 && `애매한 답변 ${ambiguous_count}개`}
               {ambiguous_count && invalid_count && ', '}
               {invalid_count && invalid_count > 0 && `확인 필요 ${invalid_count}개`}
-              {!ambiguous_count && !invalid_count && '더 정확한 로드맵을 위해 확인이 필요해요'}
+              {!ambiguous_count && !invalid_count && text.followupSubtitle}
             </>
           ) : (
-            'AI가 최적의 로드맵을 만들기 위해 필요한 정보입니다'
+            text.subtitle
           )}
         </p>
       </div>
@@ -325,9 +360,12 @@ interface InterviewCompletedProps {
   data: InterviewCompletedResponse;
   onGenerateRoadmap: () => void;
   isGenerating: boolean;
+  mode?: RoadmapMode;
 }
 
-export function InterviewCompleted({ data, onGenerateRoadmap, isGenerating }: InterviewCompletedProps) {
+export function InterviewCompleted({ data, onGenerateRoadmap, isGenerating, mode = 'learning' }: InterviewCompletedProps) {
+  const text = MODE_TEXT[mode];
+
   return (
     <div className="space-y-6">
       <div className="text-center">
@@ -339,7 +377,7 @@ export function InterviewCompleted({ data, onGenerateRoadmap, isGenerating }: In
         </h2>
         <p className="text-gray-500 dark:text-gray-400">
           {data.forced_completion
-            ? '수집된 정보를 바탕으로 로드맵을 생성합니다'
+            ? `수집된 정보를 바탕으로 ${mode === 'planning' ? '실행 계획' : '로드맵'}을 생성합니다`
             : 'AI가 분석한 핵심 정보를 확인하세요'}
         </p>
       </div>
@@ -350,7 +388,7 @@ export function InterviewCompleted({ data, onGenerateRoadmap, isGenerating }: In
           <AlertTriangle className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" />
           <p className="text-sm text-yellow-700 dark:text-yellow-300">
             일부 정보가 불완전하여 기본값이 사용될 수 있습니다.
-            더 정확한 로드맵을 원하시면 새 인터뷰를 시작해 주세요.
+            {text.forcedCompletionNotice}
           </p>
         </div>
       )}
@@ -376,14 +414,14 @@ export function InterviewCompleted({ data, onGenerateRoadmap, isGenerating }: In
       {data.schedule && (
         <div className="bg-gray-50 dark:bg-dark-700 rounded-xl p-4">
           <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            학습 스케줄
+            {text.scheduleTitle}
           </h3>
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
               <div className="text-2xl font-bold text-primary-600 dark:text-primary-400">
                 {data.schedule.daily_minutes || 60}분
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">하루 학습</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">{text.dailyLabel}</div>
             </div>
             <div>
               <div className="text-2xl font-bold text-primary-600 dark:text-primary-400">
@@ -396,7 +434,7 @@ export function InterviewCompleted({ data, onGenerateRoadmap, isGenerating }: In
                 {data.schedule.intensity === 'light' ? '여유롭게' :
                  data.schedule.intensity === 'intense' ? '빡세게' : '균형있게'}
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">학습 강도</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">{text.intensityLabel}</div>
             </div>
           </div>
         </div>
@@ -410,10 +448,10 @@ export function InterviewCompleted({ data, onGenerateRoadmap, isGenerating }: In
         isLoading={isGenerating}
         disabled={isGenerating}
       >
-        {isGenerating ? '로드맵 생성 중...' : (
+        {isGenerating ? text.generatingButton : (
           <>
             <Sparkles className="h-4 w-4 mr-2" />
-            맞춤형 로드맵 생성하기
+            {text.generateButton}
           </>
         )}
       </Button>
