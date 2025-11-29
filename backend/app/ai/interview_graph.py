@@ -1,153 +1,236 @@
-"""LangGraph workflow for multi-stage deep interview system.
+"""Simplified AI-driven interview system for roadmap generation.
 
-The interview consists of 3 stages:
-1. Goal Clarification (Where to) - What do you want to achieve? Why?
-2. Current State (Where from) - What do you already know? Experience?
-3. Constraints - Time, deadlines, resources
-
-Each stage:
-- AI generates questions based on topic, mode, and previous answers
-- User answers are evaluated for quality
-- Follow-up questions are generated if answers are vague
-- Once sufficient info is gathered, advances to next stage
+Single-stage interview where AI generates all questions at once.
+User answers, then context is compiled for roadmap generation.
 """
+import json
 import uuid
 from typing import Dict, List, Any, Optional
-from langgraph.graph import StateGraph, END
 
-from app.ai.state import (
-    DeepInterviewState,
-    InterviewQuestionData,
-    InterviewAnswerData,
-    StageData,
+from langchain_anthropic import ChatAnthropic
+from langchain_core.messages import HumanMessage
+
+from app.config import settings
+from app.ai.state import DeepInterviewState
+from app.ai.prompts.interview_prompts import (
+    COMPREHENSIVE_INTERVIEW_PROMPT,
+    COMPILE_CONTEXT_PROMPT,
+    get_mode_description,
 )
-from app.ai.nodes.stage_question_generator import (
-    generate_stage_questions,
-    generate_followup_questions,
-    advance_to_next_stage,
-)
-from app.ai.nodes.answer_evaluator import (
-    evaluate_answers,
-    should_probe_deeper,
-)
-from app.ai.nodes.context_compiler import compile_interview_context
 
 
-def create_interview_graph():
-    """Create the LangGraph workflow for deep interview.
-
-    The workflow handles question generation and answer evaluation.
-    User answers are provided externally via API between graph invocations.
-
-    Flow:
-    generate_questions -> [wait for user answers] -> evaluate_answers
-        -> should_probe_deeper:
-            - "probe" -> generate_followup_questions -> [wait]
-            - "next_stage" -> advance_to_next_stage -> generate_questions (if < 3)
-            - "complete" -> compile_context -> END
-    """
-    workflow = StateGraph(DeepInterviewState)
-
-    # Add nodes
-    workflow.add_node("generate_questions", generate_stage_questions)
-    workflow.add_node("evaluate_answers", evaluate_answers)
-    workflow.add_node("generate_followups", generate_followup_questions)
-    workflow.add_node("advance_stage", advance_to_next_stage)
-    workflow.add_node("compile_context", compile_interview_context)
-
-    # Set entry point - we'll control flow manually based on state
-    workflow.set_entry_point("generate_questions")
-
-    # Add edges
-    workflow.add_edge("generate_questions", END)  # Pause for user input
-    workflow.add_edge("generate_followups", END)  # Pause for user input
-
-    # After evaluation, decide what to do next
-    workflow.add_conditional_edges(
-        "evaluate_answers",
-        should_probe_deeper,
-        {
-            "probe": "generate_followups",
-            "next_stage": "advance_stage",
-            "complete": "compile_context",
-        }
+def create_llm():
+    """Create LLM instance."""
+    return ChatAnthropic(
+        model="claude-sonnet-4-5-20250929",
+        anthropic_api_key=settings.anthropic_api_key,
+        temperature=0.7,
     )
 
-    # After advancing stage, generate new questions
-    workflow.add_edge("advance_stage", "generate_questions")
 
-    # After compiling context, we're done
-    workflow.add_edge("compile_context", END)
-
-    return workflow.compile()
-
-
-def create_evaluation_graph():
-    """Create a graph specifically for evaluating answers.
-
-    This is invoked after user provides answers.
-    """
-    workflow = StateGraph(DeepInterviewState)
-
-    workflow.add_node("evaluate_answers", evaluate_answers)
-    workflow.add_node("generate_followups", generate_followup_questions)
-    workflow.add_node("advance_stage", advance_to_next_stage)
-    workflow.add_node("generate_questions", generate_stage_questions)
-    workflow.add_node("compile_context", compile_interview_context)
-
-    workflow.set_entry_point("evaluate_answers")
-
-    workflow.add_conditional_edges(
-        "evaluate_answers",
-        should_probe_deeper,
-        {
-            "probe": "generate_followups",
-            "next_stage": "advance_stage",
-            "complete": "compile_context",
-        }
-    )
-
-    workflow.add_edge("generate_followups", END)
-    workflow.add_edge("advance_stage", "generate_questions")
-    workflow.add_edge("generate_questions", END)
-    workflow.add_edge("compile_context", END)
-
-    return workflow.compile()
-
-
-def create_initial_state(
+def generate_interview_questions(
     topic: str,
     mode: str,
     duration_months: int,
-    user_id: str,
-    session_id: Optional[str] = None,
-    max_followups_per_stage: int = 2,
-) -> DeepInterviewState:
-    """Create initial state for a new interview session."""
-    return DeepInterviewState(
-        session_id=session_id or str(uuid.uuid4()),
+) -> List[Dict[str, Any]]:
+    """Generate all interview questions in one batch using AI.
+
+    Returns a list of question dictionaries with:
+    - id: unique question identifier
+    - question: the question text
+    - question_type: "single_choice" or "text"
+    - options: list of options (for single_choice)
+    - required_field: optional field name for required info
+    """
+    llm = create_llm()
+
+    prompt = COMPREHENSIVE_INTERVIEW_PROMPT.format(
+        topic=topic,
+        mode=mode,
+        mode_description=get_mode_description(mode),
+        duration_months=duration_months,
+    )
+
+    try:
+        response = llm.invoke([HumanMessage(content=prompt)])
+        result = json.loads(response.content)
+        questions = result.get("questions", [])
+
+        # Ensure all questions have required fields
+        for i, q in enumerate(questions):
+            if "id" not in q:
+                q["id"] = f"q_{i}"
+            if "question_type" not in q:
+                q["question_type"] = "text"
+
+        return questions
+
+    except (json.JSONDecodeError, KeyError) as e:
+        # Fallback questions if AI generation fails
+        return get_fallback_questions(topic)
+
+
+def get_fallback_questions(topic: str) -> List[Dict[str, Any]]:
+    """Return fallback questions if AI generation fails."""
+    return [
+        {
+            "id": "current_level",
+            "question": f"{topic} 관련 현재 실력은 어느 정도인가요?",
+            "question_type": "single_choice",
+            "options": ["처음 시작", "기초는 알아요", "어느 정도 해봤어요", "꽤 잘해요"],
+            "required_field": "current_level"
+        },
+        {
+            "id": "specific_goal",
+            "question": f"{topic}을(를) 통해 무엇을 이루고 싶으신가요?",
+            "question_type": "text",
+            "placeholder": "구체적인 목표를 알려주세요",
+            "required_field": "specific_goal"
+        },
+        {
+            "id": "daily_time",
+            "question": "하루에 얼마나 시간을 투자할 수 있나요?",
+            "question_type": "single_choice",
+            "options": ["30분 이하", "30분~1시간", "1~2시간", "2~3시간", "3시간 이상"],
+            "required_field": "daily_time"
+        },
+        {
+            "id": "rest_days",
+            "question": "일주일 중 쉬는 날은 언제인가요?",
+            "question_type": "single_choice",
+            "options": ["쉬는 날 없이 매일", "주말(토,일) 휴식", "일요일만 휴식", "토요일만 휴식"],
+            "required_field": "rest_days"
+        },
+        {
+            "id": "intensity",
+            "question": "원하는 학습 강도는요?",
+            "question_type": "single_choice",
+            "options": ["천천히 꼼꼼하게", "적당한 속도로", "빠르고 도전적으로"],
+            "required_field": "intensity"
+        },
+    ]
+
+
+def compile_interview_context(
+    topic: str,
+    mode: str,
+    duration_months: int,
+    questions: List[Dict[str, Any]],
+    answers: List[Dict[str, str]],
+) -> Dict[str, Any]:
+    """Compile interview Q&A into context for roadmap generation.
+
+    Returns:
+        - compiled_context: text summary for roadmap generation
+        - key_insights: list of key insights
+        - extracted_schedule: daily_minutes, rest_days, intensity
+        - roadmap_requirements: current_level, specific_goal, etc.
+    """
+    llm = create_llm()
+
+    # Format Q&A for the prompt
+    qa_lines = []
+    answer_map = {a["question_id"]: a["answer"] for a in answers}
+
+    for q in questions:
+        answer = answer_map.get(q["id"], "")
+        qa_lines.append(f"Q: {q['question']}")
+        qa_lines.append(f"A: {answer}")
+        qa_lines.append("")
+
+    interview_qa = "\n".join(qa_lines)
+
+    prompt = COMPILE_CONTEXT_PROMPT.format(
         topic=topic,
         mode=mode,
         duration_months=duration_months,
-        user_id=user_id,
-        current_stage=1,
-        stages_completed=[],
-        max_followups_per_stage=max_followups_per_stage,
-        stage_data={},
-        current_questions=[],
-        current_answers=[],
-        current_evaluations=[],
-        followup_count=0,
-        pending_followup_questions=[],
-        is_complete=False,
-        compiled_context=None,
-        key_insights=[],
-        extracted_daily_minutes=None,
-        extracted_rest_days=None,
-        extracted_intensity=None,
-        error_message=None,
+        interview_qa=interview_qa,
     )
 
+    try:
+        response = llm.invoke([HumanMessage(content=prompt)])
+        result = json.loads(response.content)
+
+        # Extract schedule with defaults
+        schedule = result.get("extracted_schedule", {})
+
+        return {
+            "compiled_context": result.get("compiled_context", ""),
+            "key_insights": result.get("key_insights", []),
+            "extracted_daily_minutes": schedule.get("daily_minutes", 60),
+            "extracted_rest_days": schedule.get("rest_days", [5, 6]),  # Sat, Sun
+            "extracted_intensity": schedule.get("intensity", "moderate"),
+            "roadmap_requirements": result.get("roadmap_requirements", {}),
+        }
+
+    except (json.JSONDecodeError, KeyError) as e:
+        # Fallback context extraction
+        return extract_context_from_answers(questions, answers)
+
+
+def extract_context_from_answers(
+    questions: List[Dict[str, Any]],
+    answers: List[Dict[str, str]],
+) -> Dict[str, Any]:
+    """Fallback context extraction from answers."""
+    answer_map = {a["question_id"]: a["answer"] for a in answers}
+
+    # Extract daily minutes from answer
+    daily_time = answer_map.get("daily_time", "1~2시간")
+    if "30분 이하" in daily_time:
+        daily_minutes = 30
+    elif "30분~1시간" in daily_time:
+        daily_minutes = 45
+    elif "1~2시간" in daily_time:
+        daily_minutes = 90
+    elif "2~3시간" in daily_time:
+        daily_minutes = 150
+    else:
+        daily_minutes = 180
+
+    # Extract rest days
+    rest_days_answer = answer_map.get("rest_days", "주말(토,일) 휴식")
+    if "매일" in rest_days_answer:
+        rest_days = []
+    elif "주말" in rest_days_answer or "토,일" in rest_days_answer:
+        rest_days = [5, 6]
+    elif "일요일" in rest_days_answer:
+        rest_days = [6]
+    elif "토요일" in rest_days_answer:
+        rest_days = [5]
+    else:
+        rest_days = [6]
+
+    # Extract intensity
+    intensity_answer = answer_map.get("intensity", "적당한 속도로")
+    if "천천히" in intensity_answer or "꼼꼼" in intensity_answer:
+        intensity = "light"
+    elif "빠르" in intensity_answer or "도전" in intensity_answer:
+        intensity = "intense"
+    else:
+        intensity = "moderate"
+
+    # Build context
+    context_parts = []
+    for q in questions:
+        answer = answer_map.get(q["id"], "")
+        if answer:
+            context_parts.append(f"- {q['question']}: {answer}")
+
+    return {
+        "compiled_context": "\n".join(context_parts),
+        "key_insights": [answer_map.get("specific_goal", "")],
+        "extracted_daily_minutes": daily_minutes,
+        "extracted_rest_days": rest_days,
+        "extracted_intensity": intensity,
+        "roadmap_requirements": {
+            "current_level": answer_map.get("current_level", "beginner"),
+            "specific_goal": answer_map.get("specific_goal", ""),
+        },
+    }
+
+
+# ============ API Interface Functions ============
 
 def start_interview(
     topic: str,
@@ -157,148 +240,97 @@ def start_interview(
     session_id: Optional[str] = None,
     callbacks: Optional[List[Any]] = None,
 ) -> Dict[str, Any]:
-    """Start a new interview session and generate Stage 1 questions.
+    """Start a new interview session and generate all questions.
 
-    Args:
-        topic: Learning topic
-        mode: Learning mode (planning/learning)
-        duration_months: Duration in months
-        user_id: User ID
-        session_id: Optional session ID
-        callbacks: Optional list of LangChain callback handlers for streaming
-
-    Returns:
-        dict with session_id, current_stage, questions, and state
+    This is a simplified single-stage interview.
     """
-    state = create_initial_state(
-        topic=topic,
-        mode=mode,
-        duration_months=duration_months,
-        user_id=user_id,
-        session_id=session_id,
-    )
+    sid = session_id or str(uuid.uuid4())
 
-    # Run the graph to generate initial questions
-    graph = create_interview_graph()
-    config = {"callbacks": callbacks} if callbacks else {}
-    final_state = graph.invoke(state, config=config)
+    # Generate all questions at once
+    questions = generate_interview_questions(topic, mode, duration_months)
+
+    # Create state
+    state = {
+        "session_id": sid,
+        "topic": topic,
+        "mode": mode,
+        "duration_months": duration_months,
+        "user_id": user_id,
+        "current_stage": 1,
+        "stages_completed": [],
+        "stage_data": {},
+        "current_questions": questions,
+        "current_answers": [],
+        "current_evaluations": [],
+        "followup_count": 0,
+        "pending_followup_questions": [],
+        "is_complete": False,
+        "compiled_context": None,
+        "key_insights": [],
+        "extracted_daily_minutes": None,
+        "extracted_rest_days": None,
+        "extracted_intensity": None,
+        "error_message": None,
+    }
 
     return {
-        "session_id": final_state["session_id"],
-        "current_stage": final_state["current_stage"],
-        "questions": final_state["current_questions"],
-        "is_complete": final_state["is_complete"],
-        "state": final_state,
+        "session_id": sid,
+        "current_stage": 1,
+        "questions": questions,
+        "is_complete": False,
+        "state": state,
     }
 
 
 def submit_answers(
-    state: DeepInterviewState,
-    answers: List[InterviewAnswerData],
+    state: Dict[str, Any],
+    answers: List[Dict[str, str]],
     callbacks: Optional[List[Any]] = None,
 ) -> Dict[str, Any]:
-    """Submit answers and get the next set of questions or completion.
+    """Submit all answers and complete the interview.
 
-    Args:
-        state: Current interview state
-        answers: User's answers to current questions
-        callbacks: Optional list of LangChain callback handlers for streaming
-
-    Returns:
-        dict with updated state, questions (if any), and completion status
+    Since this is a single-stage interview, submitting answers completes it.
     """
-    # Update state with answers
+    # Store answers
     state["current_answers"] = answers
 
-    # Run evaluation graph
-    graph = create_evaluation_graph()
-    config = {"callbacks": callbacks} if callbacks else {}
-    final_state = graph.invoke(state, config=config)
+    # Compile context
+    context_result = compile_interview_context(
+        topic=state["topic"],
+        mode=state["mode"],
+        duration_months=state["duration_months"],
+        questions=state["current_questions"],
+        answers=answers,
+    )
 
-    result = {
-        "session_id": final_state["session_id"],
-        "current_stage": final_state["current_stage"],
-        "questions": final_state["current_questions"],
-        "is_complete": final_state["is_complete"],
-        "state": final_state,
-    }
+    # Update state with compiled results
+    state["is_complete"] = True
+    state["compiled_context"] = context_result["compiled_context"]
+    state["key_insights"] = context_result["key_insights"]
+    state["extracted_daily_minutes"] = context_result["extracted_daily_minutes"]
+    state["extracted_rest_days"] = context_result["extracted_rest_days"]
+    state["extracted_intensity"] = context_result["extracted_intensity"]
 
-    if final_state["is_complete"]:
-        result["compiled_context"] = final_state["compiled_context"]
-        result["key_insights"] = final_state["key_insights"]
-        result["schedule"] = {
-            "daily_minutes": final_state["extracted_daily_minutes"],
-            "rest_days": final_state["extracted_rest_days"],
-            "intensity": final_state["extracted_intensity"],
+    # Save to stage_data for compatibility
+    state["stage_data"] = {
+        1: {
+            "questions": state["current_questions"],
+            "answers": answers,
         }
-
-    return result
-
-
-def get_interview_summary(state: DeepInterviewState) -> Dict[str, Any]:
-    """Get a summary of the current interview state.
-
-    Returns:
-        dict with stage info, completion status, and insights
-    """
-    stages_info = []
-    for stage_num in [1, 2, 3]:
-        stage_data = state.get("stage_data", {}).get(stage_num)
-        if stage_data:
-            stages_info.append({
-                "stage": stage_num,
-                "questions_count": len(stage_data.get("questions", [])),
-                "answers_count": len(stage_data.get("answers", [])),
-                "completed": stage_num in state.get("stages_completed", []),
-            })
+    }
+    state["stages_completed"] = [1]
 
     return {
         "session_id": state["session_id"],
-        "topic": state["topic"],
-        "mode": state["mode"],
-        "current_stage": state["current_stage"],
-        "stages": stages_info,
-        "is_complete": state["is_complete"],
-        "key_insights": state.get("key_insights", []),
+        "current_stage": 1,
+        "questions": [],
+        "is_complete": True,
+        "compiled_context": context_result["compiled_context"],
+        "key_insights": context_result["key_insights"],
+        "schedule": {
+            "daily_minutes": context_result["extracted_daily_minutes"],
+            "rest_days": context_result["extracted_rest_days"],
+            "intensity": context_result["extracted_intensity"],
+        },
+        "state": state,
     }
-
-
-def serialize_state(state: DeepInterviewState) -> Dict[str, Any]:
-    """Serialize state to JSON-compatible dict for storage."""
-    # Convert TypedDicts to regular dicts
-    serialized = dict(state)
-
-    # Convert nested TypedDicts
-    if serialized.get("stage_data"):
-        serialized["stage_data"] = {
-            k: dict(v) for k, v in serialized["stage_data"].items()
-        }
-
-    if serialized.get("current_questions"):
-        serialized["current_questions"] = [
-            dict(q) for q in serialized["current_questions"]
-        ]
-
-    if serialized.get("current_answers"):
-        serialized["current_answers"] = [
-            dict(a) for a in serialized["current_answers"]
-        ]
-
-    if serialized.get("current_evaluations"):
-        serialized["current_evaluations"] = [
-            dict(e) for e in serialized["current_evaluations"]
-        ]
-
-    if serialized.get("pending_followup_questions"):
-        serialized["pending_followup_questions"] = [
-            dict(q) for q in serialized["pending_followup_questions"]
-        ]
-
-    return serialized
-
-
-def deserialize_state(data: Dict[str, Any]) -> DeepInterviewState:
-    """Deserialize state from JSON-compatible dict."""
-    # This creates a DeepInterviewState from the dict
-    # TypedDict works like a dict, so we can construct directly
-    return DeepInterviewState(**data)

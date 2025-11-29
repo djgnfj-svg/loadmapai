@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MessageCircle, Loader2, ChevronRight, CheckCircle2, AlertCircle } from 'lucide-react';
+import { MessageCircle, Loader2, ChevronRight, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { cn } from '@/lib/utils';
 import type {
@@ -17,18 +17,6 @@ interface DeepInterviewStepProps {
   onSubmitAnswers: (answers: InterviewAnswer[]) => void;
   isSubmitting: boolean;
 }
-
-const STAGE_NAMES: Record<number, string> = {
-  1: '목표 구체화',
-  2: '현재 상태 파악',
-  3: '제약 조건',
-};
-
-const STAGE_DESCRIPTIONS: Record<number, string> = {
-  1: '어떤 목표를 이루고 싶으신가요?',
-  2: '현재 어느 정도 알고 계신가요?',
-  3: '학습 일정을 설정해볼까요?',
-};
 
 export function DeepInterviewStep({
   sessionId,
@@ -54,12 +42,16 @@ export function DeepInterviewStep({
   if (isLoading) {
     return (
       <div className="text-center py-12">
-        <Loader2 className="h-12 w-12 animate-spin text-primary-600 dark:text-primary-400 mx-auto mb-4" />
+        <div className="relative inline-flex mb-4">
+          <div className="p-4 rounded-full bg-primary-100 dark:bg-primary-500/20">
+            <Sparkles className="h-8 w-8 text-primary-600 dark:text-primary-400 animate-pulse" />
+          </div>
+        </div>
         <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-          AI가 질문을 준비 중입니다
+          AI가 맞춤 질문을 생성 중입니다
         </h2>
         <p className="text-gray-500 dark:text-gray-400">
-          맞춤형 로드맵을 위한 심층 질문을 생성하고 있어요...
+          주제에 최적화된 질문을 준비하고 있어요...
         </p>
       </div>
     );
@@ -81,7 +73,7 @@ export function DeepInterviewStep({
     return null;
   }
 
-  const { current_stage, stage_name, questions, is_followup } = questionsData;
+  const { questions } = questionsData;
 
   const handleAnswerChange = (questionId: string, answer: string) => {
     setAnswers((prev) => ({
@@ -94,6 +86,10 @@ export function DeepInterviewStep({
     (q) => answers[q.id] && answers[q.id].trim().length > 0
   );
 
+  const answeredCount = questions.filter(
+    (q) => answers[q.id] && answers[q.id].trim().length > 0
+  ).length;
+
   const handleSubmit = () => {
     const answersList: InterviewAnswer[] = Object.entries(answers)
       .filter(([_, value]) => value.trim().length > 0)
@@ -103,53 +99,32 @@ export function DeepInterviewStep({
 
   return (
     <div className="space-y-6">
-      {/* Stage Progress */}
-      <div className="flex items-center justify-center gap-2 mb-6">
-        {[1, 2, 3].map((stage) => (
-          <div key={stage} className="flex items-center">
-            <div
-              className={cn(
-                'w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors',
-                stage < current_stage
-                  ? 'bg-green-500 text-white'
-                  : stage === current_stage
-                  ? 'bg-primary-600 dark:bg-primary-500 text-white'
-                  : 'bg-gray-200 dark:bg-dark-600 text-gray-500 dark:text-gray-400'
-              )}
-            >
-              {stage < current_stage ? (
-                <CheckCircle2 className="h-4 w-4" />
-              ) : (
-                stage
-              )}
-            </div>
-            {stage < 3 && (
-              <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500 mx-1" />
-            )}
-          </div>
-        ))}
-      </div>
-
       {/* Header */}
       <div className="text-center">
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary-100 dark:bg-primary-500/20 text-primary-700 dark:text-primary-400 rounded-full mb-4">
           <MessageCircle className="h-4 w-4" />
           <span className="text-sm font-medium">
-            {is_followup ? '추가 질문' : `Stage ${current_stage}: ${stage_name}`}
+            AI 맞춤 질문 ({answeredCount}/{questions.length})
           </span>
         </div>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          {is_followup ? '조금 더 구체적으로 알려주세요' : STAGE_DESCRIPTIONS[current_stage] || '질문에 답해주세요'}
+          로드맵을 위한 정보 수집
         </h2>
         <p className="text-gray-500 dark:text-gray-400">
-          {is_followup
-            ? '더 정확한 로드맵을 위해 추가 정보가 필요해요.'
-            : '더 맞춤화된 로드맵을 만들기 위해 필요한 정보입니다.'}
+          AI가 최적의 로드맵을 만들기 위해 필요한 정보입니다
         </p>
       </div>
 
+      {/* Progress Bar */}
+      <div className="w-full h-2 bg-gray-200 dark:bg-dark-600 rounded-full overflow-hidden">
+        <div
+          className="h-full bg-primary-500 transition-all duration-300 ease-out"
+          style={{ width: `${(answeredCount / questions.length) * 100}%` }}
+        />
+      </div>
+
       {/* Questions */}
-      <div className="space-y-6">
+      <div className="space-y-4">
         {questions.map((question, index) => (
           <QuestionInput
             key={question.id}
@@ -168,16 +143,14 @@ export function DeepInterviewStep({
           onClick={handleSubmit}
           disabled={!allAnswered || isSubmitting}
           isLoading={isSubmitting}
+          className="px-8"
         >
-          {current_stage < 3 ? (
-            <>
-              다음 단계로
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </>
+          {isSubmitting ? (
+            '분석 중...'
           ) : (
             <>
-              인터뷰 완료
-              <CheckCircle2 className="h-4 w-4 ml-1" />
+              완료
+              <CheckCircle2 className="h-4 w-4 ml-2" />
             </>
           )}
         </Button>
@@ -194,16 +167,26 @@ interface QuestionInputProps {
 }
 
 function QuestionInput({ question, index, answer, onAnswerChange }: QuestionInputProps) {
+  const isAnswered = answer.trim().length > 0;
+
   return (
     <div
       className={cn(
-        'p-4 rounded-xl border',
-        'border-gray-200 dark:border-dark-600',
-        'bg-white dark:bg-dark-800'
+        'p-4 rounded-xl border transition-all duration-200',
+        isAnswered
+          ? 'border-primary-300 dark:border-primary-500/50 bg-primary-50/50 dark:bg-primary-500/5'
+          : 'border-gray-200 dark:border-dark-600 bg-white dark:bg-dark-800'
       )}
     >
       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-        <span className="text-primary-600 dark:text-primary-400 mr-2">Q{index + 1}.</span>
+        <span className={cn(
+          'mr-2 inline-flex items-center justify-center w-6 h-6 rounded-full text-xs',
+          isAnswered
+            ? 'bg-primary-500 text-white'
+            : 'bg-gray-200 dark:bg-dark-600 text-gray-600 dark:text-gray-400'
+        )}>
+          {isAnswered ? <CheckCircle2 className="h-3.5 w-3.5" /> : index + 1}
+        </span>
         {question.question}
       </label>
 
@@ -221,19 +204,19 @@ function QuestionInput({ question, index, answer, onAnswerChange }: QuestionInpu
             'focus:outline-none focus:ring-2 focus:ring-primary-500',
             'resize-none'
           )}
-          rows={3}
+          rows={2}
         />
       ) : (
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {question.options?.map((option) => (
             <button
               key={option}
               type="button"
               onClick={() => onAnswerChange(option)}
               className={cn(
-                'w-full text-left px-4 py-3 rounded-lg border transition-all',
+                'text-left px-4 py-3 rounded-lg border transition-all text-sm',
                 answer === option
-                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-500/10 text-primary-700 dark:text-primary-400'
+                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-500/10 text-primary-700 dark:text-primary-400 font-medium'
                   : 'border-gray-200 dark:border-dark-600 hover:border-gray-300 dark:hover:border-dark-500 text-gray-700 dark:text-gray-300'
               )}
             >
@@ -261,15 +244,15 @@ export function InterviewCompleted({ data, onGenerateRoadmap, isGenerating }: In
           <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
         </div>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          인터뷰가 완료되었습니다!
+          준비 완료!
         </h2>
         <p className="text-gray-500 dark:text-gray-400">
-          AI가 분석한 핵심 인사이트를 확인하세요.
+          AI가 분석한 핵심 정보를 확인하세요
         </p>
       </div>
 
       {/* Key Insights */}
-      {data.key_insights.length > 0 && (
+      {data.key_insights && data.key_insights.length > 0 && (
         <div className="bg-gray-50 dark:bg-dark-700 rounded-xl p-4">
           <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
             핵심 인사이트
@@ -286,32 +269,34 @@ export function InterviewCompleted({ data, onGenerateRoadmap, isGenerating }: In
       )}
 
       {/* Schedule Summary */}
-      <div className="bg-gray-50 dark:bg-dark-700 rounded-xl p-4">
-        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-          학습 스케줄
-        </h3>
-        <div className="grid grid-cols-3 gap-4 text-center">
-          <div>
-            <div className="text-2xl font-bold text-primary-600 dark:text-primary-400">
-              {data.schedule.daily_minutes || 60}분
+      {data.schedule && (
+        <div className="bg-gray-50 dark:bg-dark-700 rounded-xl p-4">
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+            학습 스케줄
+          </h3>
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <div className="text-2xl font-bold text-primary-600 dark:text-primary-400">
+                {data.schedule.daily_minutes || 60}분
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">하루 학습</div>
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">하루 학습</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-primary-600 dark:text-primary-400">
-              {data.schedule.rest_days?.length || 0}일
+            <div>
+              <div className="text-2xl font-bold text-primary-600 dark:text-primary-400">
+                {data.schedule.rest_days?.length || 0}일
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">주간 휴식</div>
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">주간 휴식</div>
-          </div>
-          <div>
-            <div className="text-lg font-bold text-primary-600 dark:text-primary-400">
-              {data.schedule.intensity === 'light' ? '여유롭게' :
-               data.schedule.intensity === 'intense' ? '빡세게' : '균형있게'}
+            <div>
+              <div className="text-lg font-bold text-primary-600 dark:text-primary-400">
+                {data.schedule.intensity === 'light' ? '여유롭게' :
+                 data.schedule.intensity === 'intense' ? '빡세게' : '균형있게'}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">학습 강도</div>
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">학습 강도</div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Generate Button */}
       <Button
@@ -321,7 +306,12 @@ export function InterviewCompleted({ data, onGenerateRoadmap, isGenerating }: In
         isLoading={isGenerating}
         disabled={isGenerating}
       >
-        {isGenerating ? '로드맵 생성 중...' : '맞춤형 로드맵 생성하기'}
+        {isGenerating ? '로드맵 생성 중...' : (
+          <>
+            <Sparkles className="h-4 w-4 mr-2" />
+            맞춤형 로드맵 생성하기
+          </>
+        )}
       </Button>
     </div>
   );
