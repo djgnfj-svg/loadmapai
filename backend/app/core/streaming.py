@@ -93,15 +93,26 @@ class StreamingManager:
 
     async def stream(self) -> AsyncGenerator[str, None]:
         """Generate SSE events."""
-        while not self._is_complete:
-            try:
-                event = await asyncio.wait_for(self._queue.get(), timeout=30.0)
-                yield event.to_sse()
+        # Send initial connection event to establish SSE stream
+        yield ": connected\n\n"
 
+        while True:
+            try:
+                event = await asyncio.wait_for(self._queue.get(), timeout=1.0)
+                sse_data = event.to_sse()
+                print(f"[DEBUG] Streaming event: {event.event_type.value}")
+                yield sse_data
+
+                # Exit AFTER yielding complete/error events
                 if event.event_type in (StreamEventType.COMPLETE, StreamEventType.ERROR):
+                    print(f"[DEBUG] Stream ending after {event.event_type.value}")
                     break
             except asyncio.TimeoutError:
-                # Send keepalive
+                # Check if complete flag was set (fallback in case event was missed)
+                if self._is_complete:
+                    print("[DEBUG] Stream ending due to _is_complete flag")
+                    break
+                # Send keepalive to keep connection alive
                 yield ": keepalive\n\n"
 
 

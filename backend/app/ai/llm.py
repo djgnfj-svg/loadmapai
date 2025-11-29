@@ -6,7 +6,7 @@ This module provides:
 - Consistent error handling patterns
 """
 import json
-from typing import Any
+import os
 
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage
@@ -14,8 +14,11 @@ from langchain_core.messages import HumanMessage
 from app.config import settings
 
 
-# Default model for all AI operations
-DEFAULT_MODEL = "claude-sonnet-4-5-20250929"
+# Claude 설정 (DEV_MODE에 따라 모델 선택)
+DEV_MODE = os.getenv("DEV_MODE", "true").lower() == "true"
+CLAUDE_MODEL = "claude-3-5-haiku-20241022" if DEV_MODE else "claude-sonnet-4-5-20250929"
+
+print(f"[AI] Claude model: {CLAUDE_MODEL} (DEV_MODE={DEV_MODE})")
 
 
 def create_llm(temperature: float = 0.7) -> ChatAnthropic:
@@ -26,11 +29,15 @@ def create_llm(temperature: float = 0.7) -> ChatAnthropic:
             - 0.3: Evaluation, grading, validation
             - 0.5: Analysis, topic understanding
             - 0.7: Generation, creative content (default)
+
+    Returns:
+        ChatAnthropic instance
     """
     return ChatAnthropic(
-        model=DEFAULT_MODEL,
+        model=CLAUDE_MODEL,
         anthropic_api_key=settings.anthropic_api_key,
         temperature=temperature,
+        max_tokens=4096,
     )
 
 

@@ -53,7 +53,11 @@ def generate_interview_questions(
 
 
 def _get_default_questions(topic: str, mode: str) -> List[InterviewQuestionData]:
-    """Return default interview questions as fallback."""
+    """Return default interview questions as fallback.
+
+    These are topic-specific questions that help create a better roadmap.
+    Avoids generic time/schedule questions.
+    """
     base_questions: List[InterviewQuestionData] = [
         {
             "id": "experience_level",
@@ -63,41 +67,34 @@ def _get_default_questions(topic: str, mode: str) -> List[InterviewQuestionData]
             "placeholder": None,
         },
         {
-            "id": "daily_time",
-            "question": "하루에 얼마나 시간을 투자할 수 있나요?",
-            "question_type": "single_choice",
-            "options": ["30분 이내", "30분~1시간", "1~2시간", "2시간 이상"],
-            "placeholder": None,
-        },
-        {
-            "id": "rest_days",
-            "question": "주중에 학습을 쉬는 날이 있나요?",
-            "question_type": "single_choice",
-            "options": ["없음 (매일 학습)", "주말만 휴식 (토,일)", "일요일만 휴식", "토요일만 휴식"],
-            "placeholder": None,
-        },
-        {
-            "id": "intensity",
-            "question": "원하는 학습 강도는 어느 정도인가요?",
-            "question_type": "single_choice",
-            "options": ["여유롭게 (light)", "균형있게 (moderate)", "빡세게 (intense)"],
-            "placeholder": None,
-        },
-        {
             "id": "specific_goal",
-            "question": "이 주제를 통해 달성하고 싶은 구체적인 목표가 있나요?",
+            "question": f"{topic}을(를) 통해 달성하고 싶은 구체적인 목표가 있나요?",
             "question_type": "text",
             "options": None,
             "placeholder": "예: 포트폴리오용 프로젝트 완성, 자격증 취득, 실무 적용 등",
+        },
+        {
+            "id": "background",
+            "question": "관련된 배경 지식이나 경험이 있나요?",
+            "question_type": "text",
+            "options": None,
+            "placeholder": "예: 관련 전공, 비슷한 분야 경험, 사전 지식 등",
+        },
+        {
+            "id": "constraints",
+            "question": "이 계획을 진행할 때 고려해야 할 제약사항이 있나요?",
+            "question_type": "text",
+            "options": None,
+            "placeholder": "예: 예산, 장비, 환경 등",
         },
     ]
 
     if mode == "learning":
         base_questions.append({
-            "id": "learning_style",
-            "question": "선호하는 학습 방식이 있나요?",
+            "id": "learning_preference",
+            "question": "어떤 방식으로 배우는 것을 선호하나요?",
             "question_type": "single_choice",
-            "options": ["영상 강의 위주", "문서/책 위주", "직접 실습 위주", "혼합 (다양하게)"],
+            "options": ["이론부터 탄탄히", "실습하며 배우기", "프로젝트 기반 학습", "다양하게 혼합"],
             "placeholder": None,
         })
     else:
