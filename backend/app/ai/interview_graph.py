@@ -12,11 +12,9 @@ import json
 import uuid
 from typing import Dict, List, Any, Optional
 
-from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage
 
-from app.config import settings
-from app.ai.state import DeepInterviewState
+from app.ai.llm import create_llm, parse_json_response
 from app.ai.prompts.interview_prompts import (
     COMPREHENSIVE_INTERVIEW_PROMPT,
     COMPILE_CONTEXT_PROMPT,
@@ -30,26 +28,6 @@ from app.ai.prompts.interview_prompts import (
 # ============ Constants ============
 MAX_ROUNDS = 3
 MAX_CONSECUTIVE_INVALID = 3
-
-
-def create_llm(temperature: float = 0.7):
-    """Create LLM instance."""
-    return ChatAnthropic(
-        model="claude-sonnet-4-5-20250929",
-        anthropic_api_key=settings.anthropic_api_key,
-        temperature=temperature,
-    )
-
-
-def parse_json_response(content: str) -> dict:
-    """Parse JSON from AI response, stripping markdown code blocks if present."""
-    # Strip markdown code blocks if present
-    if "```json" in content:
-        content = content.split("```json")[1].split("```")[0]
-    elif "```" in content:
-        content = content.split("```")[1].split("```")[0]
-
-    return json.loads(content.strip())
 
 
 # ============ Question Generation ============

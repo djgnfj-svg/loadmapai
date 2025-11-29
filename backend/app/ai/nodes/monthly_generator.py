@@ -1,18 +1,8 @@
-import json
-from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage
 
-from app.config import settings
+from app.ai.llm import create_llm, parse_json_response
 from app.ai.state import RoadmapGenerationState
 from app.ai.prompts.templates import MONTHLY_GOALS_PROMPT, MONTHLY_GOALS_WITH_CONTEXT_PROMPT
-
-
-def create_llm():
-    return ChatAnthropic(
-        model="claude-sonnet-4-5-20250929",
-        anthropic_api_key=settings.anthropic_api_key,
-        temperature=0.7,
-    )
 
 
 def monthly_generator(state: RoadmapGenerationState) -> RoadmapGenerationState:
@@ -38,9 +28,9 @@ def monthly_generator(state: RoadmapGenerationState) -> RoadmapGenerationState:
     response = llm.invoke([HumanMessage(content=prompt)])
 
     try:
-        result = json.loads(response.content)
+        result = parse_json_response(response.content)
         state["monthly_goals"] = result["monthly_goals"]
-    except (json.JSONDecodeError, KeyError) as e:
+    except (ValueError, KeyError) as e:
         state["error_message"] = f"Failed to parse monthly goals: {str(e)}"
         # Generate fallback monthly goals
         state["monthly_goals"] = [

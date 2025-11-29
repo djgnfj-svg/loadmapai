@@ -1,18 +1,10 @@
 import json
-from langchain_anthropic import ChatAnthropic
+
 from langchain_core.messages import HumanMessage
 
-from app.config import settings
+from app.ai.llm import create_llm, parse_json_response
 from app.ai.state import GradingState, GradingResultData
 from app.ai.prompts.templates import ANSWER_GRADING_PROMPT
-
-
-def create_llm():
-    return ChatAnthropic(
-        model="claude-sonnet-4-5-20250929",
-        anthropic_api_key=settings.anthropic_api_key,
-        temperature=0.3,
-    )
 
 
 def normalize_option(opt: str) -> str:
@@ -22,7 +14,7 @@ def normalize_option(opt: str) -> str:
 
 def answer_analyzer(state: GradingState) -> GradingState:
     """Analyze and grade user answers."""
-    llm = create_llm()
+    llm = create_llm(temperature=0.3)
     grading_results: list[GradingResultData] = []
 
     for answer in state["answers"]:
@@ -64,7 +56,7 @@ def answer_analyzer(state: GradingState) -> GradingState:
 
         try:
             response = llm.invoke([HumanMessage(content=prompt)])
-            grading = json.loads(response.content)
+            grading = parse_json_response(response.content)
 
             result: GradingResultData = {
                 "question_id": answer["question_id"],

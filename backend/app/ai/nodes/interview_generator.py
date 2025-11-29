@@ -1,23 +1,14 @@
-import json
-from langchain_anthropic import ChatAnthropic
-from langchain_core.messages import HumanMessage
 from typing import List, Dict, Any
 
-from app.config import settings
-from app.ai.state import InterviewState, InterviewQuestionData
+from langchain_core.messages import HumanMessage
+
+from app.ai.llm import create_llm, parse_json_response
+from app.ai.state import InterviewQuestionData
 from app.ai.prompts.templates import (
     INTERVIEW_QUESTIONS_PROMPT,
     INTERVIEW_MODE_LEARNING_GUIDE,
     INTERVIEW_MODE_PLANNING_GUIDE,
 )
-
-
-def create_llm():
-    return ChatAnthropic(
-        model="claude-sonnet-4-5-20250929",
-        anthropic_api_key=settings.anthropic_api_key,
-        temperature=0.7,
-    )
 
 
 def generate_interview_questions(
@@ -41,7 +32,7 @@ def generate_interview_questions(
 
     try:
         response = llm.invoke([HumanMessage(content=prompt)])
-        result = json.loads(response.content)
+        result = parse_json_response(response.content)
         questions = result.get("questions", [])
 
         # Validate and transform questions
@@ -56,7 +47,7 @@ def generate_interview_questions(
             })
 
         return validated_questions
-    except (json.JSONDecodeError, KeyError) as e:
+    except (ValueError, KeyError):
         # Return default questions if AI fails
         return _get_default_questions(topic, mode)
 

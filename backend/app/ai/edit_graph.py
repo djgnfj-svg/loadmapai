@@ -12,10 +12,9 @@ import json
 from typing import TypedDict, List, Optional, Dict, Any
 from enum import Enum
 
-from langchain_anthropic import ChatAnthropic
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage
 
-from app.config import settings
+from app.ai.llm import create_llm, parse_json_response
 
 
 class EditIntent(str, Enum):
@@ -59,15 +58,6 @@ class EditState(TypedDict):
     changes: List[EditChange]
     response_message: str
     suggestions: List[str]  # 추가 제안사항
-
-
-def create_llm():
-    """Create Claude LLM instance."""
-    return ChatAnthropic(
-        model="claude-sonnet-4-5-20250929",
-        anthropic_api_key=settings.anthropic_api_key,
-        temperature=0.7,
-    )
 
 
 INTENT_ANALYSIS_PROMPT = """당신은 학습 로드맵 편집을 돕는 AI 어시스턴트입니다.
@@ -180,9 +170,9 @@ async def analyze_intent(
 
     try:
         response = llm.invoke([HumanMessage(content=prompt)])
-        result = json.loads(response.content)
+        result = parse_json_response(response.content)
         return result
-    except (json.JSONDecodeError, Exception) as e:
+    except (ValueError, Exception) as e:
         return {
             "intent": "explain",
             "targets": [],
@@ -211,9 +201,9 @@ async def generate_changes(
 
     try:
         response = llm.invoke([HumanMessage(content=prompt)])
-        result = json.loads(response.content)
+        result = parse_json_response(response.content)
         return result
-    except (json.JSONDecodeError, Exception) as e:
+    except (ValueError, Exception) as e:
         return {
             "changes": [],
             "response_message": f"변경사항을 생성하지 못했습니다: {str(e)}",

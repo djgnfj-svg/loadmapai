@@ -459,23 +459,13 @@ async def generate_roadmap_skeleton(
     This provides the structure of the roadmap before detailed tasks are generated.
     Used to show a preview while the user answers interview questions.
     """
-    from langchain_anthropic import ChatAnthropic
-    from langchain_core.messages import HumanMessage
+    from app.ai.llm import invoke_llm
     from app.ai.prompts.interview_prompts import (
         SKELETON_GENERATION_PROMPT,
         get_mode_description,
     )
-    from app.config import settings
 
     try:
-        # Get LLM
-        llm = ChatAnthropic(
-            model="claude-sonnet-4-5-20250929",
-            anthropic_api_key=settings.anthropic_api_key,
-            temperature=0.7,
-        )
-
-        # Format prompt
         prompt = SKELETON_GENERATION_PROMPT.format(
             topic=request.topic,
             mode=request.mode,
@@ -483,19 +473,7 @@ async def generate_roadmap_skeleton(
             duration_months=request.duration_months,
         )
 
-        # Generate skeleton
-        response = llm.invoke([HumanMessage(content=prompt)])
-
-        # Parse JSON response
-        content = response.content if hasattr(response, 'content') else str(response)
-
-        # Clean up JSON (remove markdown code blocks if present)
-        if "```json" in content:
-            content = content.split("```json")[1].split("```")[0]
-        elif "```" in content:
-            content = content.split("```")[1].split("```")[0]
-
-        skeleton = json.loads(content.strip())
+        skeleton = invoke_llm(prompt)
 
         return {
             "success": True,
@@ -505,7 +483,7 @@ async def generate_roadmap_skeleton(
             "duration_months": request.duration_months,
         }
 
-    except json.JSONDecodeError as e:
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"AI 응답 파싱 실패: {str(e)}",

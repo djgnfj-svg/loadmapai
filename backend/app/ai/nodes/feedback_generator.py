@@ -1,23 +1,15 @@
 import json
-from langchain_anthropic import ChatAnthropic
+
 from langchain_core.messages import HumanMessage
 
-from app.config import settings
+from app.ai.llm import create_llm, parse_json_response
 from app.ai.state import GradingState
 from app.ai.prompts.templates import FEEDBACK_SUMMARY_PROMPT
 
 
-def create_llm():
-    return ChatAnthropic(
-        model="claude-sonnet-4-5-20250929",
-        anthropic_api_key=settings.anthropic_api_key,
-        temperature=0.5,
-    )
-
-
 def feedback_generator(state: GradingState) -> GradingState:
     """Generate overall feedback summary for the quiz."""
-    llm = create_llm()
+    llm = create_llm(temperature=0.5)
 
     # Prepare results JSON for prompt
     results_json = json.dumps([
@@ -40,12 +32,12 @@ def feedback_generator(state: GradingState) -> GradingState:
 
     try:
         response = llm.invoke([HumanMessage(content=prompt)])
-        result = json.loads(response.content)
+        result = parse_json_response(response.content)
 
         state["feedback_summary"] = result.get("feedback_summary", _generate_default_summary(state))
         state["strengths"] = result.get("strengths", [])
         state["areas_to_improve"] = result.get("areas_to_improve", [])
-    except (json.JSONDecodeError, KeyError):
+    except (ValueError, KeyError):
         state["feedback_summary"] = _generate_default_summary(state)
         state["strengths"] = []
         state["areas_to_improve"] = []

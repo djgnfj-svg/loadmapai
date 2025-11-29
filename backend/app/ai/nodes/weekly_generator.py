@@ -1,18 +1,8 @@
-import json
-from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage
 
-from app.config import settings
+from app.ai.llm import create_llm, parse_json_response
 from app.ai.state import RoadmapGenerationState
 from app.ai.prompts.templates import WEEKLY_TASKS_PROMPT, WEEKLY_TASKS_WITH_CONTEXT_PROMPT
-
-
-def create_llm():
-    return ChatAnthropic(
-        model="claude-sonnet-4-5-20250929",
-        anthropic_api_key=settings.anthropic_api_key,
-        temperature=0.7,
-    )
 
 
 def weekly_generator(state: RoadmapGenerationState) -> RoadmapGenerationState:
@@ -43,9 +33,9 @@ def weekly_generator(state: RoadmapGenerationState) -> RoadmapGenerationState:
         response = llm.invoke([HumanMessage(content=prompt)])
 
         try:
-            result = json.loads(response.content)
+            result = parse_json_response(response.content)
             weekly_tasks = result["weekly_tasks"]
-        except (json.JSONDecodeError, KeyError):
+        except (ValueError, KeyError):
             # Generate fallback weekly tasks
             weekly_tasks = [
                 {
