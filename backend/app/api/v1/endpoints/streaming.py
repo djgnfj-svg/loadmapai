@@ -284,8 +284,12 @@ async def submit_answers_streaming(
                     "is_complete": False,
                     "current_round": result.get("current_round", 1),
                     "max_rounds": result.get("max_rounds", 10),
-                    "questions": result["questions"],
+                    "questions": result.get("questions", []),  # .get() 사용
                     "is_followup": result.get("is_followup", False),
+                    # 종료 관련
+                    "is_terminated": result.get("is_terminated", False),
+                    "termination_reason": result.get("termination_reason"),
+                    "error_message": result.get("error_message"),
                     # NEW: 라운드 분석 결과
                     "feedback": result.get("feedback"),
                     "draft_roadmap": result.get("draft_roadmap"),

@@ -566,6 +566,7 @@ def submit_answers(
             return {
                 "session_id": state["session_id"],
                 "current_round": current_round,
+                "questions": [],  # 빈 질문 리스트 추가
                 "is_complete": False,
                 "is_terminated": True,
                 "termination_reason": termination["reason"],
