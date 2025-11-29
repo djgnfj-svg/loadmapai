@@ -608,3 +608,208 @@ DAILY_TASKS_WITH_CONTEXT_PROMPT = """주제: {topic}
 }}
 
 JSON만 응답하세요."""
+
+
+# ============ OKR-based Roadmap Generation Prompts ============
+
+ROADMAP_WITH_OKR_PROMPT = """당신은 OKR(Objectives and Key Results) 방법론을 활용하는 전문 로드맵 설계자입니다.
+
+## 프로젝트 정보
+- 주제: {topic}
+- 기간: {duration_months}개월
+- 모드: {mode}
+
+## SMART 인터뷰 결과
+{interview_context}
+
+## Key Results (핵심 결과 지표)
+{key_results}
+
+## 당신의 역할
+위 Key Results를 달성하기 위한 **구체적이고 측정 가능한** 로드맵을 생성하세요.
+
+## OKR 기반 설계 원칙
+1. **Objective (목표)**: 각 월별 목표는 Key Results 중 하나와 직접 연결
+2. **Key Results 연계**: 모든 주간/일간 태스크는 Key Results 달성에 기여
+3. **측정 가능성**: 각 단계 완료 여부를 명확히 판단 가능
+4. **70% 원칙**: 야심차지만 70% 달성이 성공으로 간주될 수 있는 수준
+
+## 마일스톤 설정 기준
+- 1개월차: 기초 확립 (전체 Key Results의 20% 진행)
+- 중간 지점: 핵심 역량 구축 (전체 Key Results의 50% 진행)
+- 마지막 달: 완성 및 검증 (전체 Key Results의 100% 목표)
+
+응답 형식 (JSON):
+{{
+    "objective": "이 로드맵의 핵심 Objective (1문장)",
+    "title": "로드맵 제목 (30자 이내)",
+    "description": "로드맵 설명 (Key Results 반영, 100자 이내)",
+    "monthly_goals": [
+        {{
+            "month_number": 1,
+            "title": "1개월차 목표",
+            "description": "이 달에 달성할 구체적 목표",
+            "key_result_focus": "이 달에 집중할 Key Result",
+            "milestone": "이 달 완료 시 확인할 수 있는 구체적 결과물"
+        }}
+        // ...
+    ]
+}}
+
+JSON만 응답하세요."""
+
+MONTHLY_WITH_OKR_PROMPT = """주제: {topic}
+기간: {duration_months}개월
+로드맵 제목: {title}
+모드: {mode}
+
+## 사용자 인터뷰 결과
+{interview_context}
+
+## Key Results (핵심 결과 지표)
+{key_results}
+
+## 웹 검색 컨텍스트 (최신 트렌드/학습 경로)
+{search_context}
+
+위 정보를 바탕으로 {duration_months}개월 동안의 월별 학습 목표를 생성해주세요.
+
+## 월별 목표 설계 원칙
+1. **Key Results 분배**: 각 Key Result를 월별로 적절히 분배
+2. **점진적 난이도**: 기초 → 심화 → 응용 → 완성의 흐름
+3. **마일스톤 포함**: 각 월 종료 시 확인 가능한 성과물 명시
+4. **검색 결과 반영**: 업계 표준 학습 경로와 추천 자료 고려
+
+응답 형식 (JSON):
+{{
+    "monthly_goals": [
+        {{
+            "month_number": 1,
+            "title": "1개월차 목표 제목",
+            "description": "구체적인 학습 목표 설명",
+            "key_result_focus": "이 달에 집중할 Key Result",
+            "milestone": "월말 확인 가능한 구체적 성과물",
+            "success_criteria": "성공 판단 기준 (측정 가능)"
+        }},
+        ...
+    ]
+}}
+
+JSON만 응답하세요."""
+
+WEEKLY_WITH_OKR_PROMPT = """주제: {topic}
+월별 목표: {monthly_goal_title}
+월별 목표 설명: {monthly_goal_description}
+이 달의 Key Result 초점: {key_result_focus}
+이 달의 마일스톤: {milestone}
+해당 월: {month_number}개월차
+모드: {mode}
+
+## 사용자 인터뷰 결과
+{interview_context}
+
+위 월별 목표와 Key Result를 달성하기 위한 4주간의 주별 학습 과제를 생성해주세요.
+
+## 주간 과제 설계 원칙
+1. **Key Result 기여**: 각 주간 과제가 해당 월의 Key Result에 어떻게 기여하는지 명확히
+2. **점진적 진행**: 주 1 (25%) → 주 2 (50%) → 주 3 (75%) → 주 4 (100%) 진행률
+3. **측정 가능**: 주간 과제 완료 여부를 명확히 판단 가능
+4. **복습 포함**: 4주차에는 월간 내용 정리 및 복습 포함
+
+응답 형식 (JSON):
+{{
+    "weekly_tasks": [
+        {{
+            "week_number": 1,
+            "title": "1주차 과제 제목",
+            "description": "구체적인 학습 과제 설명",
+            "key_result_contribution": "이 주간 과제가 Key Result에 기여하는 방식",
+            "deliverable": "주말에 확인 가능한 구체적 결과물"
+        }},
+        {{
+            "week_number": 2,
+            "title": "2주차 과제 제목",
+            "description": "구체적인 학습 과제 설명",
+            "key_result_contribution": "Key Result 기여 방식",
+            "deliverable": "주말 확인 결과물"
+        }},
+        {{
+            "week_number": 3,
+            "title": "3주차 과제 제목",
+            "description": "구체적인 학습 과제 설명",
+            "key_result_contribution": "Key Result 기여 방식",
+            "deliverable": "주말 확인 결과물"
+        }},
+        {{
+            "week_number": 4,
+            "title": "4주차 과제 제목 (월간 정리)",
+            "description": "월간 내용 정리 및 마일스톤 점검",
+            "key_result_contribution": "월간 Key Result 달성 확인",
+            "deliverable": "월간 마일스톤 완료 확인"
+        }}
+    ]
+}}
+
+JSON만 응답하세요."""
+
+DAILY_WITH_OKR_PROMPT = """주제: {topic}
+주별 과제: {weekly_task_title}
+주별 과제 설명: {weekly_task_description}
+이 주의 Key Result 기여: {key_result_contribution}
+이 주의 결과물: {deliverable}
+해당 주: {month_number}개월차 {week_number}주차
+모드: {mode}
+
+## 사용자 인터뷰 결과
+{interview_context}
+
+하루 투자 가능 시간: {daily_time}
+휴식일: {rest_days}
+학습 강도: {intensity}
+
+위 주별 과제를 완수하기 위한 7일간의 일별 학습 태스크를 생성해주세요.
+
+## 일일 태스크 설계 원칙
+1. **시간 준수**: 각 태스크는 하루 {daily_time} 내 완료 가능
+2. **구체적 행동**: "~를 학습한다" 대신 "~를 사용하여 ~를 만든다"처럼 행동 중심
+3. **검증 가능**: 태스크 완료 여부를 스스로 확인 가능
+4. **휴식 반영**: 휴식일({rest_days})에는 복습 또는 가벼운 과제
+5. **주간 결과물 연결**: 7일 완료 시 주간 결과물({deliverable}) 완성 가능
+
+## 강도별 가이드
+- light: 이론 중심, 가벼운 실습
+- moderate: 이론과 실습 균형
+- intense: 실습 중심, 깊은 학습
+
+응답 형식 (JSON):
+{{
+    "daily_tasks": [
+        {{
+            "day_number": 1,
+            "title": "D1 태스크 제목",
+            "description": "구체적인 실행 내용 ({daily_time} 내 완료 가능)",
+            "checkpoint": "완료 확인 방법"
+        }},
+        {{
+            "day_number": 2,
+            "title": "D2 태스크 제목",
+            "description": "구체적인 실행 내용",
+            "checkpoint": "완료 확인 방법"
+        }},
+        ...
+        {{
+            "day_number": 6,
+            "title": "D6 복습/정리",
+            "description": "주간 내용 복습 및 정리",
+            "checkpoint": "복습 완료 확인"
+        }},
+        {{
+            "day_number": 7,
+            "title": "D7 휴식/보충",
+            "description": "휴식 또는 밀린 과제 처리",
+            "checkpoint": "주간 결과물 점검"
+        }}
+    ]
+}}
+
+JSON만 응답하세요."""
