@@ -31,12 +31,24 @@ class InterviewService:
             topic=topic,
             mode=mode,
             duration_months=duration_months,
-            current_stage=1,
             status=InterviewStatus.IN_PROGRESS,
-            stage_data={},
+            # Multi-round tracking
+            current_round=1,
+            max_rounds=3,
+            all_questions=[],
+            all_answers=[],
+            evaluations=[],
+            invalid_history=[],
+            invalid_count=0,
+            consecutive_invalid=0,
+            is_terminated=False,
+            # Current round data
             current_questions=[],
             current_answers=[],
             current_evaluations=[],
+            # Legacy
+            current_stage=1,
+            stage_data={},
             followup_count=0,
             pending_followup_questions=[],
             max_followups_per_stage=2,
@@ -87,27 +99,43 @@ class InterviewService:
         state: Dict[str, Any],
     ) -> InterviewSession:
         """Update session with new state from interview graph."""
-        # Update stage tracking
-        session.current_stage = state.get("current_stage", session.current_stage)
+        # Update multi-round tracking
+        session.current_round = state.get("current_round", session.current_round)
+        session.max_rounds = state.get("max_rounds", session.max_rounds)
 
-        # Update stage data
-        if state.get("stage_data"):
-            # Convert integer keys to strings for JSON storage
-            session.stage_data = {
-                str(k): v for k, v in state["stage_data"].items()
-            }
+        # Update all questions and answers
+        session.all_questions = state.get("all_questions", session.all_questions or [])
+        session.all_answers = state.get("all_answers", session.all_answers or [])
+        session.evaluations = state.get("evaluations", session.evaluations or [])
+
+        # Update invalid tracking
+        session.invalid_history = state.get("invalid_history", session.invalid_history or [])
+        session.invalid_count = state.get("invalid_count", session.invalid_count or 0)
+        session.consecutive_invalid = state.get("consecutive_invalid", session.consecutive_invalid or 0)
+
+        # Update termination status
+        session.is_terminated = state.get("is_terminated", False)
+        session.termination_reason = state.get("termination_reason")
+        session.warning_message = state.get("warning_message")
 
         # Update current working state
         session.current_questions = state.get("current_questions", [])
         session.current_answers = state.get("current_answers", [])
         session.current_evaluations = state.get("current_evaluations", [])
 
-        # Update follow-up tracking
+        # Legacy fields
+        session.current_stage = state.get("current_stage", session.current_stage)
+        if state.get("stage_data"):
+            session.stage_data = {
+                str(k): v for k, v in state["stage_data"].items()
+            }
         session.followup_count = state.get("followup_count", 0)
         session.pending_followup_questions = state.get("pending_followup_questions", [])
 
-        # Update completion status
-        if state.get("is_complete"):
+        # Update completion/termination status
+        if state.get("is_terminated") and not state.get("is_complete"):
+            session.status = InterviewStatus.TERMINATED
+        elif state.get("is_complete"):
             session.status = InterviewStatus.COMPLETED
             session.compiled_context = state.get("compiled_context")
             session.key_insights = state.get("key_insights", [])
@@ -178,15 +206,30 @@ class InterviewService:
             "mode": session.mode,
             "duration_months": session.duration_months,
             "user_id": str(session.user_id),
+            # Multi-round tracking
+            "current_round": session.current_round or 1,
+            "max_rounds": session.max_rounds or 3,
+            "all_questions": session.all_questions or [],
+            "all_answers": session.all_answers or [],
+            "evaluations": session.evaluations or [],
+            "invalid_history": session.invalid_history or [],
+            "invalid_count": session.invalid_count or 0,
+            "consecutive_invalid": session.consecutive_invalid or 0,
+            "is_terminated": session.is_terminated or False,
+            "termination_reason": session.termination_reason,
+            "warning_message": session.warning_message,
+            # Current round data
+            "current_questions": session.current_questions or [],
+            "current_answers": session.current_answers or [],
+            "current_evaluations": session.current_evaluations or [],
+            # Legacy fields
             "current_stage": session.current_stage,
             "stages_completed": list(stage_data.keys()) if stage_data else [],
             "max_followups_per_stage": session.max_followups_per_stage,
             "stage_data": stage_data,
-            "current_questions": session.current_questions or [],
-            "current_answers": session.current_answers or [],
-            "current_evaluations": session.current_evaluations or [],
             "followup_count": session.followup_count,
             "pending_followup_questions": session.pending_followup_questions or [],
+            # Completion data
             "is_complete": session.status == InterviewStatus.COMPLETED,
             "compiled_context": session.compiled_context,
             "key_insights": session.key_insights or [],

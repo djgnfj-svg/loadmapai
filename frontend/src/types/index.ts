@@ -241,8 +241,9 @@ export interface FinalizeResponse {
 
 // ============ Deep Interview Types ============
 
-export type InterviewStatus = 'in_progress' | 'completed' | 'abandoned';
+export type InterviewStatus = 'in_progress' | 'completed' | 'abandoned' | 'terminated';
 export type InterviewQuestionType = 'text' | 'single_choice' | 'multiple_choice';
+export type AnswerEvaluationStatus = 'sufficient' | 'ambiguous' | 'invalid';
 
 export interface InterviewQuestion {
   id: string;
@@ -250,6 +251,10 @@ export interface InterviewQuestion {
   question_type: InterviewQuestionType;
   options?: string[];
   placeholder?: string;
+  // For follow-up questions
+  original_question_id?: string;
+  context?: string;  // e.g., "이전에 'X'라고 답변하셨는데..."
+  is_retry?: boolean;
 }
 
 export interface InterviewAnswer {
@@ -277,9 +282,14 @@ export interface InterviewSession {
   mode: string;
   duration_months: number;
   current_stage: number;
+  current_round: number;
+  max_rounds: number;
   status: InterviewStatus;
   stages: InterviewStageInfo[];
   is_complete: boolean;
+  is_terminated: boolean;
+  termination_reason?: string;
+  warning_message?: string;
   created_at: string;
   updated_at: string;
   roadmap_id?: string;
@@ -287,16 +297,22 @@ export interface InterviewSession {
 
 export interface InterviewQuestionsResponse {
   session_id: string;
-  current_stage: number;
-  stage_name: string;
+  current_round: number;
+  max_rounds: number;
   questions: InterviewQuestion[];
   is_complete: boolean;
   is_followup: boolean;
+  is_terminated?: boolean;
+  termination_reason?: string;
+  warning_message?: string;
+  ambiguous_count?: number;
+  invalid_count?: number;
 }
 
 export interface InterviewCompletedResponse {
   session_id: string;
   is_complete: boolean;
+  forced_completion?: boolean;
   compiled_context: string;
   key_insights: string[];
   schedule: InterviewSchedule;

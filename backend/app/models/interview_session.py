@@ -12,6 +12,7 @@ class InterviewStatus(str, enum.Enum):
     IN_PROGRESS = "in_progress"  # 인터뷰 진행 중
     COMPLETED = "completed"  # 인터뷰 완료
     ABANDONED = "abandoned"  # 인터뷰 포기
+    TERMINATED = "terminated"  # 강제 종료 (이상한 답변 등)
 
 
 class InterviewSession(Base, TimestampMixin):
@@ -32,8 +33,7 @@ class InterviewSession(Base, TimestampMixin):
     mode = Column(String(20), nullable=False)  # "learning" or "planning"
     duration_months = Column(Integer, nullable=False)
 
-    # Stage tracking
-    current_stage = Column(Integer, default=1, nullable=False)  # 1, 2, or 3
+    # Status tracking
     status = Column(
         SQLEnum(
             InterviewStatus,
@@ -44,12 +44,27 @@ class InterviewSession(Base, TimestampMixin):
         nullable=False
     )
 
-    # Stage data (JSON blob storing all Q&A per stage)
-    # Format: {
-    #   "1": {"questions": [...], "answers": [...], "evaluations": [...], ...},
-    #   "2": {...},
-    #   "3": {...}
-    # }
+    # Multi-round tracking
+    current_round = Column(Integer, default=1, nullable=False)  # Current round (1-3)
+    max_rounds = Column(Integer, default=3, nullable=False)  # Max rounds allowed
+
+    # All questions and answers across rounds
+    all_questions = Column(JSONB, default=[], nullable=False)  # Original questions
+    all_answers = Column(JSONB, default=[], nullable=False)  # All collected answers
+    evaluations = Column(JSONB, default=[], nullable=False)  # All answer evaluations
+
+    # Invalid answer tracking
+    invalid_history = Column(JSONB, default=[], nullable=False)  # History of invalid answers
+    invalid_count = Column(Integer, default=0, nullable=False)  # Total invalid count
+    consecutive_invalid = Column(Integer, default=0, nullable=False)  # Consecutive invalid count
+
+    # Termination
+    is_terminated = Column(Boolean, default=False, nullable=False)
+    termination_reason = Column(String(200), nullable=True)
+    warning_message = Column(Text, nullable=True)
+
+    # Legacy fields for compatibility
+    current_stage = Column(Integer, default=1, nullable=False)
     stage_data = Column(JSONB, default={}, nullable=False)
 
     # Current stage working data

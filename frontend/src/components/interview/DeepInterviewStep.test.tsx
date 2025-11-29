@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@/test/test-utils';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen } from '@/test/test-utils';
 import userEvent from '@testing-library/user-event';
 import { DeepInterviewStep, InterviewCompleted } from './DeepInterviewStep';
 import type { InterviewQuestionsResponse, InterviewCompletedResponse } from '@/types';
@@ -9,8 +9,8 @@ describe('DeepInterviewStep', () => {
 
   const mockQuestionsData: InterviewQuestionsResponse = {
     session_id: 'test-session-id',
-    current_stage: 1,
-    stage_name: '목표 구체화',
+    current_round: 1,
+    max_rounds: 3,
     questions: [
       {
         id: 'q1',
@@ -36,7 +36,6 @@ describe('DeepInterviewStep', () => {
   it('renders loading state', () => {
     render(
       <DeepInterviewStep
-        sessionId="test-session"
         questionsData={null}
         isLoading={true}
         error={null}
@@ -45,13 +44,12 @@ describe('DeepInterviewStep', () => {
       />
     );
 
-    expect(screen.getByText('AI가 질문을 준비 중입니다')).toBeInTheDocument();
+    expect(screen.getByText('AI가 맞춤 질문을 생성 중입니다')).toBeInTheDocument();
   });
 
   it('renders error state', () => {
     render(
       <DeepInterviewStep
-        sessionId="test-session"
         questionsData={null}
         isLoading={false}
         error="인터뷰 시작 중 오류가 발생했습니다"
@@ -67,7 +65,6 @@ describe('DeepInterviewStep', () => {
   it('renders questions correctly', () => {
     render(
       <DeepInterviewStep
-        sessionId="test-session"
         questionsData={mockQuestionsData}
         isLoading={false}
         error={null}
@@ -83,27 +80,9 @@ describe('DeepInterviewStep', () => {
     expect(screen.getByText('고급')).toBeInTheDocument();
   });
 
-  it('renders stage progress indicator', () => {
-    render(
-      <DeepInterviewStep
-        sessionId="test-session"
-        questionsData={mockQuestionsData}
-        isLoading={false}
-        error={null}
-        onSubmitAnswers={mockOnSubmitAnswers}
-        isSubmitting={false}
-      />
-    );
-
-    // Should show 3 stage indicators
-    const stageIndicators = screen.getAllByText(/[123]/);
-    expect(stageIndicators.length).toBeGreaterThanOrEqual(1);
-  });
-
   it('allows text input for text questions', async () => {
     render(
       <DeepInterviewStep
-        sessionId="test-session"
         questionsData={mockQuestionsData}
         isLoading={false}
         error={null}
@@ -121,7 +100,6 @@ describe('DeepInterviewStep', () => {
   it('allows selecting options for choice questions', async () => {
     render(
       <DeepInterviewStep
-        sessionId="test-session"
         questionsData={mockQuestionsData}
         isLoading={false}
         error={null}
@@ -140,7 +118,6 @@ describe('DeepInterviewStep', () => {
   it('disables submit button when not all questions are answered', () => {
     render(
       <DeepInterviewStep
-        sessionId="test-session"
         questionsData={mockQuestionsData}
         isLoading={false}
         error={null}
@@ -149,14 +126,13 @@ describe('DeepInterviewStep', () => {
       />
     );
 
-    const submitButton = screen.getByRole('button', { name: /다음 단계로|인터뷰 완료/i });
+    const submitButton = screen.getByRole('button', { name: /완료/i });
     expect(submitButton).toBeDisabled();
   });
 
   it('enables submit button when all questions are answered', async () => {
     render(
       <DeepInterviewStep
-        sessionId="test-session"
         questionsData={mockQuestionsData}
         isLoading={false}
         error={null}
@@ -172,14 +148,13 @@ describe('DeepInterviewStep', () => {
     // Answer choice question
     await userEvent.click(screen.getByText('초급'));
 
-    const submitButton = screen.getByRole('button', { name: /다음 단계로|인터뷰 완료/i });
+    const submitButton = screen.getByRole('button', { name: /완료/i });
     expect(submitButton).not.toBeDisabled();
   });
 
   it('calls onSubmitAnswers with correct data', async () => {
     render(
       <DeepInterviewStep
-        sessionId="test-session"
         questionsData={mockQuestionsData}
         isLoading={false}
         error={null}
@@ -196,7 +171,7 @@ describe('DeepInterviewStep', () => {
     await userEvent.click(screen.getByText('중급'));
 
     // Submit
-    await userEvent.click(screen.getByRole('button', { name: /다음 단계로/i }));
+    await userEvent.click(screen.getByRole('button', { name: /완료/i }));
 
     expect(mockOnSubmitAnswers).toHaveBeenCalledWith([
       { question_id: 'q1', answer: '프론트엔드 개발자' },
@@ -207,12 +182,13 @@ describe('DeepInterviewStep', () => {
   it('shows followup state correctly', () => {
     const followupData: InterviewQuestionsResponse = {
       ...mockQuestionsData,
+      current_round: 2,
       is_followup: true,
+      ambiguous_count: 1,
     };
 
     render(
       <DeepInterviewStep
-        sessionId="test-session"
         questionsData={followupData}
         isLoading={false}
         error={null}
@@ -221,21 +197,19 @@ describe('DeepInterviewStep', () => {
       />
     );
 
-    expect(screen.getByText('조금 더 구체적으로 알려주세요')).toBeInTheDocument();
-    expect(screen.getByText('추가 질문')).toBeInTheDocument();
+    expect(screen.getByText('조금 더 자세히 알려주세요')).toBeInTheDocument();
+    expect(screen.getByText(/추가 질문/)).toBeInTheDocument();
   });
 
-  it('shows correct button text for final stage', () => {
-    const finalStageData: InterviewQuestionsResponse = {
+  it('shows warning message when present', () => {
+    const dataWithWarning: InterviewQuestionsResponse = {
       ...mockQuestionsData,
-      current_stage: 3,
-      stage_name: '제약 조건',
+      warning_message: '연속으로 불완전한 답변이 감지되었습니다',
     };
 
     render(
       <DeepInterviewStep
-        sessionId="test-session"
-        questionsData={finalStageData}
+        questionsData={dataWithWarning}
         isLoading={false}
         error={null}
         onSubmitAnswers={mockOnSubmitAnswers}
@@ -243,7 +217,57 @@ describe('DeepInterviewStep', () => {
       />
     );
 
-    expect(screen.getByRole('button', { name: /인터뷰 완료/i })).toBeInTheDocument();
+    expect(screen.getByText('연속으로 불완전한 답변이 감지되었습니다')).toBeInTheDocument();
+  });
+
+  it('shows terminated state', () => {
+    const terminatedData: InterviewQuestionsResponse = {
+      ...mockQuestionsData,
+      is_terminated: true,
+      termination_reason: '연속 3회 이상한 답변',
+    };
+
+    render(
+      <DeepInterviewStep
+        questionsData={terminatedData}
+        isLoading={false}
+        error={null}
+        onSubmitAnswers={mockOnSubmitAnswers}
+        isSubmitting={false}
+      />
+    );
+
+    expect(screen.getByText('인터뷰가 종료되었습니다')).toBeInTheDocument();
+    expect(screen.getByText('연속 3회 이상한 답변')).toBeInTheDocument();
+  });
+
+  it('shows retry indicator for retry questions', () => {
+    const retryData: InterviewQuestionsResponse = {
+      ...mockQuestionsData,
+      is_followup: true,
+      questions: [
+        {
+          id: 'q1_followup',
+          question: '다시 답변해 주세요: 어떤 목표를 이루고 싶으신가요?',
+          question_type: 'text',
+          is_retry: true,
+          context: '이전에 "ㅋㅋ"라고 답변하셨는데...',
+        },
+      ],
+    };
+
+    render(
+      <DeepInterviewStep
+        questionsData={retryData}
+        isLoading={false}
+        error={null}
+        onSubmitAnswers={mockOnSubmitAnswers}
+        isSubmitting={false}
+      />
+    );
+
+    expect(screen.getByText('(다시 답변해 주세요)')).toBeInTheDocument();
+    expect(screen.getByText('이전에 "ㅋㅋ"라고 답변하셨는데...')).toBeInTheDocument();
   });
 });
 
@@ -280,7 +304,7 @@ describe('InterviewCompleted', () => {
       />
     );
 
-    expect(screen.getByText('인터뷰가 완료되었습니다!')).toBeInTheDocument();
+    expect(screen.getByText('준비 완료!')).toBeInTheDocument();
   });
 
   it('renders key insights', () => {
@@ -361,6 +385,24 @@ describe('InterviewCompleted', () => {
     );
 
     expect(screen.getByText('균형있게')).toBeInTheDocument();
+  });
+
+  it('shows forced completion notice', () => {
+    const forcedData: InterviewCompletedResponse = {
+      ...mockCompletedData,
+      forced_completion: true,
+    };
+
+    render(
+      <InterviewCompleted
+        data={forcedData}
+        onGenerateRoadmap={mockOnGenerateRoadmap}
+        isGenerating={false}
+      />
+    );
+
+    expect(screen.getByText('정보 수집 완료')).toBeInTheDocument();
+    expect(screen.getByText(/일부 정보가 불완전하여/)).toBeInTheDocument();
   });
 
   it('handles missing insights gracefully', () => {

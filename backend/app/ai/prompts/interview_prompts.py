@@ -149,24 +149,134 @@ COMPILE_CONTEXT_PROMPT = """당신은 학습 로드맵 생성 전문가입니다
 JSON만 출력하세요."""
 
 
-# ============ Answer Evaluation (Simplified) ============
+# ============ Batch Answer Evaluation ============
 
-QUICK_EVALUATION_PROMPT = """인터뷰 답변을 평가하세요.
+BATCH_ANSWER_EVALUATION_PROMPT = """당신은 인터뷰 답변 품질 평가 전문가입니다.
+사용자의 답변들을 평가하여 로드맵 생성에 충분한 정보인지 판단하세요.
 
-질문: {question}
-답변: {answer}
+=== 인터뷰 컨텍스트 ===
+주제: {topic}
+모드: {mode}
+기간: {duration_months}개월
 
-답변이 로드맵 생성에 충분한 정보를 제공하나요?
+=== 질문과 답변 ===
+{questions_and_answers}
 
-=== 응답 (JSON) ===
+=== 평가 기준 ===
+
+**1. 충분 (sufficient)**
+- 로드맵 생성에 필요한 정보가 명확함
+- 객관식에서 유효한 선택지를 골랐음
+- 텍스트 답변이 구체적이고 실용적임
+
+**2. 애매 (ambiguous)**
+- 정보가 있지만 불명확하거나 너무 일반적임
+- 예: "앱 만들기" (어떤 앱?), "잘하고 싶어요" (구체적으로 뭘?)
+- 예: "적당히", "그냥", "아무거나"
+
+**3. 이상 (invalid)**
+- 스팸: "ㅋㅋㅋ", "asdf", 의미없는 문자
+- 무관: 질문과 전혀 관련없는 답변
+- 적대적: 욕설, 비꼬는 답변
+- 너무 짧음: 1-2글자로 성의없는 답변 ("ㅇㅇ", "몰라")
+
+=== 응답 형식 (JSON) ===
 {{
-    "is_sufficient": true/false,
-    "extracted_value": "답변에서 추출한 핵심 값",
-    "needs_clarification": false,
-    "clarification_question": null
+    "evaluations": [
+        {{
+            "question_id": "질문 ID",
+            "status": "sufficient" | "ambiguous" | "invalid",
+            "extracted_value": "답변에서 추출한 핵심 정보 (있다면)",
+            "issue": "문제점 설명 (ambiguous/invalid인 경우)",
+            "issue_type": null | "too_vague" | "too_short" | "spam" | "irrelevant" | "hostile"
+        }}
+    ],
+    "overall_quality": "good" | "needs_followup" | "problematic",
+    "invalid_count": 0,
+    "ambiguous_ids": ["애매한 답변의 question_id 목록"],
+    "invalid_ids": ["이상한 답변의 question_id 목록"]
 }}
 
-객관식 답변은 항상 is_sufficient: true입니다.
+=== 중요 ===
+- 객관식에서 제공된 선택지를 고른 경우 → sufficient
+- 객관식에서 "기타"를 선택하고 내용이 구체적 → sufficient
+- 객관식에서 "기타"를 선택하고 내용이 모호 → ambiguous
+- 텍스트 답변은 엄격하게 평가 (로드맵 생성에 실제로 도움되는지)
+
+JSON만 출력하세요."""
+
+
+# ============ Follow-up Questions Generation ============
+
+FOLLOWUP_QUESTIONS_PROMPT = """당신은 인터뷰 전문가입니다.
+애매하거나 이상한 답변에 대해 후속 질문을 생성하세요.
+
+=== 인터뷰 컨텍스트 ===
+주제: {topic}
+모드: {mode}
+현재 라운드: {current_round}/3
+
+=== 후속 질문이 필요한 항목 ===
+{items_needing_followup}
+
+=== 후속 질문 작성 규칙 ===
+1. 이전 답변을 참조하여 더 구체적으로 물어보세요
+2. 가능하면 객관식으로 만들어 쉽게 답할 수 있게 하세요
+3. 이상한 답변(invalid)에는 친절하지만 단호하게 재질문
+4. "아까 X라고 하셨는데, 좀 더 구체적으로..." 형식 권장
+5. 질문당 하나의 정보만 물어보세요
+
+=== 이상한 답변 유형별 대응 ===
+- too_vague: "좀 더 구체적으로 알려주시면 더 좋은 로드맵을 만들 수 있어요"
+- too_short: "조금만 더 자세히 답변해 주세요"
+- spam/irrelevant: "질문을 다시 확인해 주세요: [원래 질문]"
+- hostile: 무시하고 중립적으로 재질문
+
+=== 응답 형식 (JSON) ===
+{{
+    "followup_questions": [
+        {{
+            "id": "원래_질문_id_followup",
+            "original_question_id": "원래 질문 ID",
+            "question": "후속 질문 텍스트",
+            "question_type": "single_choice" | "text",
+            "options": ["선택지1", "선택지2", ...],
+            "context": "이전에 'X'라고 답변하셨는데...",
+            "is_retry": true
+        }}
+    ],
+    "warning_message": "연속으로 이상한 답변 시 표시할 경고 (있다면, 없으면 null)"
+}}
+
+JSON만 출력하세요."""
+
+
+# ============ Force Termination Check ============
+
+TERMINATION_CHECK_PROMPT = """인터뷰 강제 종료 여부를 판단하세요.
+
+=== 상황 ===
+주제: {topic}
+총 라운드: {total_rounds}
+이상한 답변 누적: {invalid_count}회
+연속 이상 답변: {consecutive_invalid}회
+
+=== 이상한 답변 이력 ===
+{invalid_history}
+
+=== 판단 기준 ===
+- 연속 3회 이상 이상한 답변 → 강제 종료 권장
+- 전체의 50% 이상이 이상한 답변 → 강제 종료 권장
+- 적대적 답변 2회 이상 → 강제 종료 권장
+
+=== 응답 형식 (JSON) ===
+{{
+    "should_terminate": true | false,
+    "reason": "종료 사유 (있다면)",
+    "final_warning": "마지막 경고 메시지 (종료 직전이라면)",
+    "can_continue_with_defaults": true | false
+}}
+
 JSON만 출력하세요."""
 
 
