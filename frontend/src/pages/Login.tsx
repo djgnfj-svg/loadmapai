@@ -6,7 +6,8 @@ import { cn } from '@/lib/utils';
 import { Mail, Lock, AlertCircle } from 'lucide-react';
 import type { AxiosError } from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// OAuth needs absolute URLs for browser redirects - use backend directly
+const OAUTH_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export function Login() {
   const navigate = useNavigate();
@@ -36,11 +37,11 @@ export function Login() {
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = `${API_URL}/api/v1/auth/google`;
+    window.location.href = `${OAUTH_URL}/api/v1/auth/google`;
   };
 
   const handleGithubLogin = () => {
-    window.location.href = `${API_URL}/api/v1/auth/github`;
+    window.location.href = `${OAUTH_URL}/api/v1/auth/github`;
   };
 
   return (

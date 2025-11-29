@@ -68,7 +68,8 @@ export interface StreamingState {
   result: unknown | null;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// Use nullish coalescing to allow empty string (for Vite proxy)
+const API_URL = import.meta.env.VITE_API_URL ?? '';
 
 export function useStreaming<T = unknown>() {
   const [state, setState] = useState<StreamingState>({
