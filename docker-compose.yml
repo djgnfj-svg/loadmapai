@@ -53,6 +53,7 @@ services:
       - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - DEV_MODE=${DEV_MODE:-true}  # true=Haiku(저렴), false=Sonnet(고품질)
     ports:
       - "8000:8000"
     depends_on:
@@ -73,7 +74,8 @@ services:
       dockerfile: Dockerfile
     container_name: loadmap_frontend
     environment:
-      - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
+      - VITE_API_URL=${VITE_API_URL:-}
+      - VITE_ENABLE_MOCK=${VITE_ENABLE_MOCK:-false}
     ports:
       - "3000:3000"
     depends_on:
