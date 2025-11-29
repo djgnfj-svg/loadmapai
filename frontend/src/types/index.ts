@@ -355,3 +355,65 @@ export interface SkeletonGenerateResponse {
   mode: string;
   duration_months: number;
 }
+
+// ============ Progressive Roadmap Types ============
+
+export type RoadmapItemStatus = 'undefined' | 'partial' | 'confirmed';
+
+export interface RoadmapItemWithStatus {
+  content: string;  // "???" 또는 실제 내용
+  status: RoadmapItemStatus;
+  isNew?: boolean;  // 방금 업데이트됨 (애니메이션용)
+}
+
+export interface ProgressiveDailyTask {
+  day_number: number;
+  title: RoadmapItemWithStatus;
+  description: RoadmapItemWithStatus;
+}
+
+export interface ProgressiveWeeklyTask {
+  week_number: number;
+  title: RoadmapItemWithStatus;
+  daily_tasks: ProgressiveDailyTask[];
+}
+
+export interface ProgressiveMonthlyGoal {
+  month_number: number;
+  title: RoadmapItemWithStatus;
+  description: RoadmapItemWithStatus;
+  weekly_tasks: ProgressiveWeeklyTask[];
+}
+
+export interface ProgressiveRoadmap {
+  title: RoadmapItemWithStatus;
+  description: RoadmapItemWithStatus;
+  topic: string;
+  mode: RoadmapMode;
+  duration_months: number;
+  monthly_goals: ProgressiveMonthlyGoal[];
+}
+
+export interface RefinementEvent {
+  type: 'title' | 'description' | 'monthly' | 'weekly' | 'daily';
+  path: {
+    month_number?: number;
+    week_number?: number;
+    day_number?: number;
+  };
+  field: 'title' | 'description';
+  value: string;
+}
+
+export interface ProgressiveSessionState {
+  sessionId: string | null;
+  topic: string;
+  mode: RoadmapMode;
+  durationMonths: number;
+  currentQuestions: InterviewQuestion[];
+  answeredQuestions: Map<string, string>;
+  roadmap: ProgressiveRoadmap | null;
+  isStreaming: boolean;
+  progress: number;
+  error: string | null;
+}
