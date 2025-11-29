@@ -1,14 +1,14 @@
 import { cn } from '../../lib/utils';
 import { RoadmapItem } from './RoadmapItem';
-import type { ProgressiveRoadmap, ProgressiveDailyTask } from '../../types';
+import type { ProgressiveRoadmap, ProgressiveDailyTask, DraftMonth, DraftWeek } from '../../types';
 import type { DraftRoadmap } from '../../hooks/useProgressiveRoadmap';
-import { ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronRight, Sparkles, Target } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 interface RoadmapPanelProps {
   roadmap: ProgressiveRoadmap | null;
   isStreaming: boolean;
-  progress: number;
+  progress?: number;  // 사용되지 않지만 호환성 유지
   // NEW: 실시간 로드맵 초안
   draftRoadmap?: DraftRoadmap | null;
   className?: string;
@@ -17,12 +17,14 @@ interface RoadmapPanelProps {
 export function RoadmapPanel({
   roadmap,
   isStreaming,
-  progress,
   draftRoadmap,
   className,
 }: RoadmapPanelProps) {
   // 완성도 (draftRoadmap에서 가져오거나 기본값)
   const completionPercentage = draftRoadmap?.completion_percentage || 0;
+
+  // draftRoadmap의 months가 있는지 확인
+  const hasDraftMonths = draftRoadmap?.months && draftRoadmap.months.length > 0;
 
   if (!roadmap && !draftRoadmap) {
     return (
@@ -73,114 +75,200 @@ export function RoadmapPanel({
         </div>
       </div>
 
-      {/* 로드맵 초안 뷰 (draftRoadmap이 있을 때) */}
-      {draftRoadmap && draftRoadmap.months && draftRoadmap.months.length > 0 && (
-        <DraftRoadmapView draftRoadmap={draftRoadmap} />
+      {/* Key Results 표시 (draftRoadmap에서) */}
+      {draftRoadmap?.key_results_focus && draftRoadmap.key_results_focus.length > 0 && (
+        <div className="mb-4 p-3 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+          <div className="flex items-center gap-2 mb-2">
+            <Target className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
+              핵심 결과 (Key Results)
+            </span>
+          </div>
+          <ul className="space-y-1">
+            {draftRoadmap.key_results_focus.map((kr, idx) => (
+              <li key={idx} className="flex items-start gap-2 text-xs text-amber-800 dark:text-amber-200">
+                <span className="shrink-0 w-5 h-5 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center text-[10px] font-bold">
+                  {idx + 1}
+                </span>
+                <span>{kr}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
-      {/* 전체 로드맵 뷰 (roadmap이 있을 때) */}
-      {roadmap && (
-        <div className="flex-1 overflow-y-auto">
-          {/* 로드맵 제목/설명 */}
-          <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-            <RoadmapItem
-              item={roadmap.title}
-              as="h3"
-              className="text-lg font-bold mb-2"
-            />
-            <RoadmapItem
-              item={roadmap.description}
-              as="p"
-              className="text-sm"
-            />
-            <div className="mt-2 flex gap-4 text-xs text-gray-500 dark:text-gray-400">
-              <span>📚 {roadmap.topic}</span>
-              <span>📅 {roadmap.duration_months}개월</span>
+      {/* 메인 로드맵 뷰 */}
+      <div className="flex-1 overflow-y-auto">
+        {/* 전체 roadmap이 있으면 우선 표시 */}
+        {roadmap ? (
+          <>
+            {/* 로드맵 제목/설명 */}
+            <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <RoadmapItem
+                item={roadmap.title}
+                as="h3"
+                className="text-lg font-bold mb-2"
+              />
+              <RoadmapItem
+                item={roadmap.description}
+                as="p"
+                className="text-sm"
+              />
+              <div className="mt-2 flex gap-4 text-xs text-gray-500 dark:text-gray-400">
+                <span>📚 {roadmap.topic}</span>
+                <span>📅 {roadmap.duration_months}개월</span>
+              </div>
             </div>
-          </div>
 
-          {/* 월별 계획 */}
+            {/* 월별 계획 */}
+            <div className="space-y-3">
+              {roadmap.monthly_goals.map((month) => (
+                <MonthlyGoalCard key={month.month_number} month={month} />
+              ))}
+            </div>
+          </>
+        ) : hasDraftMonths ? (
+          /* draftRoadmap만 있을 때 - 월별 구조로 표시 */
           <div className="space-y-3">
-            {roadmap.monthly_goals.map((month) => (
-              <MonthlyGoalCard key={month.month_number} month={month} />
+            {draftRoadmap!.months.map((month, index) => (
+              <DraftMonthCard key={month.month} month={month} index={index} />
             ))}
           </div>
+        ) : (
+          /* 둘 다 없을 때 placeholder */
+          <div className="flex items-center justify-center h-32 text-gray-400 dark:text-gray-500">
+            <p className="text-sm">답변을 입력하시면 로드맵이 구체화됩니다</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// 초안 월 카드 (확장 가능, 주차 포함)
+function DraftMonthCard({
+  month,
+  index
+}: {
+  month: DraftMonth;
+  index: number;
+}) {
+  const [isExpanded, setIsExpanded] = useState(index === 0); // 첫 번째 월만 기본 확장
+  const [isNew, setIsNew] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsNew(false), 1000);
+    return () => clearTimeout(timer);
+  }, [month.title, month.key_result_focus]);
+
+  const isUndefined = month.title === '???' || !month.title;
+  const hasWeeks = month.weeks && month.weeks.length > 0;
+
+  return (
+    <div
+      className={cn(
+        'rounded-lg border transition-all duration-500 overflow-hidden',
+        isNew && !isUndefined
+          ? 'border-green-300 dark:border-green-700'
+          : isUndefined
+          ? 'border-gray-200 dark:border-gray-700 opacity-60'
+          : 'border-gray-200 dark:border-gray-700'
+      )}
+      style={{ animationDelay: `${index * 100}ms` }}
+    >
+      {/* 월 헤더 */}
+      <button
+        onClick={() => hasWeeks && setIsExpanded(!isExpanded)}
+        className={cn(
+          'w-full flex items-center gap-3 p-3 transition-colors',
+          isNew && !isUndefined
+            ? 'bg-green-50 dark:bg-green-900/20'
+            : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700',
+          !hasWeeks && 'cursor-default'
+        )}
+      >
+        {hasWeeks ? (
+          isExpanded ? (
+            <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" />
+          ) : (
+            <ChevronRight className="w-4 h-4 text-gray-500 shrink-0" />
+          )
+        ) : (
+          <div className="w-4" />
+        )}
+        <span className={cn(
+          'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0',
+          isUndefined
+            ? 'bg-gray-200 dark:bg-gray-700 text-gray-500'
+            : 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
+        )}>
+          {month.month}월
+        </span>
+        <div className="flex-1 text-left min-w-0">
+          <span className={cn(
+            'font-medium text-sm block truncate',
+            isUndefined ? 'text-gray-400 italic' : 'text-gray-900 dark:text-white'
+          )}>
+            {month.title || '???'}
+          </span>
+          {month.key_result_focus && month.key_result_focus !== '???' && (
+            <span className="text-xs text-blue-600 dark:text-blue-400 block truncate">
+              🎯 {month.key_result_focus}
+            </span>
+          )}
+        </div>
+        {isNew && !isUndefined && (
+          <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full animate-bounce shrink-0">
+            NEW
+          </span>
+        )}
+      </button>
+
+      {/* 주간 목록 (확장 시) */}
+      {isExpanded && hasWeeks && (
+        <div className="p-3 pt-0 space-y-2">
+          {month.overview && month.overview !== '???' && (
+            <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 ml-7">
+              {month.overview}
+            </p>
+          )}
+          {month.weeks.map((week) => (
+            <DraftWeekCard key={week.week} week={week} />
+          ))}
         </div>
       )}
     </div>
   );
 }
 
-// 로드맵 초안 뷰 (간단한 월별 개요)
-function DraftRoadmapView({ draftRoadmap }: { draftRoadmap: DraftRoadmap }) {
-  return (
-    <div className="mb-4 space-y-2">
-      <div className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-        <Sparkles className="w-4 h-4 text-yellow-500" />
-        AI가 구성 중인 로드맵 초안
-      </div>
-      <div className="space-y-2">
-        {draftRoadmap.months.map((month, index) => (
-          <DraftMonthCard key={month.month} month={month} index={index} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// 초안 월 카드 (애니메이션 포함)
-function DraftMonthCard({
-  month,
-  index
-}: {
-  month: DraftRoadmap['months'][0];
-  index: number;
-}) {
-  const [isNew, setIsNew] = useState(true);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsNew(false), 1000);
-    return () => clearTimeout(timer);
-  }, [month.title, month.overview]);
-
-  const isUndefined = month.title === '???' || !month.title;
+// 초안 주 카드
+function DraftWeekCard({ week }: { week: DraftWeek }) {
+  const isUndefined = week.theme === '???' || !week.theme;
 
   return (
-    <div
-      className={cn(
-        'p-3 rounded-lg border transition-all duration-500',
-        isNew && !isUndefined
-          ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700 animate-pulse'
-          : isUndefined
-          ? 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 opacity-60'
-          : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
-      )}
-      style={{ animationDelay: `${index * 100}ms` }}
-    >
+    <div className={cn(
+      'ml-7 pl-3 border-l-2 py-1',
+      isUndefined
+        ? 'border-gray-200 dark:border-gray-600'
+        : 'border-blue-200 dark:border-blue-800'
+    )}>
       <div className="flex items-center gap-2">
         <span className={cn(
-          'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold',
-          isUndefined
-            ? 'bg-gray-200 dark:bg-gray-700 text-gray-500'
-            : 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
+          'text-xs font-medium',
+          isUndefined ? 'text-gray-400' : 'text-gray-500 dark:text-gray-400'
         )}>
-          {month.month}
+          {week.week}주차
         </span>
         <span className={cn(
-          'font-medium text-sm flex-1',
-          isUndefined ? 'text-gray-400 italic' : 'text-gray-900 dark:text-white'
+          'text-sm',
+          isUndefined ? 'text-gray-400 italic' : 'text-gray-700 dark:text-gray-300'
         )}>
-          {month.title || '???'}
+          {week.theme || '???'}
         </span>
-        {isNew && !isUndefined && (
-          <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full animate-bounce">
-            NEW
-          </span>
-        )}
       </div>
-      {month.overview && month.overview !== '???' && (
-        <p className="mt-1 ml-8 text-xs text-gray-600 dark:text-gray-400">
-          {month.overview}
+      {week.daily_example && week.daily_example !== '???' && (
+        <p className="text-xs text-gray-500 dark:text-gray-500 ml-10 mt-0.5">
+          예: {week.daily_example}
         </p>
       )}
     </div>
