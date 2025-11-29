@@ -289,6 +289,22 @@ async def submit_answers_streaming(
             key_results = result.get("key_results", [])
             draft_roadmap = result.get("draft_roadmap", {})
 
+            # ========== DEBUG: streaming.py 이벤트 전송 ==========
+            print(f"\n[STREAMING] submit_answers 결과:")
+            print(f"  - is_complete: {result.get('is_complete')}")
+            print(f"  - current_round: {result.get('current_round')}")
+            print(f"  - smart_status 요소:")
+            for elem, status in smart_status.items():
+                if isinstance(status, dict):
+                    print(f"    - {elem}: collected={status.get('collected')}")
+            print(f"  - key_results: {len(key_results)}개")
+            print(f"  - draft_roadmap: {type(draft_roadmap)}, bool={bool(draft_roadmap)}")
+            if draft_roadmap:
+                print(f"    - completion_percentage: {draft_roadmap.get('completion_percentage', 0)}")
+                print(f"    - months: {len(draft_roadmap.get('months', []))}개")
+            else:
+                print(f"    - ⚠️ draft_roadmap이 비어있음!")
+
             # Emit SMART status update
             await manager.emit(
                 StreamEventType.SMART_STATUS_UPDATED,
@@ -306,14 +322,20 @@ async def submit_answers_streaming(
                     data={"key_results": key_results}
                 )
 
-            # Emit draft roadmap update
-            if draft_roadmap:
+            # Emit draft roadmap update (수정: months가 있을 때만)
+            draft_months = draft_roadmap.get("months", []) if draft_roadmap else []
+            print(f"[STREAMING] draft_roadmap 이벤트 조건: draft_roadmap={bool(draft_roadmap)}, months={len(draft_months)}개")
+
+            if draft_roadmap and draft_months:
+                print(f"[STREAMING] ✅ DRAFT_ROADMAP_UPDATED 이벤트 전송!")
                 await manager.emit(
                     StreamEventType.DRAFT_ROADMAP_UPDATED,
                     "로드맵 초안 업데이트",
                     progress=60,
                     data={"draft_roadmap": draft_roadmap}
                 )
+            else:
+                print(f"[STREAMING] ⚠️ draft_roadmap 이벤트 스킵 (조건 미충족)")
 
             # Update stage progress
             if result["is_complete"]:

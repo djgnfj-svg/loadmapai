@@ -606,6 +606,35 @@ def submit_answers(
     mode = state["mode"]
     duration_months = state["duration_months"]
 
+    # ========== DEBUG LOGGING ==========
+    print(f"\n{'='*60}")
+    print(f"[INTERVIEW] submit_answers() - Round {current_round}")
+    print(f"{'='*60}")
+    print(f"[INTERVIEW] Topic: {topic}, Mode: {mode}, Duration: {duration_months}개월")
+    print(f"[INTERVIEW] user_wants_complete: {user_wants_complete}")
+    print(f"[INTERVIEW] Received answers: {len(answers)}개")
+    for ans in answers:
+        print(f"  - {ans['question_id']}: {ans['answer'][:50]}..." if len(ans.get('answer', '')) > 50 else f"  - {ans['question_id']}: {ans.get('answer', '')}")
+
+    # State 현황 로깅
+    all_q_ids = [q.get("id") for q in state.get("all_questions", [])]
+    curr_q_ids = [q.get("id") for q in state.get("current_questions", [])]
+    print(f"[INTERVIEW] State 현황:")
+    print(f"  - all_questions: {len(all_q_ids)}개 - {all_q_ids}")
+    print(f"  - current_questions: {len(curr_q_ids)}개 - {curr_q_ids}")
+    print(f"  - all_answers: {len(state.get('all_answers', []))}개")
+
+    # SMART 상태 로깅
+    prev_smart = state.get("smart_status", {})
+    if prev_smart:
+        print(f"[INTERVIEW] 이전 SMART 상태:")
+        for elem, status in prev_smart.items():
+            if isinstance(status, dict):
+                print(f"  - {elem}: collected={status.get('collected')}, confidence={status.get('confidence', 0):.1f}")
+    else:
+        print(f"[INTERVIEW] 이전 SMART 상태: (없음)")
+    print(f"{'='*60}")
+
     # Store current answers
     state["current_answers"] = answers
 
@@ -672,14 +701,54 @@ def submit_answers(
             }
 
     # ===== NEW: Round Analysis =====
+    # 분석에 사용할 질문 목록 구성 (중복 체크)
+    existing_q_ids = {q.get("id") for q in state.get("all_questions", [])}
+    current_qs = state.get("current_questions", [])
+    unique_current = [q for q in current_qs if q.get("id") not in existing_q_ids]
+
+    questions_for_analysis = state.get("all_questions", []) + unique_current
+    answers_for_analysis = state.get("all_answers", [])
+
+    # ========== DEBUG: analyze_round 호출 전 ==========
+    print(f"\n[INTERVIEW] analyze_round() 호출 전:")
+    print(f"  - questions_for_analysis: {len(questions_for_analysis)}개")
+    q_ids_for_analysis = [q.get("id") for q in questions_for_analysis]
+    print(f"  - 질문 ID들: {q_ids_for_analysis}")
+    print(f"  - answers_for_analysis: {len(answers_for_analysis)}개")
+
+    # 중복 체크 결과
+    if len(unique_current) != len(current_qs):
+        print(f"  - ⚠️ 중복 제거됨: {len(current_qs)} -> {len(unique_current)}개")
+        duplicates = [q.get("id") for q in current_qs if q.get("id") in existing_q_ids]
+        print(f"  - 중복된 ID들: {duplicates}")
+
     round_analysis = analyze_round(
         topic=topic,
         mode=mode,
         duration_months=duration_months,
         current_round=current_round,
-        all_questions=state.get("all_questions", []) + state.get("current_questions", []),
-        all_answers=state.get("all_answers", []),
+        all_questions=questions_for_analysis,
+        all_answers=answers_for_analysis,
     )
+
+    # ========== DEBUG: analyze_round 결과 ==========
+    print(f"\n[INTERVIEW] analyze_round() 결과:")
+    new_smart = round_analysis.get("smart_status", {})
+    print(f"  - 새 SMART 상태:")
+    for elem, status in new_smart.items():
+        if isinstance(status, dict):
+            print(f"    - {elem}: collected={status.get('collected')}, confidence={status.get('confidence', 0):.1f}, summary={status.get('summary', '')[:30]}...")
+
+    proactive_qs = round_analysis.get("proactive_questions", [])
+    print(f"  - proactive_questions: {len(proactive_qs)}개")
+    for pq in proactive_qs:
+        print(f"    - [{pq.get('smart_element', '?')}] {pq.get('question', '')[:40]}...")
+
+    draft = round_analysis.get("draft_roadmap", {})
+    draft_months = draft.get("months", []) if draft else []
+    print(f"  - draft_roadmap: completion={draft.get('completion_percentage', 0)}%, months={len(draft_months)}개")
+    print(f"  - information_level: {round_analysis.get('information_level')}")
+    print(f"  - should_continue: {round_analysis.get('should_continue')}")
 
     # Store analysis in state (including SMART tracking)
     state["last_feedback"] = round_analysis["feedback"]
@@ -708,8 +777,11 @@ def submit_answers(
     # ===== Build next round questions =====
     next_questions = []
 
+    print(f"\n[INTERVIEW] 다음 라운드 질문 구성:")
+
     # 1. Follow-up for ambiguous/invalid (if any)
     if ambiguous_ids or invalid_ids:
+        print(f"  - followup 대상: ambiguous={ambiguous_ids}, invalid={invalid_ids}")
         followup_result = generate_followup_questions(
             topic=topic,
             mode=mode,
@@ -718,16 +790,42 @@ def submit_answers(
             answers=answers,
             evaluation=evaluation,
         )
-        next_questions.extend(followup_result.get("followup_questions", []))
+        followup_qs = followup_result.get("followup_questions", [])
+        print(f"  - followup_questions 생성: {len(followup_qs)}개")
+        next_questions.extend(followup_qs)
 
-    # 2. Add proactive questions from analysis
+    # 2. Add proactive questions from analysis (중복 필터링 추가)
     proactive_questions = round_analysis.get("proactive_questions", [])
+
+    # 이미 충분히 수집된 SMART 요소 확인
+    collected_smart_elements = set()
+    current_smart = state.get("smart_status", {})
+    for elem, status in current_smart.items():
+        if isinstance(status, dict) and status.get("collected") and status.get("confidence", 0) >= 0.7:
+            collected_smart_elements.add(elem[0].upper())  # S, M, A, R, T
+
+    print(f"  - 이미 수집된 SMART 요소: {collected_smart_elements}")
+    print(f"  - proactive_questions 원본: {len(proactive_questions)}개")
+
+    filtered_proactive = []
     for pq in proactive_questions:
+        pq_smart = pq.get("smart_element", "")
+        # 이미 수집된 요소에 대한 질문은 스킵
+        if pq_smart and pq_smart in collected_smart_elements:
+            print(f"    - ⚠️ 스킵 (이미 수집됨): [{pq_smart}] {pq.get('question', '')[:30]}...")
+            continue
+        filtered_proactive.append(pq)
+
+    print(f"  - proactive_questions 필터링 후: {len(filtered_proactive)}개")
+
+    for pq in filtered_proactive:
         # Convert to standard question format
         next_questions.append({
             "id": pq.get("id", f"proactive_{current_round}_{len(next_questions)}"),
             "question": pq.get("question", ""),
-            "question_type": "text",
+            "question_type": pq.get("question_type", "text"),
+            "options": pq.get("options", []),
+            "smart_element": pq.get("smart_element"),
             "is_proactive": True,
             "purpose": pq.get("purpose", ""),
         })
@@ -738,6 +836,7 @@ def submit_answers(
 
     # If no questions but below MIN_ROUNDS, generate generic questions
     if not next_questions and current_round < MIN_ROUNDS:
+        print(f"  - MIN_ROUNDS 미달로 generic 질문 생성")
         next_questions = [{
             "id": f"generic_{current_round}_1",
             "question": "로드맵에 추가로 반영했으면 하는 사항이 있으신가요?",
@@ -746,18 +845,35 @@ def submit_answers(
         }]
 
     # Update state for next round
+    print(f"\n[INTERVIEW] State 업데이트:")
+    print(f"  - current_round: {current_round} → {current_round + 1}")
+    print(f"  - next_questions: {len(next_questions)}개")
+    for nq in next_questions:
+        print(f"    - [{nq.get('smart_element', '?')}] {nq.get('id')}: {nq.get('question', '')[:40]}...")
+
     state["current_round"] = current_round + 1
     state["current_questions"] = next_questions
     state["followup_count"] = state.get("followup_count", 0) + 1
 
     # Add new questions to all_questions
+    prev_all_q_count = len(state.get("all_questions", []))
     state["all_questions"] = state.get("all_questions", []) + next_questions
+    print(f"  - all_questions: {prev_all_q_count} → {len(state['all_questions'])}개")
 
     # Determine if user can choose to complete
     can_complete = (
         current_round >= MIN_ROUNDS and
         info_level in ("minimal", "sufficient", "complete")
     )
+
+    # ========== DEBUG: 최종 결과 ==========
+    print(f"\n[INTERVIEW] 최종 결과:")
+    print(f"  - is_complete: False")
+    print(f"  - can_complete: {can_complete}")
+    print(f"  - ai_recommends_complete: {ai_recommends_complete}")
+    print(f"  - information_level: {info_level}")
+    print(f"  - draft_roadmap months: {len(draft_months)}개")
+    print(f"{'='*60}\n")
 
     return {
         "session_id": state["session_id"],
