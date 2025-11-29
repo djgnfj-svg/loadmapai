@@ -31,7 +31,7 @@ export function QuestionPanel({
   currentRound = 1,
   maxRounds = 10,
   feedback,
-  draftRoadmap,
+  // draftRoadmap은 RoadmapPanel에서만 사용 (이 패널에서는 제거)
   informationLevel,
   aiRecommendsComplete = false,
   canComplete = false,
@@ -75,11 +75,6 @@ export function QuestionPanel({
       {/* AI 피드백 (라운드 2 이상에서 표시) */}
       {feedback && currentRound > 1 && (
         <FeedbackCard feedback={feedback} informationLevel={informationLevel} />
-      )}
-
-      {/* 로드맵 초안 진행률 */}
-      {draftRoadmap && draftRoadmap.completion_percentage > 0 && (
-        <DraftProgressCard draftRoadmap={draftRoadmap} />
       )}
 
       {/* 질문 목록 */}
@@ -210,40 +205,6 @@ function FeedbackCard({
               </li>
             ))}
           </ul>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// 로드맵 초안 진행률 카드
-function DraftProgressCard({ draftRoadmap }: { draftRoadmap: DraftRoadmap }) {
-  return (
-    <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-          로드맵 초안
-        </span>
-        <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
-          {draftRoadmap.completion_percentage}% 완성
-        </span>
-      </div>
-      <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2">
-        <div
-          className="bg-blue-500 h-2 rounded-full transition-all duration-500"
-          style={{ width: `${draftRoadmap.completion_percentage}%` }}
-        />
-      </div>
-      {draftRoadmap.months && draftRoadmap.months.length > 0 && (
-        <div className="mt-2 text-xs text-blue-600 dark:text-blue-400">
-          {draftRoadmap.months.slice(0, 2).map((m, i) => (
-            <div key={i} className="truncate">
-              {m.month}월: {m.title || '???'}
-            </div>
-          ))}
-          {draftRoadmap.months.length > 2 && (
-            <div>...외 {draftRoadmap.months.length - 2}개월</div>
-          )}
         </div>
       )}
     </div>
