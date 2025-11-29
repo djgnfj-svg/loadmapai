@@ -278,6 +278,74 @@ def check_termination(
 
 # ============ Round Analysis (SMART-Enhanced) ============
 
+def build_smart_summary(smart_status: Dict[str, Any]) -> str:
+    """이전 SMART 상태를 사람이 읽을 수 있는 요약으로 변환."""
+    if not smart_status:
+        return "(첫 라운드 - 이전 수집 정보 없음)"
+
+    lines = []
+    element_names = {
+        "specific": "S (Specific, 구체적 목표)",
+        "measurable": "M (Measurable, 측정 지표)",
+        "achievable": "A (Achievable, 달성 가능성)",
+        "relevant": "R (Relevant, 동기/연관성)",
+        "time_bound": "T (Time-bound, 기한)",
+    }
+
+    for elem, name in element_names.items():
+        status = smart_status.get(elem, {})
+        if isinstance(status, dict):
+            collected = status.get("collected", False)
+            confidence = status.get("confidence", 0)
+            summary = status.get("summary", "")
+
+            if collected and confidence >= 0.7:
+                lines.append(f"✅ {name}: 수집됨 (confidence={confidence:.1f})")
+                if summary:
+                    lines.append(f"   → {summary[:50]}...")
+            elif collected and confidence >= 0.4:
+                lines.append(f"🔶 {name}: 부분 수집 (confidence={confidence:.1f})")
+                if summary:
+                    lines.append(f"   → {summary[:50]}...")
+            else:
+                lines.append(f"❌ {name}: 미수집")
+
+    return "\n".join(lines) if lines else "(이전 수집 정보 없음)"
+
+
+def merge_smart_status(
+    previous: Dict[str, Any],
+    new: Dict[str, Any],
+) -> Dict[str, Any]:
+    """이전 SMART 상태와 새 상태를 병합 (confidence가 높은 것 유지)."""
+    if not previous:
+        return new
+
+    merged = {}
+    for elem in ["specific", "measurable", "achievable", "relevant", "time_bound"]:
+        prev_status = previous.get(elem, {})
+        new_status = new.get(elem, {})
+
+        if not isinstance(prev_status, dict):
+            prev_status = {}
+        if not isinstance(new_status, dict):
+            new_status = {}
+
+        prev_conf = prev_status.get("confidence", 0)
+        new_conf = new_status.get("confidence", 0)
+
+        # 새 confidence가 더 높거나, 새로 collected된 경우 새 값 사용
+        if new_conf > prev_conf or (new_status.get("collected") and not prev_status.get("collected")):
+            merged[elem] = new_status
+        else:
+            # 이전 값 유지하되, 새 정보가 있으면 병합
+            merged[elem] = prev_status.copy()
+            if new_status.get("summary") and not prev_status.get("summary"):
+                merged[elem]["summary"] = new_status["summary"]
+
+    return merged
+
+
 def analyze_round(
     topic: str,
     mode: str,
@@ -285,6 +353,7 @@ def analyze_round(
     current_round: int,
     all_questions: List[Dict[str, Any]],
     all_answers: List[Dict[str, str]],
+    previous_smart_status: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Analyze current round with SMART framework and provide feedback.
 
@@ -310,10 +379,14 @@ def analyze_round(
 
     conversation_history = "\n".join(conversation_lines)
 
+    # 이전 SMART 상태 요약 생성
+    previous_smart_summary = build_smart_summary(previous_smart_status)
+
     prompt = ROUND_ANALYSIS_PROMPT.format(
         topic=topic,
         duration_months=duration_months,
         current_round=current_round,
+        previous_smart_summary=previous_smart_summary,
         conversation_history=conversation_history,
     )
 
@@ -709,12 +782,19 @@ def submit_answers(
     questions_for_analysis = state.get("all_questions", []) + unique_current
     answers_for_analysis = state.get("all_answers", [])
 
+    # 이전 SMART 상태 가져오기
+    previous_smart_status = state.get("smart_status", {})
+
     # ========== DEBUG: analyze_round 호출 전 ==========
     print(f"\n[INTERVIEW] analyze_round() 호출 전:")
     print(f"  - questions_for_analysis: {len(questions_for_analysis)}개")
     q_ids_for_analysis = [q.get("id") for q in questions_for_analysis]
     print(f"  - 질문 ID들: {q_ids_for_analysis}")
     print(f"  - answers_for_analysis: {len(answers_for_analysis)}개")
+    print(f"  - previous_smart_status:")
+    for elem, status in previous_smart_status.items():
+        if isinstance(status, dict):
+            print(f"    - {elem}: collected={status.get('collected')}, conf={status.get('confidence', 0):.1f}")
 
     # 중복 체크 결과
     if len(unique_current) != len(current_qs):
@@ -729,12 +809,13 @@ def submit_answers(
         current_round=current_round,
         all_questions=questions_for_analysis,
         all_answers=answers_for_analysis,
+        previous_smart_status=previous_smart_status,  # NEW: 이전 SMART 상태 전달
     )
 
     # ========== DEBUG: analyze_round 결과 ==========
     print(f"\n[INTERVIEW] analyze_round() 결과:")
     new_smart = round_analysis.get("smart_status", {})
-    print(f"  - 새 SMART 상태:")
+    print(f"  - AI가 반환한 SMART 상태:")
     for elem, status in new_smart.items():
         if isinstance(status, dict):
             print(f"    - {elem}: collected={status.get('collected')}, confidence={status.get('confidence', 0):.1f}, summary={status.get('summary', '')[:30]}...")
@@ -750,11 +831,18 @@ def submit_answers(
     print(f"  - information_level: {round_analysis.get('information_level')}")
     print(f"  - should_continue: {round_analysis.get('should_continue')}")
 
+    # SMART 상태 병합 (이전 + 새로운)
+    merged_smart_status = merge_smart_status(previous_smart_status, new_smart)
+    print(f"\n[INTERVIEW] SMART 상태 병합 결과:")
+    for elem, status in merged_smart_status.items():
+        if isinstance(status, dict):
+            print(f"    - {elem}: collected={status.get('collected')}, confidence={status.get('confidence', 0):.1f}")
+
     # Store analysis in state (including SMART tracking)
     state["last_feedback"] = round_analysis["feedback"]
     state["last_draft_roadmap"] = round_analysis["draft_roadmap"]
     state["information_level"] = round_analysis["information_level"]
-    state["smart_status"] = round_analysis["smart_status"]
+    state["smart_status"] = merged_smart_status  # 병합된 SMART 상태 저장
     state["key_results"] = round_analysis.get("key_results", [])
 
     # ===== Decide: Complete or Continue =====

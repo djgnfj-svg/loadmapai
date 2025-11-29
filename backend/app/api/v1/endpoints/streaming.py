@@ -57,6 +57,43 @@ class RoadmapGenerateRequest(BaseModel):
 router = APIRouter()
 
 
+def generate_minimal_draft(topic: str, duration_months: int, smart_status: dict = None) -> dict:
+    """AI가 draft_roadmap을 제공하지 않을 때 최소한의 기본 구조 생성.
+
+    사용자에게 로드맵이 점진적으로 구체화되고 있음을 보여주기 위해
+    빈 구조가 아닌 "???" 플레이스홀더가 있는 구조를 반환합니다.
+    """
+    # SMART 상태에서 수집된 정보로 completion_percentage 계산
+    completion = 20  # 기본값: 토픽만 있으면 20%
+    if smart_status:
+        collected_count = sum(
+            1 for elem in ["specific", "measurable", "achievable", "relevant", "time_bound"]
+            if smart_status.get(elem, {}).get("collected", False)
+        )
+        completion = min(20 + (collected_count * 15), 95)  # 최대 95% (최종까지는 안감)
+
+    # duration_months에 맞는 월별 구조 생성
+    months = []
+    for m in range(1, duration_months + 1):
+        month_data = {
+            "month": m,
+            "title": f"??? (월 {m})",
+            "key_result_focus": "???",
+            "overview": f"{topic} 학습 - 상세 내용 수집 중...",
+            "weeks": [
+                {"week": w, "theme": "???"} for w in range(1, 5)
+            ]
+        }
+        months.append(month_data)
+
+    return {
+        "completion_percentage": completion,
+        "key_results_focus": [],
+        "months": months,
+        "_is_placeholder": True,  # 프론트엔드에서 플레이스홀더임을 알 수 있도록
+    }
+
+
 @router.post("/interviews/start")
 async def start_interview_streaming(
     request: InterviewStartRequest,
@@ -322,9 +359,10 @@ async def submit_answers_streaming(
                     data={"key_results": key_results}
                 )
 
-            # Emit draft roadmap update (수정: months가 있을 때만)
+            # Emit draft roadmap update (수정: months가 있을 때만, 없으면 폴백 생성)
             draft_months = draft_roadmap.get("months", []) if draft_roadmap else []
-            print(f"[STREAMING] draft_roadmap 이벤트 조건: draft_roadmap={bool(draft_roadmap)}, months={len(draft_months)}개")
+            current_round = result.get("current_round", 1)
+            print(f"[STREAMING] draft_roadmap 이벤트 조건: draft_roadmap={bool(draft_roadmap)}, months={len(draft_months)}개, round={current_round}")
 
             if draft_roadmap and draft_months:
                 print(f"[STREAMING] ✅ DRAFT_ROADMAP_UPDATED 이벤트 전송!")
@@ -334,8 +372,21 @@ async def submit_answers_streaming(
                     progress=60,
                     data={"draft_roadmap": draft_roadmap}
                 )
+            elif current_round > 1:
+                # 라운드 2 이상인데 draft가 없으면 기본 구조 생성하여 전송
+                # session_state에서 topic과 duration_months 가져오기
+                topic = session_state.get("topic", "학습")
+                duration_months = session_state.get("duration_months", 3)
+                fallback_draft = generate_minimal_draft(topic, duration_months, smart_status)
+                print(f"[STREAMING] 📋 폴백 draft_roadmap 생성: completion={fallback_draft.get('completion_percentage')}%, months={len(fallback_draft.get('months', []))}개")
+                await manager.emit(
+                    StreamEventType.DRAFT_ROADMAP_UPDATED,
+                    "로드맵 초안 생성 중...",
+                    progress=60,
+                    data={"draft_roadmap": fallback_draft}
+                )
             else:
-                print(f"[STREAMING] ⚠️ draft_roadmap 이벤트 스킵 (조건 미충족)")
+                print(f"[STREAMING] ⚠️ draft_roadmap 이벤트 스킵 (라운드 1이고 draft 없음)")
 
             # Update stage progress
             if result["is_complete"]:
