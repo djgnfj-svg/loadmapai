@@ -31,6 +31,14 @@ class SkeletonGenerateRequest(BaseModel):
     mode: str
     duration_months: int
 
+
+class RoadmapGenerateRequest(BaseModel):
+    """Request model for roadmap generation from interview."""
+    interview_session_id: str
+    start_date: str
+    use_web_search: bool = True
+
+
 router = APIRouter()
 
 
@@ -226,10 +234,8 @@ async def submit_answers_streaming(
 
 @router.post("/roadmaps/generate")
 async def generate_roadmap_streaming(
-    interview_session_id: str,
-    start_date: str,
-    use_web_search: bool = True,
-    background_tasks: BackgroundTasks = None,
+    request: RoadmapGenerateRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -238,6 +244,10 @@ async def generate_roadmap_streaming(
     This endpoint streams partial roadmap data as it's generated,
     allowing the frontend to progressively render the roadmap.
     """
+    interview_session_id = request.interview_session_id
+    start_date = request.start_date
+    use_web_search = request.use_web_search
+
     stream_id = str(uuid.uuid4())
     manager = StreamingManager()
     register_stream(stream_id, manager)

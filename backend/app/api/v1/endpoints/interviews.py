@@ -242,6 +242,17 @@ async def get_current_questions(
             detail="인터뷰 세션을 찾을 수 없습니다.",
         )
 
+    # If interview is complete, return empty questions with is_complete=True
+    if session.status == InterviewStatus.COMPLETED or session.is_complete:
+        return InterviewQuestionsResponse(
+            session_id=session.id,
+            current_stage=session.current_stage,
+            stage_name=get_stage_name(session.current_stage),
+            questions=[],
+            is_complete=True,
+            is_followup=False,
+        )
+
     if session.status != InterviewStatus.IN_PROGRESS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
