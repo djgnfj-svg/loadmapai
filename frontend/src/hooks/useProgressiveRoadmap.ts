@@ -11,6 +11,23 @@ import { useAuthStore } from '../stores/authStore';
 
 const API_BASE = '/api/v1';
 
+// 피드백 타입
+export interface AIFeedback {
+  honest_opinion: string;
+  encouragement: string;
+  suggestions: string[];
+}
+
+// 드래프트 로드맵 타입
+export interface DraftRoadmap {
+  completion_percentage: number;
+  months: Array<{
+    month: number;
+    title: string;
+    overview: string;
+  }>;
+}
+
 interface UseProgressiveRoadmapOptions {
   onComplete?: (roadmapId: string) => void;
   onError?: (error: string) => void;
@@ -26,7 +43,17 @@ interface UseProgressiveRoadmapReturn {
   progress: number;
   error: string | null;
   isStarting: boolean;
-  submittingQuestionId: string | null;
+  isSubmitting: boolean;
+  isReadyForGeneration: boolean;  // 배치 제출 완료 후 true
+
+  // 다중 라운드 인터뷰 상태 (NEW)
+  currentRound: number;
+  maxRounds: number;
+  feedback: AIFeedback | null;
+  draftRoadmap: DraftRoadmap | null;
+  informationLevel: 'insufficient' | 'minimal' | 'sufficient' | 'complete' | null;
+  aiRecommendsComplete: boolean;
+  canComplete: boolean;
 
   // 액션
   startSession: (params: {
@@ -34,7 +61,9 @@ interface UseProgressiveRoadmapReturn {
     mode: RoadmapMode;
     durationMonths: number;
   }) => Promise<void>;
-  submitAnswer: (questionId: string, answer: string) => Promise<void>;
+  setAnswer: (questionId: string, answer: string) => void;
+  submitRoundAnswers: (userWantsComplete?: boolean) => Promise<void>;  // NEW: 라운드별 제출
+  submitAllAnswers: () => Promise<void>;  // 레거시: 배치 제출
   generateFinalRoadmap: () => Promise<void>;
   reset: () => void;
 }
@@ -53,7 +82,17 @@ export function useProgressiveRoadmap(
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
-  const [submittingQuestionId, setSubmittingQuestionId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isReadyForGeneration, setIsReadyForGeneration] = useState(false);
+
+  // 다중 라운드 인터뷰 상태 (NEW)
+  const [currentRound, setCurrentRound] = useState(1);
+  const [maxRounds, setMaxRounds] = useState(10);
+  const [feedback, setFeedback] = useState<AIFeedback | null>(null);
+  const [draftRoadmap, setDraftRoadmap] = useState<DraftRoadmap | null>(null);
+  const [informationLevel, setInformationLevel] = useState<'insufficient' | 'minimal' | 'sufficient' | 'complete' | null>(null);
+  const [aiRecommendsComplete, setAiRecommendsComplete] = useState(false);
+  const [canComplete, setCanComplete] = useState(false);
 
   // 참조
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -65,27 +104,38 @@ export function useProgressiveRoadmap(
       response: Response,
       onEvent: (event: { type: string; data?: unknown; progress?: number }) => void
     ) => {
+      console.log('[SSE] Starting to read stream...');
       const reader = response.body?.getReader();
-      if (!reader) throw new Error('응답 스트림을 읽을 수 없습니다');
+      if (!reader) {
+        console.error('[SSE] No reader available');
+        throw new Error('응답 스트림을 읽을 수 없습니다');
+      }
 
       const decoder = new TextDecoder();
       let buffer = '';
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          console.log('[SSE] Stream done');
+          break;
+        }
 
-        buffer += decoder.decode(value, { stream: true });
+        const chunk = decoder.decode(value, { stream: true });
+        console.log('[SSE] Received chunk:', chunk);
+        buffer += chunk;
         const lines = buffer.split('\n\n');
         buffer = lines.pop() || '';
 
         for (const line of lines) {
+          console.log('[SSE] Processing line:', line);
           if (line.startsWith('data: ')) {
             try {
               const event = JSON.parse(line.slice(6));
+              console.log('[SSE] Parsed event:', event);
               onEvent(event);
-            } catch {
-              console.error('SSE 파싱 오류:', line);
+            } catch (e) {
+              console.error('[SSE] 파싱 오류:', line, e);
             }
           }
         }
@@ -97,6 +147,8 @@ export function useProgressiveRoadmap(
   // 세션 시작
   const startSession = useCallback(
     async (params: { topic: string; mode: RoadmapMode; durationMonths: number }) => {
+      console.log('[startSession] Starting with params:', params);
+      console.log('[startSession] Token available:', !!token, token ? `${token.substring(0, 20)}...` : 'null');
       setIsStarting(true);
       setError(null);
 
@@ -111,6 +163,7 @@ export function useProgressiveRoadmap(
 
         abortControllerRef.current = new AbortController();
 
+        console.log('[startSession] Fetching SSE endpoint...');
         const response = await fetch(`${API_BASE}/stream/interviews/start`, {
           method: 'POST',
           headers: {
@@ -125,16 +178,20 @@ export function useProgressiveRoadmap(
           signal: abortControllerRef.current.signal,
         });
 
+        console.log('[startSession] Response status:', response.status, response.ok);
         if (!response.ok) {
           throw new Error('세션 시작 실패');
         }
 
+        console.log('[startSession] Starting to read SSE stream...');
         await readSSEStream(response, (event) => {
+          console.log('[startSession] Received event:', event.type);
           if (event.progress !== undefined) {
             setProgress(event.progress);
           }
 
           if (event.type === 'complete' && event.data) {
+            console.log('[startSession] Complete event received!');
             const data = event.data as {
               session_id: string;
               questions: InterviewQuestion[];
@@ -147,12 +204,15 @@ export function useProgressiveRoadmap(
             }
           }
         });
+        console.log('[startSession] SSE stream finished');
       } catch (err) {
+        console.error('[startSession] Error:', err);
         if (err instanceof Error && err.name === 'AbortError') return;
         const message = err instanceof Error ? err.message : '알 수 없는 오류';
         setError(message);
         onError?.(message);
       } finally {
+        console.log('[startSession] Finally block - setting isStarting to false');
         setIsStarting(false);
       }
     },
@@ -252,69 +312,167 @@ export function useProgressiveRoadmap(
     []
   );
 
-  // 답변 제출
-  const submitAnswer = useCallback(
-    async (questionId: string, answer: string) => {
-      if (!sessionId) return;
+  // 답변 저장 (로컬 상태만 업데이트)
+  const setAnswer = useCallback((questionId: string, answer: string) => {
+    setAnswers((prev) => new Map(prev).set(questionId, answer));
+  }, []);
 
-      setSubmittingQuestionId(questionId);
-      setIsStreaming(true);
-      setError(null);
+  // 라운드별 답변 제출 (NEW: 다중 라운드 인터뷰)
+  const submitRoundAnswers = useCallback(async (userWantsComplete: boolean = false) => {
+    if (!sessionId || answers.size === 0) return;
 
-      // 답변 저장
-      setAnswers((prev) => new Map(prev).set(questionId, answer));
+    setIsSubmitting(true);
+    setIsStreaming(true);
+    setError(null);
 
-      try {
-        abortControllerRef.current = new AbortController();
+    try {
+      abortControllerRef.current = new AbortController();
 
-        const response = await fetch(`${API_BASE}/stream/roadmaps/refine`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token && { Authorization: `Bearer ${token}` }),
-          },
-          body: JSON.stringify({
-            session_id: sessionId,
-            question_id: questionId,
-            answer,
-          }),
-          signal: abortControllerRef.current.signal,
-        });
+      // Convert Map to array of answer objects
+      const answersArray = Array.from(answers.entries()).map(([questionId, answer]) => ({
+        question_id: questionId,
+        answer: answer,
+      }));
 
-        if (!response.ok) {
-          throw new Error('답변 제출 실패');
+      const response = await fetch(`${API_BASE}/stream/interviews/${sessionId}/submit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify({
+          answers: answersArray,
+          user_wants_complete: userWantsComplete,
+        }),
+        signal: abortControllerRef.current.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error('답변 제출 실패');
+      }
+
+      await readSSEStream(response, (event) => {
+        if (event.progress !== undefined) {
+          setProgress(event.progress);
         }
 
-        await readSSEStream(response, (event) => {
-          if (event.progress !== undefined) {
-            setProgress(event.progress);
-          }
+        if (event.type === 'complete' && event.data) {
+          const data = event.data as {
+            session_id: string;
+            is_complete: boolean;
+            current_round?: number;
+            max_rounds?: number;
+            questions?: InterviewQuestion[];
+            feedback?: AIFeedback;
+            draft_roadmap?: DraftRoadmap;
+            information_level?: 'insufficient' | 'minimal' | 'sufficient' | 'complete';
+            ai_recommends_complete?: boolean;
+            can_complete?: boolean;
+            // 완료 시 추가 필드
+            compiled_context?: string;
+            key_insights?: string[];
+            schedule?: object;
+          };
 
-          if (event.type === 'refined' && event.data) {
-            const refinement = event.data as RefinementEvent;
+          if (data.is_complete) {
+            // 인터뷰 완료 - 로드맵 생성 준비
+            setIsReadyForGeneration(true);
+            setFeedback(data.feedback || null);
+          } else {
+            // 다음 라운드
+            setCurrentRound(data.current_round || currentRound + 1);
+            setMaxRounds(data.max_rounds || 10);
+            setQuestions(data.questions || []);
+            setFeedback(data.feedback || null);
+            setDraftRoadmap(data.draft_roadmap || null);
+            setInformationLevel(data.information_level || null);
+            setAiRecommendsComplete(data.ai_recommends_complete || false);
+            setCanComplete(data.can_complete || false);
+            // 새 질문에 대한 답변 초기화
+            setAnswers(new Map());
+          }
+        }
+      });
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
+      const message = err instanceof Error ? err.message : '알 수 없는 오류';
+      setError(message);
+      onError?.(message);
+    } finally {
+      setIsStreaming(false);
+      setIsSubmitting(false);
+    }
+  }, [sessionId, answers, token, readSSEStream, onError, currentRound]);
+
+  // 모든 답변 일괄 제출 (레거시: 배치 제출)
+  const submitAllAnswers = useCallback(async () => {
+    if (!sessionId || answers.size === 0) return;
+
+    setIsSubmitting(true);
+    setIsStreaming(true);
+    setError(null);
+
+    try {
+      abortControllerRef.current = new AbortController();
+
+      // Convert Map to object
+      const answersObj: Record<string, string> = {};
+      answers.forEach((value, key) => {
+        answersObj[key] = value;
+      });
+
+      const response = await fetch(`${API_BASE}/stream/interviews/batch-answers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+          answers: answersObj,
+        }),
+        signal: abortControllerRef.current.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error('답변 제출 실패');
+      }
+
+      await readSSEStream(response, (event) => {
+        if (event.progress !== undefined) {
+          setProgress(event.progress);
+        }
+
+        // Handle refinement events from batch processing
+        if (event.data && typeof event.data === 'object' && 'type' in event.data) {
+          const eventData = event.data as { type: string; data?: RefinementEvent };
+          if (eventData.type === 'refined' && eventData.data) {
+            const refinement = eventData.data;
             setRoadmap((prev) => (prev ? applyRefinement(prev, refinement) : prev));
           }
-        });
+        }
+      });
 
-        // isNew 플래그 리셋 (애니메이션 후)
-        setTimeout(() => {
-          setRoadmap((prev) => {
-            if (!prev) return prev;
-            return resetIsNewFlags(prev);
-          });
-        }, 1000);
-      } catch (err) {
-        if (err instanceof Error && err.name === 'AbortError') return;
-        const message = err instanceof Error ? err.message : '알 수 없는 오류';
-        setError(message);
-        onError?.(message);
-      } finally {
-        setIsStreaming(false);
-        setSubmittingQuestionId(null);
-      }
-    },
-    [sessionId, token, readSSEStream, applyRefinement, onError]
-  );
+      // 배치 제출 성공 - 로드맵 생성 준비 완료
+      setIsReadyForGeneration(true);
+
+      // isNew 플래그 리셋 (애니메이션 후)
+      setTimeout(() => {
+        setRoadmap((prev) => {
+          if (!prev) return prev;
+          return resetIsNewFlags(prev);
+        });
+      }, 1000);
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
+      const message = err instanceof Error ? err.message : '알 수 없는 오류';
+      setError(message);
+      onError?.(message);
+    } finally {
+      setIsStreaming(false);
+      setIsSubmitting(false);
+    }
+  }, [sessionId, answers, token, readSSEStream, applyRefinement, onError]);
 
   // 최종 로드맵 생성
   const generateFinalRoadmap = useCallback(async () => {
@@ -373,7 +531,16 @@ export function useProgressiveRoadmap(
     setProgress(0);
     setError(null);
     setIsStarting(false);
-    setSubmittingQuestionId(null);
+    setIsSubmitting(false);
+    setIsReadyForGeneration(false);
+    // 다중 라운드 인터뷰 상태 리셋
+    setCurrentRound(1);
+    setMaxRounds(10);
+    setFeedback(null);
+    setDraftRoadmap(null);
+    setInformationLevel(null);
+    setAiRecommendsComplete(false);
+    setCanComplete(false);
   }, []);
 
   return {
@@ -385,9 +552,21 @@ export function useProgressiveRoadmap(
     progress,
     error,
     isStarting,
-    submittingQuestionId,
+    isSubmitting,
+    isReadyForGeneration,
+    // 다중 라운드 인터뷰 상태
+    currentRound,
+    maxRounds,
+    feedback,
+    draftRoadmap,
+    informationLevel,
+    aiRecommendsComplete,
+    canComplete,
+    // 액션
     startSession,
-    submitAnswer,
+    setAnswer,
+    submitRoundAnswers,
+    submitAllAnswers,
     generateFinalRoadmap,
     reset,
   };

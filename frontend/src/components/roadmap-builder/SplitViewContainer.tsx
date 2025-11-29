@@ -3,19 +3,29 @@ import { cn } from '../../lib/utils';
 import { QuestionPanel } from './QuestionPanel';
 import { RoadmapPanel } from './RoadmapPanel';
 import type { InterviewQuestion, ProgressiveRoadmap } from '../../types';
+import type { AIFeedback, DraftRoadmap } from '../../hooks/useProgressiveRoadmap';
 
 interface SplitViewContainerProps {
   // 질문 관련
   questions: InterviewQuestion[];
   answers: Map<string, string>;
   onAnswerChange: (questionId: string, answer: string) => void;
-  onAnswerSubmit: (questionId: string, answer: string) => void;
-  submittingQuestionId: string | null;
+  onSubmit: (userWantsComplete?: boolean) => Promise<void>;  // 변경: 완료 여부 파라미터
+  isSubmitting: boolean;
 
   // 로드맵 관련
   roadmap: ProgressiveRoadmap | null;
   isStreaming: boolean;
   progress: number;
+
+  // 다중 라운드 인터뷰 (NEW)
+  currentRound?: number;
+  maxRounds?: number;
+  feedback?: AIFeedback | null;
+  draftRoadmap?: DraftRoadmap | null;
+  informationLevel?: 'insufficient' | 'minimal' | 'sufficient' | 'complete' | null;
+  aiRecommendsComplete?: boolean;
+  canComplete?: boolean;
 
   // 옵션
   className?: string;
@@ -27,19 +37,22 @@ export function SplitViewContainer({
   questions,
   answers,
   onAnswerChange,
-  onAnswerSubmit,
-  submittingQuestionId,
+  onSubmit,
+  isSubmitting,
   roadmap,
   isStreaming,
   progress,
+  // 다중 라운드 인터뷰 props
+  currentRound = 1,
+  maxRounds = 10,
+  feedback,
+  draftRoadmap,
+  informationLevel,
+  aiRecommendsComplete = false,
+  canComplete = false,
   className,
 }: SplitViewContainerProps) {
   const [mobileTab, setMobileTab] = useState<MobileTab>('questions');
-
-  // 현재 진행 중인 질문 인덱스 계산
-  const currentQuestionIndex = questions.findIndex(
-    (q) => !answers.has(q.id)
-  );
 
   return (
     <div className={cn('h-full', className)}>
@@ -81,9 +94,15 @@ export function SplitViewContainer({
             questions={questions}
             answers={answers}
             onAnswerChange={onAnswerChange}
-            onAnswerSubmit={onAnswerSubmit}
-            submittingQuestionId={submittingQuestionId}
-            currentQuestionIndex={currentQuestionIndex >= 0 ? currentQuestionIndex : questions.length}
+            onSubmit={onSubmit}
+            isSubmitting={isSubmitting}
+            currentRound={currentRound}
+            maxRounds={maxRounds}
+            feedback={feedback}
+            draftRoadmap={draftRoadmap}
+            informationLevel={informationLevel}
+            aiRecommendsComplete={aiRecommendsComplete}
+            canComplete={canComplete}
             className="h-full"
           />
         ) : (
@@ -103,9 +122,15 @@ export function SplitViewContainer({
             questions={questions}
             answers={answers}
             onAnswerChange={onAnswerChange}
-            onAnswerSubmit={onAnswerSubmit}
-            submittingQuestionId={submittingQuestionId}
-            currentQuestionIndex={currentQuestionIndex >= 0 ? currentQuestionIndex : questions.length}
+            onSubmit={onSubmit}
+            isSubmitting={isSubmitting}
+            currentRound={currentRound}
+            maxRounds={maxRounds}
+            feedback={feedback}
+            draftRoadmap={draftRoadmap}
+            informationLevel={informationLevel}
+            aiRecommendsComplete={aiRecommendsComplete}
+            canComplete={canComplete}
             className="h-full"
           />
         </div>

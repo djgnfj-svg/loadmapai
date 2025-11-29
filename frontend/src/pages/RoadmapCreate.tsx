@@ -80,11 +80,12 @@ function ModeSelection({
         '프로젝트/자격증/운동 계획에 최적',
       ],
       color: 'primary',
+      disabled: false,
     },
     {
       id: 'learning' as RoadmapMode,
       title: '러닝 모드',
-      description: '새로운 지식을 학습하고 이해도를 검증하고 싶을 때 적합합니다. AI가 학습 내용을 기반으로 퀴즈를 생성하고 피드백을 제공합니다.',
+      description: 'AI 퀴즈로 학습 이해도를 검증합니다. (준비 중)',
       icon: BookOpen,
       features: [
         '학습 주제별 AI 퀴즈 자동 생성',
@@ -92,6 +93,8 @@ function ModeSelection({
         '오답 해설 및 맞춤형 피드백 제공',
       ],
       color: 'green',
+      disabled: true,
+      badge: 'BETA',
     },
   ];
 
@@ -105,6 +108,7 @@ function ModeSelection({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {modes.map((mode) => {
           const isSelected = selected === mode.id;
+          const isDisabled = mode.disabled;
           const colorClasses = mode.color === 'primary'
             ? 'border-primary-500 bg-primary-50 dark:bg-primary-500/10 ring-primary-500'
             : 'border-green-500 bg-green-50 dark:bg-green-500/10 ring-green-500';
@@ -115,26 +119,47 @@ function ModeSelection({
           return (
             <button
               key={mode.id}
-              onClick={() => onSelect(mode.id)}
-              className={`text-left p-6 rounded-xl border-2 transition-all ${
-                isSelected
-                  ? `${colorClasses} ring-2`
-                  : 'border-gray-200 dark:border-dark-600 hover:border-gray-300 dark:hover:border-dark-500'
-              }`}
+              onClick={() => !isDisabled && onSelect(mode.id)}
+              disabled={isDisabled}
+              className={cn(
+                'text-left p-6 rounded-xl border-2 transition-all relative',
+                isDisabled
+                  ? 'opacity-60 cursor-not-allowed border-gray-200 dark:border-dark-600 bg-gray-50 dark:bg-dark-800'
+                  : isSelected
+                    ? `${colorClasses} ring-2`
+                    : 'border-gray-200 dark:border-dark-600 hover:border-gray-300 dark:hover:border-dark-500'
+              )}
             >
-              <div className={`inline-flex p-3 rounded-lg ${iconColorClasses} mb-4`}>
+              {mode.badge && (
+                <span className="absolute top-3 right-3 px-2 py-0.5 text-xs font-bold rounded bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400">
+                  {mode.badge}
+                </span>
+              )}
+              <div className={cn(
+                'inline-flex p-3 rounded-lg mb-4',
+                isDisabled ? 'bg-gray-100 dark:bg-dark-600 text-gray-400 dark:text-gray-500' : iconColorClasses
+              )}>
                 <mode.icon className="h-6 w-6" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              <h3 className={cn(
+                'text-lg font-semibold mb-2',
+                isDisabled ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'
+              )}>
                 {mode.title}
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{mode.description}</p>
               <ul className="space-y-2">
                 {mode.features.map((feature, i) => (
-                  <li key={i} className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                    <span className={`w-1.5 h-1.5 rounded-full mr-2 ${
-                      mode.color === 'primary' ? 'bg-primary-500' : 'bg-green-500'
-                    }`} />
+                  <li key={i} className={cn(
+                    'flex items-center text-sm',
+                    isDisabled ? 'text-gray-400 dark:text-gray-500' : 'text-gray-600 dark:text-gray-300'
+                  )}>
+                    <span className={cn(
+                      'w-1.5 h-1.5 rounded-full mr-2',
+                      isDisabled
+                        ? 'bg-gray-300 dark:bg-gray-600'
+                        : mode.color === 'primary' ? 'bg-primary-500' : 'bg-green-500'
+                    )} />
                     {feature}
                   </li>
                 ))}
@@ -350,16 +375,16 @@ export function RoadmapCreate() {
     progressiveRoadmap.questions.length > 0 &&
     progressiveRoadmap.answers.size >= progressiveRoadmap.questions.length;
 
-  // building 스텝 진입 시 세션 시작
+  // building 스텝 진입 시 세션 시작 (에러 시 자동 재시도 안함)
   useEffect(() => {
-    if (step === 'building' && !progressiveRoadmap.sessionId && !progressiveRoadmap.isStarting) {
+    if (step === 'building' && !progressiveRoadmap.sessionId && !progressiveRoadmap.isStarting && !progressiveRoadmap.error) {
       progressiveRoadmap.startSession({
         topic: formData.topic,
         mode: formData.mode,
         durationMonths: formData.duration_months,
       });
     }
-  }, [step, progressiveRoadmap.sessionId, progressiveRoadmap.isStarting, formData]);
+  }, [step, progressiveRoadmap.sessionId, progressiveRoadmap.isStarting, progressiveRoadmap.error, formData]);
 
   const canProceed = () => {
     switch (step) {
@@ -560,23 +585,27 @@ export function RoadmapCreate() {
                 <SplitViewContainer
                   questions={progressiveRoadmap.questions}
                   answers={progressiveRoadmap.answers}
-                  onAnswerChange={() => {
-                    // 로컬 상태는 QuestionCard에서 관리
-                  }}
-                  onAnswerSubmit={(questionId, answer) => {
-                    progressiveRoadmap.submitAnswer(questionId, answer);
-                  }}
-                  submittingQuestionId={progressiveRoadmap.submittingQuestionId}
+                  onAnswerChange={progressiveRoadmap.setAnswer}
+                  onSubmit={progressiveRoadmap.submitRoundAnswers}
+                  isSubmitting={progressiveRoadmap.isSubmitting}
                   roadmap={progressiveRoadmap.roadmap}
                   isStreaming={progressiveRoadmap.isStreaming}
                   progress={progressiveRoadmap.progress}
+                  // 다중 라운드 인터뷰 props
+                  currentRound={progressiveRoadmap.currentRound}
+                  maxRounds={progressiveRoadmap.maxRounds}
+                  feedback={progressiveRoadmap.feedback}
+                  draftRoadmap={progressiveRoadmap.draftRoadmap}
+                  informationLevel={progressiveRoadmap.informationLevel}
+                  aiRecommendsComplete={progressiveRoadmap.aiRecommendsComplete}
+                  canComplete={progressiveRoadmap.canComplete}
                 />
               )}
             </CardContent>
           </Card>
 
-          {/* 로드맵 생성 버튼 */}
-          {allQuestionsAnswered && !progressiveRoadmap.isStreaming && (
+          {/* 로드맵 생성 버튼 - 배치 제출 성공 후에만 표시 */}
+          {progressiveRoadmap.isReadyForGeneration && !progressiveRoadmap.isStreaming && (
             <div className="flex justify-center">
               <Button
                 variant="primary"
@@ -585,7 +614,7 @@ export function RoadmapCreate() {
                 className="px-8"
               >
                 <Map className="h-5 w-5 mr-2" />
-                로드맵 생성하기
+                최종 로드맵 생성하기
               </Button>
             </div>
           )}
