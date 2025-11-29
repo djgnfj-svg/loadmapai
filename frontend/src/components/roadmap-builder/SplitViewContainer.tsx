@@ -9,7 +9,7 @@ interface SplitViewContainerProps {
   questions: InterviewQuestion[];
   answers: Map<string, string>;
   onAnswerChange: (questionId: string, answer: string) => void;
-  onAnswerSubmit: (questionId: string) => void;
+  onAnswerSubmit: (questionId: string, answer: string) => void;
   submittingQuestionId: string | null;
 
   // 로드맵 관련

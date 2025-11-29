@@ -6,7 +6,7 @@ interface QuestionPanelProps {
   questions: InterviewQuestion[];
   answers: Map<string, string>;
   onAnswerChange: (questionId: string, answer: string) => void;
-  onAnswerSubmit: (questionId: string) => void;
+  onAnswerSubmit: (questionId: string, answer: string) => void;
   submittingQuestionId: string | null;
   currentQuestionIndex: number;
   className?: string;
@@ -57,7 +57,7 @@ export function QuestionPanel({
             index={index}
             answer={answers.get(question.id) || ''}
             onAnswerChange={(answer) => onAnswerChange(question.id, answer)}
-            onSubmit={() => onAnswerSubmit(question.id)}
+            onSubmit={(answer) => onAnswerSubmit(question.id, answer)}
             isSubmitting={submittingQuestionId === question.id}
             isAnswered={answers.has(question.id)}
             isCurrent={index === currentQuestionIndex}
@@ -73,7 +73,7 @@ interface QuestionCardProps {
   index: number;
   answer: string;
   onAnswerChange: (answer: string) => void;
-  onSubmit: () => void;
+  onSubmit: (answer: string) => void;
   isSubmitting: boolean;
   isAnswered: boolean;
   isCurrent: boolean;
@@ -94,7 +94,7 @@ function QuestionCard({
   const handleSubmit = () => {
     if (localAnswer.trim() && !isSubmitting && !isAnswered) {
       onAnswerChange(localAnswer);
-      onSubmit();
+      onSubmit(localAnswer);
     }
   };
 
@@ -145,7 +145,7 @@ function QuestionCard({
                 if (!isAnswered && !isSubmitting) {
                   setLocalAnswer(option);
                   onAnswerChange(option);
-                  onSubmit();
+                  onSubmit(option);
                 }
               }}
               disabled={isAnswered || isSubmitting}

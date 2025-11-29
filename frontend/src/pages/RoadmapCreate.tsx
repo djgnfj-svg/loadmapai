@@ -5,16 +5,11 @@ import { Map, BookOpen, Calendar, Clock, ArrowLeft, ArrowRight, MessageCircle, G
 import { Card, CardContent } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
-import { InterviewWithPreview } from '@/components/interview';
+import { SplitViewContainer } from '@/components/roadmap-builder';
 import { StreamingGeneratingState, ProgressiveRoadmapPreview } from '@/components/roadmap';
-import {
-  useStartDeepInterview,
-  useSubmitInterviewAnswers,
-  useInterviewQuestions,
-} from '@/hooks';
-import { useRoadmapStreaming } from '@/hooks/useStreaming';
+import { useProgressiveRoadmap } from '@/hooks/useProgressiveRoadmap';
 import { cn } from '@/lib/utils';
-import type { RoadmapMode, InterviewAnswer, InterviewCompletedResponse } from '@/types';
+import type { RoadmapMode } from '@/types';
 
 type Step = 'mode' | 'topic' | 'duration' | 'building' | 'generating';
 
@@ -330,10 +325,6 @@ function DurationSelection({
 
 export function RoadmapCreate() {
   const navigate = useNavigate();
-  const startInterview = useStartDeepInterview();
-
-  // Streaming hook for roadmap generation
-  const roadmapStreaming = useRoadmapStreaming();
 
   const [step, setStep] = useState<Step>('mode');
   const [formData, setFormData] = useState<FormData>({
@@ -343,53 +334,32 @@ export function RoadmapCreate() {
     start_date: format(new Date(), 'yyyy-MM-dd'),
     use_web_search: true,
   });
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [completedData, setCompletedData] = useState<InterviewCompletedResponse | null>(null);
-  const [interviewError, setInterviewError] = useState<string | null>(null);
 
-  // Fetch questions for current session
-  const {
-    data: questionsData,
-    isLoading: isLoadingQuestions,
-    refetch: refetchQuestions,
-  } = useInterviewQuestions(sessionId || '');
+  // Progressive roadmap hook
+  const progressiveRoadmap = useProgressiveRoadmap({
+    onComplete: (roadmapId) => {
+      navigate(`/roadmaps/${roadmapId}`);
+    },
+    onError: (error) => {
+      console.error('Progressive roadmap error:', error);
+    },
+  });
 
-  // Submit answers mutation
-  const submitAnswers = useSubmitInterviewAnswers(sessionId || '');
+  // 모든 질문에 답변했는지 확인
+  const allQuestionsAnswered =
+    progressiveRoadmap.questions.length > 0 &&
+    progressiveRoadmap.answers.size >= progressiveRoadmap.questions.length;
 
-  // Handle questions response - check if interview is complete
+  // building 스텝 진입 시 세션 시작
   useEffect(() => {
-    if (questionsData) {
-      if (questionsData.is_complete) {
-        // Interview completed - set completed data (stay in building step)
-        setCompletedData({
-          session_id: questionsData.session_id,
-          is_complete: true,
-          compiled_context: '',
-          key_insights: [],
-          schedule: {},
-          can_generate_roadmap: true,
-        });
-      }
+    if (step === 'building' && !progressiveRoadmap.sessionId && !progressiveRoadmap.isStarting) {
+      progressiveRoadmap.startSession({
+        topic: formData.topic,
+        mode: formData.mode,
+        durationMonths: formData.duration_months,
+      });
     }
-  }, [questionsData]);
-
-  // Handle streaming completion
-  useEffect(() => {
-    if (roadmapStreaming.result && !roadmapStreaming.isStreaming) {
-      const result = roadmapStreaming.result as { roadmap_id: string };
-      if (result.roadmap_id) {
-        navigate(`/roadmaps/${result.roadmap_id}`);
-      }
-    }
-  }, [roadmapStreaming.result, roadmapStreaming.isStreaming, navigate]);
-
-  // Handle streaming error - stay in building step to show error
-  useEffect(() => {
-    if (roadmapStreaming.error && !roadmapStreaming.isStreaming) {
-      // Error will be shown in the InterviewWithPreview component
-    }
-  }, [roadmapStreaming.error, roadmapStreaming.isStreaming]);
+  }, [step, progressiveRoadmap.sessionId, progressiveRoadmap.isStarting, formData]);
 
   const canProceed = () => {
     switch (step) {
@@ -404,39 +374,9 @@ export function RoadmapCreate() {
     }
   };
 
-  const handleAnswersSubmit = async (answers: InterviewAnswer[]) => {
-    if (!sessionId) return;
-
-    try {
-      setInterviewError(null);
-      const response = await submitAnswers.mutateAsync(answers);
-
-      // Check if interview is complete
-      if (response.data.is_complete) {
-        setCompletedData(response.data as InterviewCompletedResponse);
-        // Stay in building step - InterviewWithPreview handles the completed state
-      } else {
-        // Refetch questions for next stage
-        await refetchQuestions();
-      }
-    } catch (error) {
-      console.error('Failed to submit answers:', error);
-      setInterviewError('답변 제출 중 오류가 발생했습니다. 다시 시도해주세요.');
-    }
-  };
-
   const handleGenerateRoadmap = async () => {
-    if (!sessionId) return;
-
     setStep('generating');
-    roadmapStreaming.reset();
-
-    // Use streaming to generate roadmap
-    await roadmapStreaming.generateRoadmap({
-      interview_session_id: sessionId,
-      start_date: formData.start_date,
-      use_web_search: formData.use_web_search,
-    });
+    await progressiveRoadmap.generateFinalRoadmap();
   };
 
   const handleNext = async () => {
@@ -445,20 +385,7 @@ export function RoadmapCreate() {
     } else if (step === 'topic') {
       setStep('duration');
     } else if (step === 'duration') {
-      // Start deep interview and show building step
       setStep('building');
-      try {
-        setInterviewError(null);
-        const response = await startInterview.mutateAsync({
-          topic: formData.topic,
-          mode: formData.mode,
-          duration_months: formData.duration_months,
-        });
-        setSessionId(response.data.session_id);
-      } catch (error) {
-        console.error('Failed to start interview:', error);
-        setInterviewError('인터뷰 시작 중 오류가 발생했습니다. 다시 시도해주세요.');
-      }
     }
   };
 
@@ -469,9 +396,7 @@ export function RoadmapCreate() {
       setStep('topic');
     } else if (step === 'building') {
       setStep('duration');
-      setSessionId(null);
-      setInterviewError(null);
-      setCompletedData(null);
+      progressiveRoadmap.reset();
     }
   };
 
@@ -479,7 +404,7 @@ export function RoadmapCreate() {
   const currentStepIndex = steps.indexOf(step);
   const showProgress = step !== 'generating';
 
-  // Generating step has different layout (full width with split view)
+  // Generating step
   if (step === 'generating') {
     return (
       <div className="max-w-6xl mx-auto">
@@ -489,16 +414,16 @@ export function RoadmapCreate() {
             <CardContent>
               <StreamingGeneratingState
                 topic={formData.topic}
-                events={roadmapStreaming.events}
-                currentEvent={roadmapStreaming.currentEvent}
-                progress={roadmapStreaming.progress}
-                isStreaming={roadmapStreaming.isStreaming}
-                error={roadmapStreaming.error}
+                events={[]}
+                currentEvent={null}
+                progress={progressiveRoadmap.progress}
+                isStreaming={progressiveRoadmap.isStreaming}
+                error={progressiveRoadmap.error}
               />
             </CardContent>
           </Card>
 
-          {/* Right: Progressive Roadmap Preview */}
+          {/* Right: Roadmap Preview */}
           <Card variant="bordered">
             <CardContent>
               <div className="mb-4">
@@ -512,8 +437,8 @@ export function RoadmapCreate() {
               </div>
               <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
                 <ProgressiveRoadmapPreview
-                  partialRoadmap={roadmapStreaming.partialRoadmap}
-                  isStreaming={roadmapStreaming.isStreaming}
+                  partialRoadmap={null}
+                  isStreaming={progressiveRoadmap.isStreaming}
                 />
               </div>
             </CardContent>
@@ -521,12 +446,12 @@ export function RoadmapCreate() {
         </div>
 
         {/* Cancel button */}
-        {roadmapStreaming.isStreaming && (
+        {progressiveRoadmap.isStreaming && (
           <div className="flex justify-center mt-6">
             <Button
               variant="ghost"
               onClick={() => {
-                roadmapStreaming.abort();
+                progressiveRoadmap.reset();
                 setStep('building');
               }}
             >
@@ -600,25 +525,71 @@ export function RoadmapCreate() {
         </Card>
       )}
 
-      {/* Building Step - Full Width with Split View */}
+      {/* Building Step - Split View */}
       {step === 'building' && (
-        <Card variant="bordered">
-          <CardContent className="min-h-[500px]">
-            <InterviewWithPreview
-              topic={formData.topic}
-              durationMonths={formData.duration_months}
-              mode={formData.mode}
-              questionsData={questionsData || null}
-              isLoadingQuestions={startInterview.isPending || isLoadingQuestions}
-              questionError={interviewError}
-              onSubmitAnswers={handleAnswersSubmit}
-              isSubmitting={submitAnswers.isPending}
-              completedData={completedData}
-              onGenerateRoadmap={handleGenerateRoadmap}
-              isGenerating={roadmapStreaming.isStreaming}
-            />
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          <Card variant="bordered">
+            <CardContent className="min-h-[600px]">
+              {progressiveRoadmap.isStarting ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center">
+                    <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                    <p className="text-gray-600 dark:text-gray-400">세션을 시작하는 중...</p>
+                  </div>
+                </div>
+              ) : progressiveRoadmap.error ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center">
+                    <p className="text-red-600 dark:text-red-400 mb-4">{progressiveRoadmap.error}</p>
+                    <Button
+                      variant="primary"
+                      onClick={() => {
+                        progressiveRoadmap.reset();
+                        progressiveRoadmap.startSession({
+                          topic: formData.topic,
+                          mode: formData.mode,
+                          durationMonths: formData.duration_months,
+                        });
+                      }}
+                    >
+                      다시 시도
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <SplitViewContainer
+                  questions={progressiveRoadmap.questions}
+                  answers={progressiveRoadmap.answers}
+                  onAnswerChange={() => {
+                    // 로컬 상태는 QuestionCard에서 관리
+                  }}
+                  onAnswerSubmit={(questionId, answer) => {
+                    progressiveRoadmap.submitAnswer(questionId, answer);
+                  }}
+                  submittingQuestionId={progressiveRoadmap.submittingQuestionId}
+                  roadmap={progressiveRoadmap.roadmap}
+                  isStreaming={progressiveRoadmap.isStreaming}
+                  progress={progressiveRoadmap.progress}
+                />
+              )}
+            </CardContent>
+          </Card>
+
+          {/* 로드맵 생성 버튼 */}
+          {allQuestionsAnswered && !progressiveRoadmap.isStreaming && (
+            <div className="flex justify-center">
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={handleGenerateRoadmap}
+                className="px-8"
+              >
+                <Map className="h-5 w-5 mr-2" />
+                로드맵 생성하기
+              </Button>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Navigation */}
@@ -635,7 +606,6 @@ export function RoadmapCreate() {
             variant="primary"
             onClick={handleNext}
             disabled={!canProceed()}
-            isLoading={startInterview.isPending}
           >
             {step === 'duration' ? (
               <>
@@ -653,7 +623,7 @@ export function RoadmapCreate() {
       )}
 
       {/* Back button for building step */}
-      {step === 'building' && !startInterview.isPending && !isLoadingQuestions && !completedData && (
+      {step === 'building' && !progressiveRoadmap.isStarting && !allQuestionsAnswered && (
         <div className="flex justify-start mt-6">
           <Button variant="ghost" onClick={handleBack}>
             <ArrowLeft className="h-4 w-4 mr-1" />
