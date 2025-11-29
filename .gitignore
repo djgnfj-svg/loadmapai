@@ -77,3 +77,10 @@ alembic/versions/*.pyc
 
 # Redis dump
 dump.rdb
+
+# MCP (Model Context Protocol)
+.mcp.json
+.playwright-mcp/
+
+# MSW (Mock Service Worker)
+frontend/public/mockServiceWorker.js
