@@ -105,3 +105,105 @@ class ValidationException(AppException):
             detail=detail,
             error_code="VALIDATION_ERROR",
         )
+
+
+# ============ AI/LLM Specific Exceptions ============
+
+class LLMException(AIServiceException):
+    """Base exception for LLM-related errors."""
+
+    def __init__(self, detail: str, provider: str = None):
+        super().__init__(detail=detail)
+        self.error_code = "LLM_ERROR"
+        self.provider = provider
+
+
+class LLMInvocationException(LLMException):
+    """Raised when LLM invocation fails."""
+
+    def __init__(self, detail: str = "LLM 호출에 실패했습니다.", provider: str = None):
+        super().__init__(detail=detail, provider=provider)
+        self.error_code = "LLM_INVOCATION_ERROR"
+
+
+class LLMParsingException(LLMException):
+    """Raised when LLM response parsing fails."""
+
+    def __init__(self, detail: str = "LLM 응답 파싱에 실패했습니다."):
+        super().__init__(detail=detail)
+        self.error_code = "LLM_PARSING_ERROR"
+
+
+class InterviewGenerationException(AIServiceException):
+    """Raised when interview question generation fails."""
+
+    def __init__(self, detail: str = "인터뷰 질문 생성에 실패했습니다."):
+        super().__init__(detail=detail)
+        self.error_code = "INTERVIEW_GENERATION_ERROR"
+
+
+class RoadmapGenerationException(AIServiceException):
+    """Raised when roadmap generation fails."""
+
+    def __init__(self, detail: str = "로드맵 생성에 실패했습니다.", stage: str = None):
+        super().__init__(detail=detail)
+        self.error_code = "ROADMAP_GENERATION_ERROR"
+        self.stage = stage
+
+
+# ============ Resource Specific Exceptions ============
+
+class UserNotFoundException(NotFoundException):
+    """Raised when a user is not found."""
+
+    def __init__(self, user_id: str = None, email: str = None):
+        identifier = email or user_id or "알 수 없음"
+        super().__init__(resource="사용자", detail=f"사용자({identifier})를 찾을 수 없습니다.")
+
+
+class RoadmapNotFoundException(NotFoundException):
+    """Raised when a roadmap is not found."""
+
+    def __init__(self, roadmap_id: str = None):
+        super().__init__(resource="로드맵", detail=f"로드맵을 찾을 수 없습니다.")
+
+
+class InterviewSessionNotFoundException(NotFoundException):
+    """Raised when an interview session is not found."""
+
+    def __init__(self, session_id: str = None):
+        super().__init__(resource="인터뷰 세션")
+
+
+class QuizNotFoundException(NotFoundException):
+    """Raised when a quiz is not found."""
+
+    def __init__(self, quiz_id: str = None):
+        super().__init__(resource="퀴즈")
+
+
+# ============ Business Logic Exceptions ============
+
+class InvalidStateException(BadRequestException):
+    """Raised when operation is invalid for current state."""
+
+    def __init__(self, detail: str, current_state: str = None):
+        super().__init__(detail=detail)
+        self.error_code = "INVALID_STATE"
+        self.current_state = current_state
+
+
+class InterviewTerminatedException(BadRequestException):
+    """Raised when interview is terminated due to invalid answers."""
+
+    def __init__(self, reason: str = "유효하지 않은 답변으로 인터뷰가 종료되었습니다."):
+        super().__init__(detail=reason)
+        self.error_code = "INTERVIEW_TERMINATED"
+
+
+class WebSearchException(AIServiceException):
+    """Raised when web search fails."""
+
+    def __init__(self, detail: str = "웹 검색에 실패했습니다."):
+        super().__init__(detail=detail)
+        self.error_code = "WEB_SEARCH_ERROR"
