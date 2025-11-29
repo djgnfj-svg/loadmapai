@@ -258,6 +258,8 @@ interface QuestionCardProps {
   disabled: boolean;
 }
 
+const CUSTOM_INPUT_KEY = '__custom__';
+
 function QuestionCard({
   question,
   index,
@@ -266,17 +268,46 @@ function QuestionCard({
   disabled,
 }: QuestionCardProps) {
   const [localAnswer, setLocalAnswer] = useState(answer);
+  const [isCustomInput, setIsCustomInput] = useState(false);
+  const [customText, setCustomText] = useState('');
   const isAnswered = answer.trim().length > 0;
 
   // 외부에서 answer가 변경되면 localAnswer도 업데이트
   useEffect(() => {
     setLocalAnswer(answer);
-  }, [answer]);
+    // 기존 옵션에 없는 답변이면 직접 입력으로 간주
+    if (question.question_type === 'single_choice' && question.options && answer) {
+      const isExistingOption = question.options.includes(answer);
+      if (!isExistingOption && answer.trim()) {
+        setIsCustomInput(true);
+        setCustomText(answer);
+      }
+    }
+  }, [answer, question.options, question.question_type]);
 
   const handleOptionSelect = (option: string) => {
     if (disabled) return;
-    setLocalAnswer(option);
-    onAnswerChange(option);
+    if (option === CUSTOM_INPUT_KEY) {
+      setIsCustomInput(true);
+      // 직접 입력 선택 시 기존 답변 초기화하지 않음
+    } else {
+      setIsCustomInput(false);
+      setCustomText('');
+      setLocalAnswer(option);
+      onAnswerChange(option);
+    }
+  };
+
+  const handleCustomTextChange = (value: string) => {
+    if (disabled) return;
+    setCustomText(value);
+  };
+
+  const handleCustomTextBlur = () => {
+    if (customText.trim()) {
+      setLocalAnswer(customText);
+      onAnswerChange(customText);
+    }
   };
 
   const handleTextChange = (value: string) => {
@@ -289,6 +320,13 @@ function QuestionCard({
       onAnswerChange(localAnswer);
     }
   };
+
+  // 현재 선택이 직접 입력인지 또는 기존 옵션인지 확인
+  const isCustomSelected = isCustomInput || (
+    question.options &&
+    localAnswer.trim() &&
+    !question.options.includes(localAnswer)
+  );
 
   return (
     <div
@@ -319,6 +357,7 @@ function QuestionCard({
       {/* 답변 입력 */}
       {question.question_type === 'single_choice' && question.options ? (
         <div className="space-y-2 ml-9">
+          {/* 기존 옵션들 */}
           {question.options.map((option) => (
             <button
               key={option}
@@ -326,7 +365,7 @@ function QuestionCard({
               disabled={disabled}
               className={cn(
                 'w-full text-left px-3 py-2 rounded-md text-sm transition-all',
-                localAnswer === option
+                localAnswer === option && !isCustomSelected
                   ? 'bg-blue-500 text-white'
                   : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600',
                 disabled && 'cursor-not-allowed opacity-60'
@@ -335,6 +374,48 @@ function QuestionCard({
               {option}
             </button>
           ))}
+
+          {/* 직접 입력 옵션 */}
+          <button
+            onClick={() => handleOptionSelect(CUSTOM_INPUT_KEY)}
+            disabled={disabled}
+            className={cn(
+              'w-full text-left px-3 py-2 rounded-md text-sm transition-all border-2 border-dashed',
+              isCustomSelected
+                ? 'bg-purple-500 text-white border-purple-500'
+                : 'bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:border-purple-400 dark:hover:border-purple-500 text-gray-600 dark:text-gray-400',
+              disabled && 'cursor-not-allowed opacity-60'
+            )}
+          >
+            ✏️ 직접 입력
+          </button>
+
+          {/* 직접 입력 텍스트 필드 */}
+          {isCustomSelected && (
+            <div className="mt-2">
+              <input
+                type="text"
+                value={customText || (isCustomSelected && localAnswer ? localAnswer : '')}
+                onChange={(e) => handleCustomTextChange(e.target.value)}
+                onBlur={handleCustomTextBlur}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleCustomTextBlur();
+                  }
+                }}
+                placeholder="나만의 답변을 입력하세요..."
+                disabled={disabled}
+                autoFocus
+                className={cn(
+                  'w-full px-3 py-2 rounded-md border text-sm',
+                  'bg-white dark:bg-gray-800',
+                  'border-purple-300 dark:border-purple-600',
+                  'focus:ring-2 focus:ring-purple-500 focus:border-transparent',
+                  disabled && 'cursor-not-allowed opacity-60'
+                )}
+              />
+            </div>
+          )}
         </div>
       ) : (
         <div className="ml-9">
