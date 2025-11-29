@@ -36,6 +36,7 @@ class InterviewStartRequest(BaseModel):
 class InterviewSubmitAnswersRequest(BaseModel):
     """Request to submit answers for current questions."""
     answers: List[InterviewAnswerSchema]
+    user_wants_complete: bool = False  # 사용자가 "이 정도면 됐어요" 버튼 클릭
 
 
 # ============ Response Schemas ============

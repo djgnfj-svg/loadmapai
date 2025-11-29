@@ -5,7 +5,7 @@ import uuid
 from typing import Optional
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -23,6 +23,8 @@ from app.core.streaming import (
 from app.ai.callbacks import InterviewStreamingHandler, RoadmapStreamingHandler
 from app.services.interview_service import InterviewService
 from app.schemas.interview import InterviewStartRequest, InterviewSubmitAnswersRequest
+from app.ai.llm import invoke_llm
+from app.ai.prompts.templates import ROADMAP_REFINEMENT_PROMPT
 
 
 class SkeletonGenerateRequest(BaseModel):
@@ -33,10 +35,16 @@ class SkeletonGenerateRequest(BaseModel):
 
 
 class RefineOnAnswerRequest(BaseModel):
-    """Request model for progressive roadmap refinement."""
+    """Request model for progressive roadmap refinement (single answer - deprecated)."""
     session_id: str
     question_id: str
     answer: str
+
+
+class BatchAnswersRequest(BaseModel):
+    """Request model for batch answer submission with roadmap refinement."""
+    session_id: str
+    answers: dict[str, str]  # question_id -> answer
 
 
 class RoadmapGenerateRequest(BaseModel):
@@ -52,7 +60,6 @@ router = APIRouter()
 @router.post("/interviews/start")
 async def start_interview_streaming(
     request: InterviewStartRequest,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -61,32 +68,39 @@ async def start_interview_streaming(
     manager = StreamingManager()
     register_stream(stream_id, manager)
 
+    # Capture user info before async task (to avoid session issues)
+    user_id = current_user.id
+
+    # Create session in request context and commit immediately
+    service = InterviewService(db)
+    session = service.create_session(
+        user_id=user_id,
+        topic=request.topic,
+        mode=request.mode,
+        duration_months=request.duration_months,
+    )
+    session_id = str(session.id)
+    db.commit()  # Commit to persist the session
+
     async def generate():
         try:
+            print(f"[DEBUG] generate() started for session {session_id}")
             loop = asyncio.get_event_loop()
             handler = InterviewStreamingHandler(stream_id, loop)
 
             # Emit start
+            print("[DEBUG] Emitting START event")
             await manager.emit(
                 StreamEventType.START,
                 "인터뷰를 시작합니다...",
                 progress=0
             )
+            print("[DEBUG] START event emitted")
 
-            service = InterviewService(db)
-
-            # Create session
             await manager.emit(
                 StreamEventType.PROGRESS,
-                "세션 생성 중...",
+                "질문 생성 중...",
                 progress=10
-            )
-
-            session = service.create_session(
-                user_id=current_user.id,
-                topic=request.topic,
-                mode=request.mode,
-                duration_months=request.duration_months,
             )
 
             # Generate questions with streaming
@@ -94,36 +108,61 @@ async def start_interview_streaming(
 
             from app.ai.interview_graph import start_interview as start_interview_graph
 
-            result = start_interview_graph(
-                topic=request.topic,
-                mode=request.mode,
-                duration_months=request.duration_months,
-                user_id=str(current_user.id),
-                session_id=str(session.id),
-                callbacks=[handler],
+            # Run LLM call in thread pool to avoid blocking
+            print("[DEBUG] Starting LLM call...")
+            result = await loop.run_in_executor(
+                None,
+                lambda: start_interview_graph(
+                    topic=request.topic,
+                    mode=request.mode,
+                    duration_months=request.duration_months,
+                    user_id=str(user_id),
+                    session_id=session_id,
+                    callbacks=[handler],
+                )
             )
+            print(f"[DEBUG] LLM call completed, result keys: {result.keys() if result else 'None'}")
 
-            # Update DB
+            # Update DB with fresh session
             await manager.emit(
                 StreamEventType.PROGRESS,
                 "저장 중...",
                 progress=90
             )
-            service.update_session_state(session, result["state"])
+
+            # Use fresh DB session for update
+            from app.db.session import SessionLocal
+            fresh_db = SessionLocal()
+            try:
+                fresh_service = InterviewService(fresh_db)
+                fresh_session = fresh_service.get_session(session_id, user_id)
+                if fresh_session:
+                    fresh_service.update_session_state(fresh_session, result["state"])
+                    fresh_db.commit()
+            finally:
+                fresh_db.close()
 
             # Complete
+            print("[DEBUG] Emitting complete event")
             await manager.complete(data={
-                "session_id": str(session.id),
-                "current_stage": result["current_stage"],
+                "session_id": session_id,
+                "current_round": result.get("current_round", 1),
                 "questions": result["questions"],
             })
+            print("[DEBUG] Complete event emitted")
 
         except Exception as e:
+            import traceback
+            print(f"[DEBUG] Exception in generate(): {type(e).__name__}: {e}")
+            traceback.print_exc()
             await manager.error(f"오류 발생: {str(e)}")
+            print("[DEBUG] Error event emitted")
         finally:
+            print("[DEBUG] generate() finished, unregistering stream")
             unregister_stream(stream_id)
 
-    background_tasks.add_task(generate)
+    # Start generator task immediately (not as background task)
+    asyncio.create_task(generate())
 
     return StreamingResponse(
         manager.stream(),
@@ -140,7 +179,6 @@ async def start_interview_streaming(
 async def submit_answers_streaming(
     session_id: str,
     request: InterviewSubmitAnswersRequest,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -149,22 +187,33 @@ async def submit_answers_streaming(
     manager = StreamingManager()
     register_stream(stream_id, manager)
 
+    # Capture values before async task
+    user_id = current_user.id
+    answers_data = [
+        {"question_id": a.question_id, "answer": a.answer}
+        for a in request.answers
+    ]
+    user_wants_complete = request.user_wants_complete  # NEW: 사용자 완료 요청
+
+    # Get session and state in request context
+    service = InterviewService(db)
+    session = service.get_session(session_id, user_id)
+    session_state = service.session_to_state(session) if session else None
+    session_status = session.status if session else None
+    session_followup_count = session.followup_count if session else 0
+
     async def generate():
         try:
-            loop = asyncio.get_event_loop()
-            handler = InterviewStreamingHandler(stream_id, loop)
-
-            service = InterviewService(db)
-
-            # Get session
-            session = service.get_session(session_id, current_user.id)
             if not session:
                 await manager.error("인터뷰 세션을 찾을 수 없습니다.")
                 return
 
-            if session.status != InterviewStatus.IN_PROGRESS:
+            if session_status != InterviewStatus.IN_PROGRESS:
                 await manager.error("이미 완료되거나 취소된 인터뷰입니다.")
                 return
+
+            loop = asyncio.get_event_loop()
+            handler = InterviewStreamingHandler(stream_id, loop)
 
             await manager.emit(
                 StreamEventType.START,
@@ -175,15 +224,17 @@ async def submit_answers_streaming(
             # Evaluate answers
             handler.emit_evaluating()
 
-            state = service.session_to_state(session)
-            answers = [
-                {"question_id": a.question_id, "answer": a.answer}
-                for a in request.answers
-            ]
-
             from app.ai.interview_graph import submit_answers as submit_answers_graph
 
-            result = submit_answers_graph(state, answers, callbacks=[handler])
+            result = await loop.run_in_executor(
+                None,
+                lambda: submit_answers_graph(
+                    session_state,
+                    answers_data,
+                    callbacks=[handler],
+                    user_wants_complete=user_wants_complete,  # NEW
+                )
+            )
 
             # Update stage progress
             if result["is_complete"]:
@@ -195,38 +246,62 @@ async def submit_answers_streaming(
                     70
                 )
 
-            # Save
+            # Save with fresh DB session
             await manager.emit(
                 StreamEventType.PROGRESS,
                 "저장 중...",
                 progress=90
             )
-            service.update_session_state(session, result["state"])
+
+            from app.db.session import SessionLocal
+            fresh_db = SessionLocal()
+            try:
+                fresh_service = InterviewService(fresh_db)
+                fresh_session = fresh_service.get_session(session_id, user_id)
+                if fresh_session:
+                    fresh_service.update_session_state(fresh_session, result["state"])
+                    fresh_db.commit()
+            finally:
+                fresh_db.close()
 
             # Complete
             if result["is_complete"]:
                 await manager.complete(data={
-                    "session_id": str(session.id),
+                    "session_id": session_id,
                     "is_complete": True,
                     "compiled_context": result.get("compiled_context", ""),
                     "key_insights": result.get("key_insights", []),
                     "schedule": result.get("schedule", {}),
+                    # NEW: 최종 피드백
+                    "feedback": result.get("feedback"),
+                    "draft_roadmap": result.get("draft_roadmap"),
                 })
             else:
                 await manager.complete(data={
-                    "session_id": str(session.id),
+                    "session_id": session_id,
                     "is_complete": False,
-                    "current_stage": result["current_stage"],
+                    "current_round": result.get("current_round", 1),
+                    "max_rounds": result.get("max_rounds", 10),
                     "questions": result["questions"],
-                    "is_followup": session.followup_count > 0,
+                    "is_followup": result.get("is_followup", False),
+                    # NEW: 라운드 분석 결과
+                    "feedback": result.get("feedback"),
+                    "draft_roadmap": result.get("draft_roadmap"),
+                    "information_level": result.get("information_level"),
+                    "ai_recommends_complete": result.get("ai_recommends_complete", False),
+                    "can_complete": result.get("can_complete", False),
+                    "continue_reason": result.get("continue_reason", ""),
                 })
 
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             await manager.error(f"오류 발생: {str(e)}")
         finally:
             unregister_stream(stream_id)
 
-    background_tasks.add_task(generate)
+    # Start generator task immediately (not as background task)
+    asyncio.create_task(generate())
 
     return StreamingResponse(
         manager.stream(),
@@ -242,7 +317,6 @@ async def submit_answers_streaming(
 @router.post("/roadmaps/generate")
 async def generate_roadmap_streaming(
     request: RoadmapGenerateRequest,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -252,29 +326,47 @@ async def generate_roadmap_streaming(
     allowing the frontend to progressively render the roadmap.
     """
     interview_session_id = request.interview_session_id
-    start_date = request.start_date
+    start_date_str = request.start_date
     use_web_search = request.use_web_search
+    user_id = current_user.id
 
     stream_id = str(uuid.uuid4())
     manager = StreamingManager()
     register_stream(stream_id, manager)
 
+    # Get interview session data in request context
+    service = InterviewService(db)
+    session = service.get_session(interview_session_id, user_id)
+
+    # Capture session data before async task
+    session_data = None
+    if session and session.is_complete:
+        from app.models.roadmap import RoadmapMode
+        session_data = {
+            "id": session.id,
+            "topic": session.topic,
+            "duration_months": session.duration_months,
+            "mode": RoadmapMode(session.mode) if isinstance(session.mode, str) else session.mode,
+            "compiled_context": session.compiled_context,
+            "extracted_daily_minutes": session.extracted_daily_minutes,
+            "extracted_rest_days": session.extracted_rest_days or [],
+            "extracted_intensity": session.extracted_intensity or "moderate",
+        }
+    session_exists = session is not None
+    session_is_complete = session.is_complete if session else False
+
     async def generate():
         try:
-            loop = asyncio.get_event_loop()
-            handler = RoadmapStreamingHandler(stream_id, loop)
-
-            service = InterviewService(db)
-
-            # Get interview session
-            session = service.get_session(interview_session_id, current_user.id)
-            if not session:
+            if not session_exists:
                 await manager.error("인터뷰 세션을 찾을 수 없습니다.")
                 return
 
-            if not session.is_complete:
+            if not session_is_complete:
                 await manager.error("완료된 인터뷰만 로드맵을 생성할 수 있습니다.")
                 return
+
+            loop = asyncio.get_event_loop()
+            handler = RoadmapStreamingHandler(stream_id, loop)
 
             await manager.emit(
                 StreamEventType.START,
@@ -283,27 +375,26 @@ async def generate_roadmap_streaming(
             )
 
             # Import node functions
-            from app.ai.nodes.web_searcher import web_searcher, synthesize_search_context
+            from app.ai.nodes.web_searcher import synthesize_search_context
             from app.ai.nodes.goal_analyzer import goal_analyzer
             from app.ai.nodes.monthly_generator import monthly_generator
             from app.ai.nodes.weekly_generator import weekly_generator as weekly_gen_node
             from app.ai.nodes.daily_generator import daily_generator as daily_gen_node
             from app.ai.nodes.validator import validator
             from app.ai.state import RoadmapGenerationState
-            from app.models.roadmap import RoadmapMode
 
-            # Initialize state
+            # Initialize state from captured session data
             state: RoadmapGenerationState = {
-                "topic": session.topic,
-                "duration_months": session.duration_months,
-                "start_date": date.fromisoformat(start_date),
-                "mode": RoadmapMode(session.mode) if isinstance(session.mode, str) else session.mode,
-                "user_id": str(current_user.id),
-                "interview_context": session.compiled_context,
-                "daily_time": f"{session.extracted_daily_minutes}분" if session.extracted_daily_minutes else None,
-                "daily_available_minutes": session.extracted_daily_minutes,
-                "rest_days": session.extracted_rest_days or [],
-                "intensity": session.extracted_intensity or "moderate",
+                "topic": session_data["topic"],
+                "duration_months": session_data["duration_months"],
+                "start_date": date.fromisoformat(start_date_str),
+                "mode": session_data["mode"],
+                "user_id": str(user_id),
+                "interview_context": session_data["compiled_context"],
+                "daily_time": f"{session_data['extracted_daily_minutes']}분" if session_data["extracted_daily_minutes"] else None,
+                "daily_available_minutes": session_data["extracted_daily_minutes"],
+                "rest_days": session_data["extracted_rest_days"],
+                "intensity": session_data["extracted_intensity"],
                 "search_results": None,
                 "search_context": None,
                 "title": None,
@@ -321,19 +412,22 @@ async def generate_roadmap_streaming(
 
             # Step 1: Web search (if enabled)
             if use_web_search:
-                handler.emit_web_search_start(session.topic)
+                handler.emit_web_search_start(session_data["topic"])
 
                 from app.ai.nodes.web_searcher import search_learning_resources
-                search_results = search_learning_resources(session.topic, num_results=10)
+                search_results = await loop.run_in_executor(
+                    None,
+                    lambda: search_learning_resources(session_data["topic"], num_results=10)
+                )
 
                 if search_results:
                     state["search_results"] = search_results
-                    state["search_context"] = synthesize_search_context(search_results, session.topic)
+                    state["search_context"] = synthesize_search_context(search_results, session_data["topic"])
                     handler.emit_web_search_result(search_results)
 
             # Step 2: Goal analysis
             handler.emit_analyzing_goals()
-            state = goal_analyzer(state)
+            state = await loop.run_in_executor(None, lambda: goal_analyzer(state))
 
             # Emit goals analyzed with title/description
             handler.emit_goals_analyzed(
@@ -344,7 +438,7 @@ async def generate_roadmap_streaming(
             # Step 3: Monthly generation (with per-month streaming)
             total_months = state["duration_months"]
             handler.emit_generating_monthly(1, total_months)
-            state = monthly_generator(state)
+            state = await loop.run_in_executor(None, lambda: monthly_generator(state))
 
             # Emit each monthly goal
             for monthly in state.get("monthly_goals", []):
@@ -352,7 +446,6 @@ async def generate_roadmap_streaming(
                 handler.emit_monthly_generated(monthly)
 
             # Step 4: Weekly generation (with per-week streaming)
-            total_weeks = total_months * 4
             week_count = 0
 
             # We need to call weekly_generator which processes all months
@@ -361,7 +454,7 @@ async def generate_roadmap_streaming(
                 month_num = monthly.get("month_number", month_idx + 1)
                 handler.emit_generating_weekly(1, 4, month_num)
 
-            state = weekly_gen_node(state)
+            state = await loop.run_in_executor(None, lambda: weekly_gen_node(state))
 
             # Emit each weekly task
             for monthly_data in state.get("weekly_tasks", []):
@@ -384,7 +477,7 @@ async def generate_roadmap_streaming(
                     progress_pct = int((current_item / max(total_items, 1)) * 100)
                     handler.emit_generating_daily(progress_pct, month_num, weekly.get("week_number", 1))
 
-            state = daily_gen_node(state)
+            state = await loop.run_in_executor(None, lambda: daily_gen_node(state))
 
             # Emit each daily task set
             for monthly_daily in state.get("daily_tasks", []):
@@ -396,44 +489,53 @@ async def generate_roadmap_streaming(
 
             # Step 6: Validation
             handler.emit_validating()
-            state = validator(state)
+            state = await loop.run_in_executor(None, lambda: validator(state))
 
-            # Step 7: Save to DB
+            # Step 7: Save to DB with fresh session
             handler.emit_saving()
 
+            from app.db.session import SessionLocal
             from app.services.roadmap_service import RoadmapService
-            roadmap_service = RoadmapService(db)
 
-            # Prepare roadmap data
-            roadmap_data = {
-                "topic": state["topic"],
-                "title": state["title"],
-                "description": state["description"],
-                "duration_months": state["duration_months"],
-                "start_date": state["start_date"],
-                "mode": state["mode"],
-                "daily_available_minutes": state.get("daily_available_minutes"),
-                "rest_days": state.get("rest_days"),
-                "intensity": state.get("intensity"),
-                "monthly_goals": state["monthly_goals"],
-                "weekly_tasks": state["weekly_tasks"],
-                "daily_tasks": state["daily_tasks"],
-            }
+            fresh_db = SessionLocal()
+            try:
+                roadmap_service = RoadmapService(fresh_db)
 
-            roadmap = roadmap_service.create_roadmap_from_data(
-                user_id=current_user.id,
-                roadmap_data=roadmap_data,
-                interview_session_id=session.id,
-            )
+                # Prepare roadmap data
+                roadmap_data = {
+                    "topic": state["topic"],
+                    "title": state["title"],
+                    "description": state["description"],
+                    "duration_months": state["duration_months"],
+                    "start_date": state["start_date"],
+                    "mode": state["mode"],
+                    "daily_available_minutes": state.get("daily_available_minutes"),
+                    "rest_days": state.get("rest_days"),
+                    "intensity": state.get("intensity"),
+                    "monthly_goals": state["monthly_goals"],
+                    "weekly_tasks": state["weekly_tasks"],
+                    "daily_tasks": state["daily_tasks"],
+                }
 
-            # Update interview session with roadmap ID
-            session.roadmap_id = roadmap.id
-            db.commit()
+                roadmap = roadmap_service.create_roadmap_from_data(
+                    user_id=user_id,
+                    roadmap_data=roadmap_data,
+                    interview_session_id=session_data["id"],
+                )
 
-            await manager.complete(data={
-                "roadmap_id": str(roadmap.id),
-                "title": roadmap.title,
-            })
+                # Update interview session with roadmap ID
+                fresh_service = InterviewService(fresh_db)
+                fresh_session = fresh_service.get_session(interview_session_id, user_id)
+                if fresh_session:
+                    fresh_session.roadmap_id = roadmap.id
+                fresh_db.commit()
+
+                await manager.complete(data={
+                    "roadmap_id": str(roadmap.id),
+                    "title": roadmap.title,
+                })
+            finally:
+                fresh_db.close()
 
         except Exception as e:
             import traceback
@@ -442,7 +544,8 @@ async def generate_roadmap_streaming(
         finally:
             unregister_stream(stream_id)
 
-    background_tasks.add_task(generate)
+    # Start generator task immediately (not as background task)
+    asyncio.create_task(generate())
 
     return StreamingResponse(
         manager.stream(),
@@ -453,6 +556,343 @@ async def generate_roadmap_streaming(
             "X-Accel-Buffering": "no",
         }
     )
+
+
+@router.post("/interviews/batch-answers")
+async def submit_batch_answers(
+    request: BatchAnswersRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Submit all interview answers at once and refine roadmap.
+
+    This endpoint:
+    1. Receives all answers in a batch
+    2. Analyzes them to understand user context
+    3. Generates roadmap refinements based on all answers
+    4. Marks the interview session as ready for roadmap generation
+    """
+    stream_id = str(uuid.uuid4())
+    manager = StreamingManager()
+    register_stream(stream_id, manager)
+
+    # Capture values before async task
+    user_id = current_user.id
+    session_id = request.session_id
+    answers = request.answers
+
+    # Get session data in request context
+    service = InterviewService(db)
+    session = service.get_session(session_id, user_id)
+
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="인터뷰 세션을 찾을 수 없습니다."
+        )
+
+    # Capture session info
+    session_topic = session.topic
+    session_mode = session.mode
+    session_duration = session.duration_months
+    session_questions = session.current_questions or []
+
+    async def generate():
+        try:
+            await manager.emit(
+                StreamEventType.START,
+                "답변을 분석합니다...",
+                progress=0
+            )
+
+            await manager.emit(
+                StreamEventType.PROGRESS,
+                "사용자 요구사항 파악 중...",
+                progress=10
+            )
+
+            # Build context from all answers
+            context_lines = []
+            for q in session_questions:
+                q_id = q.get("id", "")
+                q_text = q.get("question", "")
+                if q_id in answers:
+                    context_lines.append(f"Q: {q_text}")
+                    context_lines.append(f"A: {answers[q_id]}")
+                    context_lines.append("")
+
+            compiled_context = "\n".join(context_lines)
+
+            await manager.emit(
+                StreamEventType.PROGRESS,
+                "AI가 로드맵을 구체화하고 있습니다...",
+                progress=30
+            )
+
+            # Generate refinements based on all answers using AI
+            loop = asyncio.get_event_loop()
+            refinements = await loop.run_in_executor(
+                None,
+                lambda: generate_batch_refinements(
+                    answers=answers,
+                    topic=session_topic,
+                    duration_months=session_duration,
+                    mode=session_mode,
+                    interview_context=compiled_context,
+                )
+            )
+
+            # Stream each refinement
+            total = len(refinements)
+            for i, refinement in enumerate(refinements):
+                progress = 40 + int((i / max(total, 1)) * 50)
+
+                await manager.emit(
+                    StreamEventType.PROGRESS,
+                    f"로드맵 업데이트 중... ({i + 1}/{total})",
+                    progress=progress,
+                    data={"type": "refined", "data": refinement}
+                )
+                await asyncio.sleep(0.05)
+
+            # Update session with compiled context
+            await manager.emit(
+                StreamEventType.PROGRESS,
+                "저장 중...",
+                progress=95
+            )
+
+            from app.db.session import SessionLocal
+            fresh_db = SessionLocal()
+            try:
+                fresh_service = InterviewService(fresh_db)
+                fresh_session = fresh_service.get_session(session_id, user_id)
+                if fresh_session:
+                    # Save answers and mark as complete
+                    fresh_session.compiled_context = compiled_context
+                    fresh_session.status = InterviewStatus.COMPLETED
+                    # Convert dict to list of answer objects
+                    answer_list = [
+                        {"question_id": q_id, "answer": ans}
+                        for q_id, ans in answers.items()
+                    ]
+                    fresh_session.current_answers = answer_list
+                    fresh_session.all_answers = answer_list
+                    fresh_db.commit()
+            finally:
+                fresh_db.close()
+
+            await manager.complete(data={
+                "session_id": session_id,
+                "refinements_applied": total,
+                "is_ready_for_generation": True,
+            })
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            await manager.error(f"오류 발생: {str(e)}")
+        finally:
+            unregister_stream(stream_id)
+
+    asyncio.create_task(generate())
+
+    return StreamingResponse(
+        manager.stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
+
+
+def generate_batch_refinements(
+    answers: dict[str, str],
+    topic: str,
+    duration_months: int,
+    mode: str,
+    interview_context: str
+) -> list:
+    """Generate roadmap refinements based on all answers using AI.
+
+    Calls the LLM to generate a complete, personalized roadmap structure
+    including title, description, monthly goals, weekly tasks, and daily tasks.
+    """
+    print(f"[AI Refinement] Generating refinements for topic: {topic}")
+
+    # Build the prompt
+    prompt = ROADMAP_REFINEMENT_PROMPT.format(
+        topic=topic,
+        duration_months=duration_months,
+        mode=mode,
+        interview_context=interview_context
+    )
+
+    try:
+        # Call AI to generate the full roadmap structure
+        result = invoke_llm(prompt, temperature=0.7)
+        print(f"[AI Refinement] AI response received, converting to refinements...")
+
+        # Convert AI response to refinement events
+        refinements = convert_roadmap_to_refinements(result, duration_months)
+        print(f"[AI Refinement] Generated {len(refinements)} refinement events")
+
+        return refinements
+
+    except Exception as e:
+        print(f"[AI Refinement] Error calling AI: {e}")
+        # Fallback to basic refinements if AI fails
+        return generate_fallback_refinements(topic, duration_months)
+
+
+def convert_roadmap_to_refinements(roadmap_data: dict, duration_months: int) -> list:
+    """Convert AI-generated roadmap structure to refinement events."""
+    refinements = []
+
+    # Title refinement
+    if "title" in roadmap_data:
+        refinements.append({
+            "type": "title",
+            "value": roadmap_data["title"],
+            "path": {}
+        })
+
+    # Description refinement
+    if "description" in roadmap_data:
+        refinements.append({
+            "type": "description",
+            "value": roadmap_data["description"],
+            "path": {}
+        })
+
+    # Monthly goals and nested structure
+    for monthly in roadmap_data.get("monthly_goals", []):
+        month_num = monthly.get("month_number", 1)
+
+        # Monthly title
+        if "title" in monthly:
+            refinements.append({
+                "type": "monthly",
+                "field": "title",
+                "value": monthly["title"],
+                "path": {"month_number": month_num}
+            })
+
+        # Monthly description
+        if "description" in monthly:
+            refinements.append({
+                "type": "monthly",
+                "field": "description",
+                "value": monthly["description"],
+                "path": {"month_number": month_num}
+            })
+
+        # Weekly tasks
+        for weekly in monthly.get("weekly_tasks", []):
+            week_num = weekly.get("week_number", 1)
+
+            # Weekly title
+            if "title" in weekly:
+                refinements.append({
+                    "type": "weekly",
+                    "field": "title",
+                    "value": weekly["title"],
+                    "path": {"month_number": month_num, "week_number": week_num}
+                })
+
+            # Daily tasks (D1-D7)
+            for daily in weekly.get("daily_tasks", []):
+                day_num = daily.get("day_number", 1)
+
+                # Daily title
+                if "title" in daily:
+                    refinements.append({
+                        "type": "daily",
+                        "field": "title",
+                        "value": daily["title"],
+                        "path": {
+                            "month_number": month_num,
+                            "week_number": week_num,
+                            "day_number": day_num
+                        }
+                    })
+
+                # Daily description
+                if "description" in daily:
+                    refinements.append({
+                        "type": "daily",
+                        "field": "description",
+                        "value": daily["description"],
+                        "path": {
+                            "month_number": month_num,
+                            "week_number": week_num,
+                            "day_number": day_num
+                        }
+                    })
+
+    return refinements
+
+
+def generate_fallback_refinements(topic: str, duration_months: int) -> list:
+    """Generate basic fallback refinements if AI call fails."""
+    refinements = []
+
+    refinements.append({
+        "type": "title",
+        "value": f"{topic} 학습 로드맵",
+        "path": {}
+    })
+
+    refinements.append({
+        "type": "description",
+        "value": f"{duration_months}개월 동안 {topic}을(를) 체계적으로 학습합니다.",
+        "path": {}
+    })
+
+    # Generate basic monthly structure
+    for month in range(1, min(duration_months + 1, 4)):
+        refinements.append({
+            "type": "monthly",
+            "field": "title",
+            "value": f"{month}개월차: 단계별 학습",
+            "path": {"month_number": month}
+        })
+
+        # Weekly tasks
+        for week in range(1, 5):
+            refinements.append({
+                "type": "weekly",
+                "field": "title",
+                "value": f"Week {week}",
+                "path": {"month_number": month, "week_number": week}
+            })
+
+            # Daily tasks (D1-D7) - only for first month's first week
+            if month == 1 and week == 1:
+                day_titles = [
+                    "기본 개념 학습",
+                    "예제 분석",
+                    "실습 1",
+                    "실습 2",
+                    "응용 학습",
+                    "주간 복습",
+                    "휴식 및 정리"
+                ]
+                for day in range(1, 8):
+                    refinements.append({
+                        "type": "daily",
+                        "field": "title",
+                        "value": f"D{day}: {day_titles[day-1]}",
+                        "path": {
+                            "month_number": month,
+                            "week_number": week,
+                            "day_number": day
+                        }
+                    })
+
+    return refinements
 
 
 @router.post("/roadmaps/skeleton")
@@ -505,153 +945,15 @@ async def generate_roadmap_skeleton(
 @router.post("/roadmaps/refine")
 async def refine_roadmap_on_answer(
     request: RefineOnAnswerRequest,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Refine roadmap progressively based on user's answer to a question.
+    """[DEPRECATED] Use /interviews/batch-answers instead.
 
-    This endpoint streams refinement events as SSE, allowing the frontend
-    to update the roadmap preview in real-time.
+    This endpoint is deprecated in favor of batch answer submission.
+    Individual answer refinement is no longer supported.
     """
-    stream_id = str(uuid.uuid4())
-    manager = StreamingManager()
-    register_stream(stream_id, manager)
-
-    async def generate():
-        try:
-            await manager.emit(
-                StreamEventType.START,
-                "답변을 분석하여 로드맵을 구체화합니다...",
-                progress=0
-            )
-
-            # Get interview session
-            service = InterviewService(db)
-            session = service.get_session(request.session_id, current_user.id)
-
-            if not session:
-                await manager.error("인터뷰 세션을 찾을 수 없습니다.")
-                return
-
-            await manager.emit(
-                StreamEventType.PROGRESS,
-                "질문과 답변을 분석 중...",
-                progress=20
-            )
-
-            # Mock refinement logic - in production, this would call the AI
-            # to generate refinements based on the answer
-            refinements = generate_mock_refinements(
-                request.question_id,
-                request.answer,
-                session.duration_months
-            )
-
-            # Stream each refinement
-            total = len(refinements)
-            for i, refinement in enumerate(refinements):
-                progress = 30 + int((i / max(total, 1)) * 60)
-
-                await manager.emit(
-                    StreamEventType.PROGRESS,
-                    f"로드맵 구체화 중... ({i + 1}/{total})",
-                    progress=progress,
-                    data={"type": "refined", "data": refinement}
-                )
-                await asyncio.sleep(0.1)  # Small delay for visual effect
-
-            await manager.emit(
-                StreamEventType.PROGRESS,
-                "저장 중...",
-                progress=95
-            )
-
-            await manager.complete(data={
-                "session_id": request.session_id,
-                "refinements_applied": total,
-            })
-
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            await manager.error(f"오류 발생: {str(e)}")
-        finally:
-            unregister_stream(stream_id)
-
-    background_tasks.add_task(generate)
-
-    return StreamingResponse(
-        manager.stream(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        }
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="이 엔드포인트는 더 이상 사용되지 않습니다. /interviews/batch-answers를 사용하세요."
     )
-
-
-def generate_mock_refinements(question_id: str, answer: str, duration_months: int) -> list:
-    """Generate mock refinement events based on question and answer.
-
-    In production, this would be replaced with actual AI-generated refinements.
-    """
-    refinements = []
-
-    # Map question IDs to refinement types
-    if "goal" in question_id or "목표" in question_id:
-        # Refine title and description
-        refinements.append({
-            "type": "title",
-            "value": f"{answer} 마스터 로드맵",
-            "path": {}
-        })
-        refinements.append({
-            "type": "description",
-            "value": f"{answer}을(를) 체계적으로 학습하기 위한 맞춤형 커리큘럼입니다.",
-            "path": {}
-        })
-
-    elif "time" in question_id or "시간" in question_id:
-        # Refine daily task descriptions based on available time
-        for month in range(1, min(duration_months + 1, 4)):
-            refinements.append({
-                "type": "monthly",
-                "field": "description",
-                "value": f"하루 {answer} 학습 기준 월간 목표",
-                "path": {"month_number": month}
-            })
-
-    elif "level" in question_id or "수준" in question_id:
-        # Refine monthly goals based on skill level
-        level_prefix = "기초부터 " if "초급" in answer or "입문" in answer else "심화 "
-        for month in range(1, min(duration_months + 1, 4)):
-            refinements.append({
-                "type": "monthly",
-                "field": "title",
-                "value": f"{level_prefix}단계 {month}: 핵심 개념 학습",
-                "path": {"month_number": month}
-            })
-
-    elif "focus" in question_id or "집중" in question_id:
-        # Refine weekly tasks based on focus area
-        for month in range(1, min(duration_months + 1, 3)):
-            for week in range(1, 5):
-                refinements.append({
-                    "type": "weekly",
-                    "field": "title",
-                    "value": f"{answer} 관련 주차 {week} 과제",
-                    "path": {"month_number": month, "week_number": week}
-                })
-
-    else:
-        # Generic refinements for other questions
-        refinements.append({
-            "type": "monthly",
-            "field": "description",
-            "value": f"사용자 맞춤 설정 반영: {answer[:50]}...",
-            "path": {"month_number": 1}
-        })
-
-    return refinements
