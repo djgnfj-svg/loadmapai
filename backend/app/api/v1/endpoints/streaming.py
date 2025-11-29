@@ -240,10 +240,12 @@ async def submit_answers_streaming(
             if result["is_complete"]:
                 handler.emit_compiling()
             else:
-                handler.emit_stage_progress(
-                    result["current_stage"],
-                    result.get("stage_name", ""),
-                    70
+                # 다음 라운드 질문 준비 완료
+                current_round = result.get("current_round", 1)
+                await manager.emit(
+                    StreamEventType.PROGRESS,
+                    f"라운드 {current_round} 질문 준비 완료",
+                    progress=70
                 )
 
             # Save with fresh DB session
