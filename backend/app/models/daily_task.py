@@ -21,9 +21,6 @@ class DailyTask(Base, TimestampMixin):
     status = Column(SQLEnum(TaskStatus), default=TaskStatus.PENDING, nullable=False)
     is_checked = Column(Boolean, default=False, nullable=False)
 
-    # For learning mode - quiz association
-    # quiz_id will be added later in Phase 6
-
     # Relationships
     weekly_task = relationship("WeeklyTask", back_populates="daily_tasks")
 

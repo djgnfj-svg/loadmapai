@@ -1,4 +1,4 @@
-from typing import TypedDict, List, Optional, Annotated, Dict
+from typing import TypedDict, List, Optional, Annotated
 from operator import add
 from datetime import date
 
@@ -31,25 +31,25 @@ class RoadmapGenerationState(TypedDict):
     mode: RoadmapMode
     user_id: str
 
-    # Interview context (optional, for personalized generation)
-    interview_context: Optional[str]  # Formatted interview Q&A
-    daily_time: Optional[str]  # Extracted daily time investment
+    # Optional context (for future personalization)
+    interview_context: Optional[str]
+    daily_time: Optional[str]
 
-    # Schedule info (extracted from interview or set directly)
-    daily_available_minutes: Optional[int]  # 하루 투자 가능 시간 (분)
-    rest_days: Optional[List[int]]  # 쉬는 요일 [0=일, 6=토]
-    intensity: Optional[str]  # 학습 강도: light/moderate/intense
+    # Schedule info
+    daily_available_minutes: Optional[int]
+    rest_days: Optional[List[int]]
+    intensity: Optional[str]
 
-    # Web search results (for enhanced roadmap generation)
-    search_results: Optional[List[dict]]  # Raw search results from Tavily
-    search_context: Optional[str]  # Synthesized search context for prompts
+    # Web search results
+    search_results: Optional[List[dict]]
+    search_context: Optional[str]
 
     # Generated content
     title: Optional[str]
     description: Optional[str]
     monthly_goals: Annotated[List[MonthlyGoalData], add]
-    weekly_tasks: Annotated[List[dict], add]  # {month_number: [WeeklyTaskData]}
-    daily_tasks: Annotated[List[dict], add]  # {month_number: {week_number: [DailyTaskData]}}
+    weekly_tasks: Annotated[List[dict], add]
+    daily_tasks: Annotated[List[dict], add]
 
     # Processing state
     current_month: int
@@ -60,187 +60,3 @@ class RoadmapGenerationState(TypedDict):
 
     # Final output
     roadmap_id: Optional[str]
-
-
-# ============ Question Generation State ============
-
-class QuestionData(TypedDict):
-    question_type: str  # "multiple_choice", "short_answer", "essay"
-    question_text: str
-    options: Optional[List[str]]  # For multiple choice
-    correct_answer: Optional[str]
-    explanation: Optional[str]
-    points: int
-
-
-class QuestionGenerationState(TypedDict):
-    # Input
-    daily_task_id: str
-    daily_task_title: str
-    daily_task_description: str
-    weekly_task_title: str
-    monthly_goal_title: str
-    roadmap_topic: str
-    num_questions: int
-    user_id: str
-
-    # Analysis results
-    key_concepts: List[str]
-    difficulty_level: str  # "beginner", "intermediate", "advanced"
-    question_focus_areas: List[str]
-
-    # Generated content
-    questions: List[QuestionData]
-
-    # Validation
-    validation_passed: bool
-    error_message: Optional[str]
-    retry_count: int
-
-    # Output
-    quiz_id: Optional[str]
-
-
-# ============ Grading State ============
-
-class AnswerData(TypedDict):
-    question_id: str
-    question_type: str
-    question_text: str
-    correct_answer: Optional[str]
-    user_answer: str
-    selected_option: Optional[str]
-    options: Optional[List[str]]
-
-
-class GradingResultData(TypedDict):
-    question_id: str
-    is_correct: bool
-    score: float  # 0-100, allows partial credit for essay
-    feedback: str
-
-
-class GradingState(TypedDict):
-    # Input
-    quiz_id: str
-    user_id: str
-    answers: List[AnswerData]
-    topic: str  # Daily task title for context
-
-    # Grading results
-    grading_results: List[GradingResultData]
-    total_score: float
-    correct_count: int
-    total_questions: int
-
-    # Overall feedback
-    feedback_summary: str
-    strengths: List[str]
-    areas_to_improve: List[str]
-
-    # Processing state
-    current_answer_index: int
-    error_message: Optional[str]
-
-
-# ============ Interview State ============
-
-class InterviewQuestionData(TypedDict):
-    id: str
-    question: str
-    question_type: str  # "text", "single_choice", "multiple_choice"
-    options: Optional[List[str]]
-    placeholder: Optional[str]
-
-
-class InterviewAnswerData(TypedDict):
-    question_id: str
-    answer: str  # For single_choice/text, the answer value; for multiple_choice, comma-separated
-
-
-class InterviewState(TypedDict):
-    # Input
-    topic: str
-    mode: str  # "learning" or "planning"
-    duration_months: int
-
-    # Generated questions
-    questions: List[InterviewQuestionData]
-
-    # User responses (filled after user answers)
-    answers: List[InterviewAnswerData]
-
-    # Processing
-    error_message: Optional[str]
-
-
-# ============ Deep Interview State (Multi-Stage) ============
-
-class AnswerEvaluationData(TypedDict):
-    """Evaluation result for a single answer."""
-    question_id: str
-    specificity: float  # 0-1
-    relevance: float  # 0-1
-    completeness: float  # 0-1
-    average_score: float
-    needs_followup: bool
-    followup_question: Optional[InterviewQuestionData]
-    insights: List[str]
-
-
-class StageData(TypedDict):
-    """Data for a single interview stage."""
-    questions: List[InterviewQuestionData]
-    answers: List[InterviewAnswerData]
-    evaluations: List[AnswerEvaluationData]
-    followup_questions: List[InterviewQuestionData]
-    followup_answers: List[InterviewAnswerData]
-
-
-class DeepInterviewState(TypedDict):
-    """State for multi-stage deep interview system.
-
-    The interview consists of 3 stages:
-    1. Goal Clarification (Where to) - What do you want to achieve? Why?
-    2. Current State (Where from) - What do you already know? Experience?
-    3. Constraints - Time, deadlines, resources
-    """
-    # Session info
-    session_id: str
-    topic: str
-    mode: str  # "learning" or "planning"
-    duration_months: int
-    user_id: str
-
-    # Stage tracking
-    current_stage: int  # 1, 2, or 3
-    stages_completed: List[int]
-    max_followups_per_stage: int  # Maximum follow-up rounds per stage (default: 2)
-
-    # Questions and answers per stage
-    # Key: stage number (1, 2, 3)
-    stage_data: Dict[int, StageData]
-
-    # Current stage processing
-    current_questions: List[InterviewQuestionData]
-    current_answers: List[InterviewAnswerData]
-    current_evaluations: List[AnswerEvaluationData]
-
-    # Follow-up tracking for current stage
-    followup_count: int  # Number of follow-ups done in current stage
-    pending_followup_questions: List[InterviewQuestionData]
-
-    # Interview completion status
-    is_complete: bool
-
-    # Final compiled context (generated after all stages complete)
-    compiled_context: Optional[str]  # Formatted summary of all interview data
-    key_insights: List[str]  # Key insights extracted from answers
-
-    # Schedule info extracted from Stage 3
-    extracted_daily_minutes: Optional[int]
-    extracted_rest_days: Optional[List[int]]
-    extracted_intensity: Optional[str]
-
-    # Error handling
-    error_message: Optional[str]

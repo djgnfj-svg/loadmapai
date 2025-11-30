@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List
 from uuid import UUID
 from pydantic import BaseModel, Field
 from datetime import date
@@ -34,57 +34,17 @@ from app.services.roadmap_service import (
     WeeklyTaskService,
 )
 from app.api.deps import get_current_user
-from app.ai.roadmap_graph import (
-    generate_roadmap,
-    generate_roadmap_with_context,
-    generate_roadmap_from_interview,
-)
-from app.ai.nodes.interview_generator import generate_interview_questions
-from app.services.interview_service import InterviewService
-from app.models.interview_session import InterviewStatus
+from app.ai.roadmap_graph import generate_roadmap
 
 
-# ============ Interview Request/Response Models ============
-
-class InterviewStartRequest(BaseModel):
-    topic: str = Field(..., min_length=1, max_length=200)
-    mode: RoadmapMode = RoadmapMode.PLANNING
-    duration_months: int = Field(..., ge=1, le=6)
-
-
-class InterviewQuestionResponse(BaseModel):
-    id: str
-    question: str
-    question_type: str
-    options: Optional[List[str]] = None
-    placeholder: Optional[str] = None
-
-
-class InterviewStartResponse(BaseModel):
-    questions: List[InterviewQuestionResponse]
-
-
-class InterviewAnswer(BaseModel):
-    question_id: str
-    answer: str
-
-
-class RoadmapGenerateWithContextRequest(BaseModel):
-    topic: str = Field(..., min_length=1, max_length=200)
-    duration_months: int = Field(..., ge=1, le=6)
-    start_date: date
-    mode: RoadmapMode = RoadmapMode.PLANNING
-    interview_answers: List[InterviewAnswer]
-    interview_questions: List[InterviewQuestionResponse]
-
-
-# ============ Standard Request/Response Models ============
+# ============ Request/Response Models ============
 
 class RoadmapGenerateRequest(BaseModel):
     topic: str = Field(..., min_length=1, max_length=200)
     duration_months: int = Field(..., ge=1, le=6)
     start_date: date
     mode: RoadmapMode = RoadmapMode.PLANNING
+    use_web_search: bool = False
 
 
 class RoadmapGenerateResponse(BaseModel):
@@ -92,12 +52,6 @@ class RoadmapGenerateResponse(BaseModel):
     title: str
     message: str
 
-
-class RoadmapFromInterviewRequest(BaseModel):
-    """Request to generate roadmap from completed interview session."""
-    interview_session_id: UUID
-    start_date: date
-    use_web_search: bool = True
 
 router = APIRouter()
 
@@ -225,163 +179,13 @@ async def generate_roadmap_endpoint(
             mode=data.mode,
             user_id=str(current_user.id),
             db=db,
+            use_web_search=data.use_web_search,
         )
 
         return RoadmapGenerateResponse(
             roadmap_id=result["roadmap_id"],
             title=result["title"],
             message="로드맵이 성공적으로 생성되었습니다.",
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"로드맵 생성 중 오류가 발생했습니다: {str(e)}",
-        )
-
-
-@router.post("/interview/start", response_model=InterviewStartResponse)
-async def start_interview(
-    data: InterviewStartRequest,
-    current_user: User = Depends(get_current_user),
-):
-    """Generate personalized interview questions based on topic and mode."""
-    try:
-        questions = generate_interview_questions(
-            topic=data.topic,
-            mode=data.mode.value,
-            duration_months=data.duration_months,
-        )
-
-        return InterviewStartResponse(
-            questions=[
-                InterviewQuestionResponse(
-                    id=q["id"],
-                    question=q["question"],
-                    question_type=q["question_type"],
-                    options=q.get("options"),
-                    placeholder=q.get("placeholder"),
-                )
-                for q in questions
-            ]
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"인터뷰 질문 생성 중 오류가 발생했습니다: {str(e)}",
-        )
-
-
-@router.post("/generate-with-context", response_model=RoadmapGenerateResponse)
-async def generate_roadmap_with_context_endpoint(
-    data: RoadmapGenerateWithContextRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """Generate a complete roadmap using AI with interview context."""
-    try:
-        # Convert to dict format for the function
-        answers = [{"question_id": a.question_id, "answer": a.answer} for a in data.interview_answers]
-        questions = [
-            {
-                "id": q.id,
-                "question": q.question,
-                "question_type": q.question_type,
-                "options": q.options,
-                "placeholder": q.placeholder,
-            }
-            for q in data.interview_questions
-        ]
-
-        result = await generate_roadmap_with_context(
-            topic=data.topic,
-            duration_months=data.duration_months,
-            start_date=data.start_date,
-            mode=data.mode,
-            user_id=str(current_user.id),
-            interview_answers=answers,
-            interview_questions=questions,
-            db=db,
-        )
-
-        return RoadmapGenerateResponse(
-            roadmap_id=result["roadmap_id"],
-            title=result["title"],
-            message="맞춤형 로드맵이 성공적으로 생성되었습니다.",
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"로드맵 생성 중 오류가 발생했습니다: {str(e)}",
-        )
-
-
-@router.post("/generate-from-interview", response_model=RoadmapGenerateResponse)
-async def generate_roadmap_from_interview_endpoint(
-    data: RoadmapFromInterviewRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """Generate a roadmap from a completed deep interview session.
-
-    This endpoint:
-    1. Takes a completed interview session ID
-    2. Uses the compiled interview context
-    3. Optionally performs web search for latest info
-    4. Generates a personalized roadmap
-    """
-    interview_service = InterviewService(db)
-
-    # Get interview session
-    session = interview_service.get_session(data.interview_session_id, current_user.id)
-    if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="인터뷰 세션을 찾을 수 없습니다.",
-        )
-
-    # Check if interview is completed
-    if session.status != InterviewStatus.COMPLETED:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="인터뷰가 완료되지 않았습니다. 먼저 인터뷰를 완료해주세요.",
-        )
-
-    # Check if already has a roadmap
-    if session.roadmap_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="이미 이 인터뷰로 생성된 로드맵이 있습니다.",
-        )
-
-    try:
-        # Get mode enum
-        mode = RoadmapMode.LEARNING if session.mode == "learning" else RoadmapMode.PLANNING
-
-        result = await generate_roadmap_from_interview(
-            topic=session.topic,
-            duration_months=session.duration_months,
-            start_date=data.start_date,
-            mode=mode,
-            user_id=str(current_user.id),
-            compiled_context=session.compiled_context or "",
-            daily_minutes=session.extracted_daily_minutes,
-            rest_days=session.extracted_rest_days,
-            intensity=session.extracted_intensity,
-            db=db,
-            use_web_search=data.use_web_search,
-        )
-
-        # Link roadmap to interview session
-        interview_service.link_roadmap(
-            session_id=session.id,
-            roadmap_id=UUID(result["roadmap_id"]),
-            user_id=current_user.id,
-        )
-
-        return RoadmapGenerateResponse(
-            roadmap_id=result["roadmap_id"],
-            title=result["title"],
-            message="딥 인터뷰 기반 맞춤형 로드맵이 생성되었습니다.",
         )
     except Exception as e:
         raise HTTPException(

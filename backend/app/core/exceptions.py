@@ -134,14 +134,6 @@ class LLMParsingException(LLMException):
         self.error_code = "LLM_PARSING_ERROR"
 
 
-class InterviewGenerationException(AIServiceException):
-    """Raised when interview question generation fails."""
-
-    def __init__(self, detail: str = "인터뷰 질문 생성에 실패했습니다."):
-        super().__init__(detail=detail)
-        self.error_code = "INTERVIEW_GENERATION_ERROR"
-
-
 class RoadmapGenerationException(AIServiceException):
     """Raised when roadmap generation fails."""
 
@@ -168,20 +160,6 @@ class RoadmapNotFoundException(NotFoundException):
         super().__init__(resource="로드맵", detail=f"로드맵을 찾을 수 없습니다.")
 
 
-class InterviewSessionNotFoundException(NotFoundException):
-    """Raised when an interview session is not found."""
-
-    def __init__(self, session_id: str = None):
-        super().__init__(resource="인터뷰 세션")
-
-
-class QuizNotFoundException(NotFoundException):
-    """Raised when a quiz is not found."""
-
-    def __init__(self, quiz_id: str = None):
-        super().__init__(resource="퀴즈")
-
-
 # ============ Business Logic Exceptions ============
 
 class InvalidStateException(BadRequestException):
@@ -191,14 +169,6 @@ class InvalidStateException(BadRequestException):
         super().__init__(detail=detail)
         self.error_code = "INVALID_STATE"
         self.current_state = current_state
-
-
-class InterviewTerminatedException(BadRequestException):
-    """Raised when interview is terminated due to invalid answers."""
-
-    def __init__(self, reason: str = "유효하지 않은 답변으로 인터뷰가 종료되었습니다."):
-        super().__init__(detail=reason)
-        self.error_code = "INTERVIEW_TERMINATED"
 
 
 class WebSearchException(AIServiceException):
