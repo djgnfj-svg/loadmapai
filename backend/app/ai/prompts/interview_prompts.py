@@ -5,6 +5,139 @@ SMART 프레임워크와 OKR 방법론을 활용하여 고품질 맞춤형 로�
 - OKR: Objectives and Key Results
 """
 
+# ============ 고정 SMART 질문 (단순화된 인터뷰) ============
+
+FIXED_SMART_QUESTIONS = [
+    {
+        "id": "goal",
+        "question": "이 학습을 통해 달성하고 싶은 구체적인 목표는 무엇인가요?",
+        "description": "예: '실무에서 React로 웹앱 개발', '토익 900점 달성', '데이터 분석 포트폴리오 3개 완성' 등 구체적으로 작성해주세요.",
+        "placeholder": "목표를 구체적으로 작성해주세요...",
+        "question_type": "textarea",
+        "category": "specific"
+    },
+    {
+        "id": "current_level",
+        "question": "현재 이 분야에 대한 경험과 수준을 알려주세요",
+        "description": "관련 경험, 이전에 학습한 내용, 현재 알고 있는 것들을 자유롭게 적어주세요.",
+        "placeholder": "예: '파이썬 기초 문법만 알고 있음', '관련 수업 들은 적 있으나 실무 경험 없음' 등",
+        "question_type": "textarea",
+        "category": "achievable"
+    },
+    {
+        "id": "time_commitment",
+        "question": "학습에 투자할 수 있는 시간은 어느 정도인가요?",
+        "description": "평일/주말 각각 가능한 시간, 집중해서 학습 가능한 시간대 등을 알려주세요.",
+        "placeholder": "예: '평일 2시간, 주말 4시간', '매일 저녁 9시~11시' 등",
+        "question_type": "textarea",
+        "category": "achievable"
+    },
+    {
+        "id": "motivation",
+        "question": "이 학습을 하려는 이유와 동기는 무엇인가요?",
+        "description": "취업, 이직, 자기계발, 특정 프로젝트 등 학습의 목적을 알려주세요.",
+        "placeholder": "예: '3개월 후 개발자 취업 목표', '현재 직무에서 데이터 분석 역량 필요' 등",
+        "question_type": "textarea",
+        "category": "relevant"
+    },
+    {
+        "id": "constraints",
+        "question": "학습에 있어 제약사항이나 고려해야 할 점이 있나요?",
+        "description": "선호하는 학습 방식, 피하고 싶은 것, 특별한 상황 등을 알려주세요.",
+        "placeholder": "예: '영어 자료는 어려움', '실습 위주로 하고 싶음', '주말에만 집중 가능' 등",
+        "question_type": "textarea",
+        "category": "specific"
+    }
+]
+
+
+# ============ AI 추가질문 생성 프롬프트 ============
+
+AI_FOLLOWUP_PROMPT = """당신은 로드맵 설계를 위한 인터뷰 전문가입니다.
+사용자의 답변을 분석하여 로드맵 생성에 필요한 추가 정보를 수집하세요.
+
+=== 사용자 정보 ===
+주제: {topic}
+모드: {mode}
+기간: {duration_months}개월
+
+=== 사용자의 답변 ===
+{user_answers}
+
+=== 당신의 임무 ===
+위 답변을 분석하여:
+1. 답변이 너무 모호하거나 불명확한 부분이 있는지 확인
+2. 로드맵 생성에 필요하지만 빠진 정보가 있는지 확인
+3. 필요시 1-3개의 추가 질문 생성
+
+=== 추가 질문 생성 규칙 ===
+1. 꼭 필요한 경우에만 질문 (정보가 충분하면 빈 배열 반환)
+2. 최대 3개까지만 생성
+3. 사용자가 쉽게 답변할 수 있도록 구체적으로
+4. 선택지가 있으면 더 좋음 (single_choice)
+5. 이미 답변한 내용을 다시 묻지 않기
+
+=== 응답 형식 (JSON) ===
+{{
+    "needs_followup": true | false,
+    "analysis": "답변 분석 요약 (내부용)",
+    "missing_info": ["부족한 정보 1", "부족한 정보 2"],
+    "followup_questions": [
+        {{
+            "id": "followup_1",
+            "question": "추가 질문",
+            "description": "질문에 대한 설명",
+            "question_type": "single_choice" | "textarea",
+            "options": ["선택지1", "선택지2", "선택지3"],
+            "reason": "이 질문을 하는 이유"
+        }}
+    ]
+}}
+
+=== 중요 ===
+- 답변이 충분하면 needs_followup: false, followup_questions: [] 반환
+- 너무 많은 질문으로 사용자를 지치게 하지 마세요
+- 로드맵 생성에 꼭 필요한 정보만 추가로 수집하세요
+
+JSON만 출력하세요."""
+
+
+# ============ 간단한 컨텍스트 컴파일 프롬프트 ============
+
+SIMPLE_COMPILE_CONTEXT_PROMPT = """당신은 로드맵 설계 전문가입니다.
+인터뷰 결과를 바탕으로 로드맵 생성 AI에게 전달할 컨텍스트를 작성하세요.
+
+=== 인터뷰 결과 ===
+주제: {topic}
+모드: {mode}
+기간: {duration_months}개월
+
+{interview_qa}
+
+=== 당신의 임무 ===
+위 인터뷰 내용을 분석하여:
+1. 사용자에게 맞는 로드맵을 설계하기 위한 핵심 정보를 정리
+2. 학습 스케줄 추정 (인터뷰에서 힌트를 얻었다면)
+3. 로드맵에 반영해야 할 구체적 요구사항 도출
+
+=== 응답 형식 (JSON) ===
+{{
+    "compiled_context": "로드맵 생성 AI에게 전달할 상세 컨텍스트 (한국어)",
+    "key_insights": [
+        "핵심 인사이트 1",
+        "핵심 인사이트 2",
+        "핵심 인사이트 3"
+    ],
+    "extracted_schedule": {{
+        "daily_minutes": 숫자(분 단위, 30-240 사이),
+        "rest_days": [0-6 숫자 배열, 0=월요일, 6=일요일],
+        "intensity": "light" | "moderate" | "intense"
+    }}
+}}
+
+JSON만 출력하세요."""
+
+
 # ============ SMART-Based Interview ============
 
 COMPREHENSIVE_INTERVIEW_PROMPT = """당신은 최고의 목표 설정 코치이자 로드맵 설계 전문가입니다.
@@ -441,11 +574,21 @@ SMART 프레임워크를 기준으로 수집된 정보를 분석하고, OKR 스�
 - 0-3개의 추가 질문 (정보가 충분하면 0개도 가능)
 - 각 질문에 smart_element 태그 필수
 
-=== 5. 상세 로드맵 초안 ===
-- **월별**: 핵심 마일스톤 + Key Result 연결
-- **주별**: 각 월 4주 테마 (간략하게)
-- **일별 예시**: 첫째 주만 상세히 (나머지는 생략)
-- 정보 부족한 부분은 "???" 표시
+=== 5. 상세 로드맵 초안 (월간 → 주간 → 일간 분해) ===
+🚨 **절대 필수**: 모든 월에 weeks 배열을, 모든 주에 days 배열을 채워야 합니다!
+
+**구조 규칙 (위반 시 오류):**
+1. 각 month는 반드시 weeks 배열에 4개의 주차 포함
+2. 각 week는 반드시 days 배열에 7일치 태스크 포함
+3. 정보 부족 시에도 추정하여 작성 (나중에 수정 가능)
+4. "???" 표시는 title/overview에만 허용, days는 반드시 구체적으로!
+
+**days 배열 형식:**
+- day: 1~7 (1=월요일, 7=일요일)
+- task: 그날 해야 할 구체적인 행동 (최소 5단어)
+- duration: 예상 소요 시간 (예: "1시간", "2시간")
+
+⚠️ **경고**: weeks: [] 또는 days: [] 빈 배열은 절대 금지!
 
 === 응답 형식 (JSON) ===
 {{
@@ -508,44 +651,63 @@ SMART 프레임워크를 기준으로 수집된 정보를 분석하고, OKR 스�
             {{
                 "month": 1,
                 "title": "Python & Django 기초",
-                "key_result_focus": "KR1 준비",
+                "key_result_focus": ["KR1"],
                 "overview": "Python 문법부터 Django MTV 패턴까지",
                 "weeks": [
                     {{
                         "week": 1,
                         "theme": "Python 기초 문법",
-                        "daily_example": "Day1: 변수/자료형, Day2: 조건문, Day3: 반복문, Day4: 함수, Day5: 실습, Day6-7: 복습"
+                        "days": [
+                            {{"day": 1, "task": "변수와 자료형 학습", "duration": "2시간"}},
+                            {{"day": 2, "task": "조건문 (if/else) 학습", "duration": "2시간"}},
+                            {{"day": 3, "task": "반복문 (for/while) 학습", "duration": "2시간"}},
+                            {{"day": 4, "task": "함수 정의 및 활용", "duration": "2시간"}},
+                            {{"day": 5, "task": "미니 프로젝트 실습", "duration": "2시간"}},
+                            {{"day": 6, "task": "복습 및 코드 정리", "duration": "1시간"}},
+                            {{"day": 7, "task": "휴식 또는 추가 실습", "duration": "선택"}}
+                        ]
                     }},
                     {{
                         "week": 2,
-                        "theme": "Python 중급 (클래스, 모듈)"
+                        "theme": "Python 중급 (클래스, 모듈)",
+                        "days": [
+                            {{"day": 1, "task": "클래스와 객체 개념", "duration": "2시간"}},
+                            {{"day": 2, "task": "상속과 다형성", "duration": "2시간"}},
+                            {{"day": 3, "task": "모듈과 패키지", "duration": "2시간"}},
+                            {{"day": 4, "task": "파일 입출력", "duration": "2시간"}},
+                            {{"day": 5, "task": "예외 처리", "duration": "2시간"}},
+                            {{"day": 6, "task": "종합 실습", "duration": "2시간"}},
+                            {{"day": 7, "task": "휴식", "duration": "선택"}}
+                        ]
                     }},
                     {{
                         "week": 3,
-                        "theme": "Django 시작"
+                        "theme": "Django 시작",
+                        "days": []
                     }},
                     {{
                         "week": 4,
-                        "theme": "첫 웹앱 완성 (To-Do)"
+                        "theme": "첫 웹앱 완성 (To-Do)",
+                        "days": []
                     }}
                 ]
             }},
             {{
                 "month": 2,
                 "title": "실전 프로젝트 개발",
-                "key_result_focus": "KR1, KR2 진행",
+                "key_result_focus": ["KR1", "KR2"],
                 "overview": "첫 번째 포트폴리오 프로젝트",
                 "weeks": [
-                    {{"week": 1, "theme": "프로젝트 기획 & DB 설계"}},
-                    {{"week": 2, "theme": "핵심 기능 구현"}},
-                    {{"week": 3, "theme": "API & 프론트엔드 연동"}},
-                    {{"week": 4, "theme": "배포 & GitHub 정리"}}
+                    {{"week": 1, "theme": "프로젝트 기획 & DB 설계", "days": []}},
+                    {{"week": 2, "theme": "핵심 기능 구현", "days": []}},
+                    {{"week": 3, "theme": "API & 프론트엔드 연동", "days": []}},
+                    {{"week": 4, "theme": "배포 & GitHub 정리", "days": []}}
                 ]
             }},
             {{
                 "month": 3,
                 "title": "포트폴리오 완성 & 취업 준비",
-                "key_result_focus": "KR2, KR3 달성",
+                "key_result_focus": ["KR2", "KR3"],
                 "overview": "???",
                 "weeks": []
             }}

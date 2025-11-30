@@ -71,6 +71,21 @@ def _generate_search_queries(topic: str, level: str, mode: str) -> List[str]:
     return queries
 
 
+def synthesize_search_context(results: List[Dict[str, Any]], topic: str) -> str:
+    """Synthesize search results into a context string for roadmap generation.
+
+    Public wrapper for use by streaming endpoints.
+
+    Args:
+        results: List of search result dictionaries with title, content, url
+        topic: The learning topic
+
+    Returns:
+        Synthesized context string with key learning information
+    """
+    return _synthesize_search_results(results, topic)
+
+
 def _synthesize_search_results(results: List[Dict[str, Any]], topic: str) -> str:
     """Synthesize search results into a context string."""
     if not results:
@@ -104,6 +119,37 @@ def _synthesize_search_results(results: List[Dict[str, Any]], topic: str) -> str
     except Exception as e:
         # Fallback: just list the titles
         return "\n".join([f"- {r.get('title', '')}" for r in results[:5]])
+
+
+# ============ Public Search Functions ============
+
+def search_learning_resources(topic: str, num_results: int = 10) -> List[Dict[str, Any]]:
+    """Search for learning resources related to a topic.
+
+    Used by streaming endpoints for roadmap generation.
+
+    Args:
+        topic: The learning topic to search for
+        num_results: Maximum number of results to return
+
+    Returns:
+        List of search result dictionaries with title, content, url
+    """
+    search_tool = _get_tavily_search()
+
+    if not search_tool:
+        return []
+
+    try:
+        query = f"{topic} learning roadmap curriculum best practices 2025"
+        results = search_tool.invoke(query)
+
+        if isinstance(results, list):
+            return results[:num_results]
+        return []
+    except Exception as e:
+        print(f"Search error: {e}")
+        return []
 
 
 # ============ Interview-specific Web Search ============

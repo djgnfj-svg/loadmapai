@@ -1,23 +1,17 @@
 import { useState, useEffect } from 'react';
 import { cn } from '../../lib/utils';
 import type { InterviewQuestion } from '../../types';
-import type { AIFeedback, DraftRoadmap } from '../../hooks/useProgressiveRoadmap';
 
 interface QuestionPanelProps {
   questions: InterviewQuestion[];
   answers: Map<string, string>;
   onAnswerChange: (questionId: string, answer: string) => void;
-  onSubmit: (userWantsComplete?: boolean) => Promise<void>;  // 변경: 완료 여부 파라미터
+  onSubmit: (userWantsComplete?: boolean) => Promise<void>;
   isSubmitting: boolean;
   className?: string;
-  // 다중 라운드 인터뷰 props (NEW)
+  // 2라운드 인터뷰 시스템
   currentRound?: number;
   maxRounds?: number;
-  feedback?: AIFeedback | null;
-  draftRoadmap?: DraftRoadmap | null;
-  informationLevel?: 'insufficient' | 'minimal' | 'sufficient' | 'complete' | null;
-  aiRecommendsComplete?: boolean;
-  canComplete?: boolean;
 }
 
 export function QuestionPanel({
@@ -27,14 +21,8 @@ export function QuestionPanel({
   onSubmit,
   isSubmitting,
   className,
-  // 다중 라운드 인터뷰 props
   currentRound = 1,
-  maxRounds = 10,
-  feedback,
-  // draftRoadmap은 RoadmapPanel에서만 사용 (이 패널에서는 제거)
-  informationLevel,
-  aiRecommendsComplete = false,
-  canComplete = false,
+  maxRounds = 2,
 }: QuestionPanelProps) {
   const answeredCount = answers.size;
   const totalCount = questions.length;
@@ -72,11 +60,6 @@ export function QuestionPanel({
         </p>
       </div>
 
-      {/* AI 피드백 (라운드 2 이상에서 표시) */}
-      {feedback && currentRound > 1 && (
-        <FeedbackCard feedback={feedback} informationLevel={informationLevel} />
-      )}
-
       {/* 질문 목록 */}
       <div className="flex-1 overflow-y-auto space-y-4 pb-4">
         {questions.map((question, index) => (
@@ -92,121 +75,29 @@ export function QuestionPanel({
       </div>
 
       {/* 제출 버튼 영역 */}
-      <div className="pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
-        {/* AI 완료 추천 메시지 */}
-        {aiRecommendsComplete && canComplete && (
-          <div className="text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-2 rounded-lg text-center">
-            AI가 충분한 정보가 모였다고 판단합니다. 완료해도 좋아요!
-          </div>
-        )}
-
-        {/* 버튼 그룹 */}
-        <div className={cn('flex gap-2', canComplete ? 'flex-row' : '')}>
-          {/* 계속하기 버튼 */}
-          <button
-            onClick={() => onSubmit(false)}
-            disabled={!allAnswered || isSubmitting}
-            className={cn(
-              'flex-1 py-3 px-4 rounded-lg font-semibold text-white transition-all',
-              allAnswered && !isSubmitting
-                ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 shadow-lg shadow-blue-500/25'
-                : 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed'
-            )}
-          >
-            {isSubmitting ? (
-              <span className="flex items-center justify-center gap-2">
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                분석 중...
-              </span>
-            ) : allAnswered ? (
-              '답변 제출'
-            ) : (
-              `${totalCount - answeredCount}개 질문 남음`
-            )}
-          </button>
-
-          {/* 완료 버튼 (canComplete일 때만 표시) */}
-          {canComplete && (
-            <button
-              onClick={() => onSubmit(true)}
-              disabled={!allAnswered || isSubmitting}
-              className={cn(
-                'py-3 px-4 rounded-lg font-semibold transition-all',
-                allAnswered && !isSubmitting
-                  ? 'bg-green-500 hover:bg-green-400 text-white'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-500 cursor-not-allowed'
-              )}
-            >
-              이 정도면 됐어요
-            </button>
+      <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+        <button
+          onClick={() => onSubmit(false)}
+          disabled={!allAnswered || isSubmitting}
+          className={cn(
+            'w-full py-3 px-4 rounded-lg font-semibold text-white transition-all',
+            allAnswered && !isSubmitting
+              ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 shadow-lg shadow-blue-500/25'
+              : 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed'
           )}
-        </div>
+        >
+          {isSubmitting ? (
+            <span className="flex items-center justify-center gap-2">
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              분석 중...
+            </span>
+          ) : allAnswered ? (
+            '답변 제출'
+          ) : (
+            `${totalCount - answeredCount}개 질문 남음`
+          )}
+        </button>
       </div>
-    </div>
-  );
-}
-
-// 피드백 카드 컴포넌트
-function FeedbackCard({
-  feedback,
-  informationLevel,
-}: {
-  feedback: AIFeedback;
-  informationLevel?: 'insufficient' | 'minimal' | 'sufficient' | 'complete' | null;
-}) {
-  const levelColors = {
-    insufficient: 'text-red-600 bg-red-100 dark:text-red-400 dark:bg-red-900/30',
-    minimal: 'text-yellow-600 bg-yellow-100 dark:text-yellow-400 dark:bg-yellow-900/30',
-    sufficient: 'text-green-600 bg-green-100 dark:text-green-400 dark:bg-green-900/30',
-    complete: 'text-blue-600 bg-blue-100 dark:text-blue-400 dark:bg-blue-900/30',
-  };
-
-  const levelText = {
-    insufficient: '정보 부족',
-    minimal: '기본 정보',
-    sufficient: '충분한 정보',
-    complete: '완벽한 정보',
-  };
-
-  return (
-    <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-lg">AI 피드백</span>
-        {informationLevel && (
-          <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', levelColors[informationLevel])}>
-            {levelText[informationLevel]}
-          </span>
-        )}
-      </div>
-
-      {/* 솔직한 의견 */}
-      {feedback.honest_opinion && (
-        <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
-          {feedback.honest_opinion}
-        </p>
-      )}
-
-      {/* 격려 */}
-      {feedback.encouragement && (
-        <p className="text-sm text-green-600 dark:text-green-400 mb-2">
-          {feedback.encouragement}
-        </p>
-      )}
-
-      {/* 조언 */}
-      {feedback.suggestions && feedback.suggestions.length > 0 && (
-        <div className="mt-2">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">조언:</p>
-          <ul className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-            {feedback.suggestions.map((suggestion, i) => (
-              <li key={i} className="flex items-start gap-1">
-                <span className="text-blue-500">-</span>
-                {suggestion}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </div>
   );
 }

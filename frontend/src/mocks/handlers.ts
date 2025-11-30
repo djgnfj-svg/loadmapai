@@ -1,11 +1,5 @@
 import { http, HttpResponse, delay } from 'msw';
-import {
-  mockQuestions,
-  mockInterviewStartSSE,
-  getMockRefinements,
-  createMockSSESequence,
-  createEmptyProgressiveRoadmap,
-} from './data/roadmapMockData';
+import { mockQuestions, mockInterviewStartSSE } from './data/roadmapMockData';
 
 const API_BASE = '/api/v1';
 
@@ -35,7 +29,6 @@ export const handlers = [
 
     await delay(300);
 
-    // 테스트 계정 허용
     if (body.email && body.password) {
       return HttpResponse.json({
         access_token: 'mock-access-token-' + Date.now(),
@@ -76,23 +69,9 @@ export const handlers = [
   }),
 
   // ============ 인터뷰 시작 (SSE) ============
-  http.post(`${API_BASE}/stream/interviews/start`, async ({ request }) => {
-    const body = (await request.json()) as {
-      topic: string;
-      mode: string;
-      duration_months: number;
-    };
-
-    // 스켈레톤 생성
-    const skeleton = createEmptyProgressiveRoadmap(
-      body.topic,
-      body.mode as 'planning' | 'learning',
-      body.duration_months
-    );
-
-    // SSE 이벤트 시퀀스 생성
+  http.post(`${API_BASE}/stream/interviews/start`, async () => {
     const events = [
-      ...mockInterviewStartSSE.slice(0, -1),
+      ...mockInterviewStartSSE,
       {
         delay: 400,
         data: {
@@ -102,59 +81,12 @@ export const handlers = [
           data: {
             session_id: 'mock-session-' + Date.now(),
             questions: mockQuestions,
-            skeleton,
+            current_round: 1,
+            max_rounds: 2,
           },
         },
       },
     ];
-
-    const stream = createSSEStream(events);
-
-    return new HttpResponse(stream, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        Connection: 'keep-alive',
-      },
-    });
-  }),
-
-  // ============ 스켈레톤 생성 (REST) ============
-  http.post(`${API_BASE}/stream/roadmaps/skeleton`, async ({ request }) => {
-    const body = (await request.json()) as {
-      topic: string;
-      mode: string;
-      duration_months: number;
-    };
-
-    await delay(500);
-
-    const skeleton = createEmptyProgressiveRoadmap(
-      body.topic,
-      body.mode as 'planning' | 'learning',
-      body.duration_months
-    );
-
-    return HttpResponse.json({
-      success: true,
-      skeleton,
-      topic: body.topic,
-      mode: body.mode,
-      duration_months: body.duration_months,
-    });
-  }),
-
-  // ============ 답변 제출 및 구체화 (SSE) ============
-  http.post(`${API_BASE}/stream/roadmaps/refine`, async ({ request }) => {
-    const body = (await request.json()) as {
-      session_id: string;
-      question_id: string;
-      answer: string;
-    };
-
-    // 해당 질문에 대한 구체화 이벤트 가져오기
-    const refinements = getMockRefinements(body.question_id, body.answer);
-    const events = createMockSSESequence(refinements);
 
     const stream = createSSEStream(events);
 
@@ -174,7 +106,7 @@ export const handlers = [
     return HttpResponse.json({
       session_id: 'mock-session',
       current_round: 1,
-      max_rounds: 1,
+      max_rounds: 2,
       questions: mockQuestions,
       is_complete: false,
       is_followup: false,

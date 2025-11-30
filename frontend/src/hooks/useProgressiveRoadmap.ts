@@ -1,24 +1,8 @@
 import { useState, useCallback, useRef } from 'react';
-import type {
-  InterviewQuestion,
-  ProgressiveRoadmap,
-  RoadmapMode,
-  RefinementEvent,
-  RoadmapItemWithStatus,
-  SmartStatus,
-  SmartCoverage,
-  EnhancedDraftRoadmap,
-  InterviewFeedback,
-  InformationLevel,
-} from '../types';
-import { createEmptyProgressiveRoadmap } from '../mocks/data/roadmapMockData';
+import type { InterviewQuestion, RoadmapMode } from '../types';
 import { useAuthStore } from '../stores/authStore';
 
 const API_BASE = '/api/v1';
-
-// Re-export types for backward compatibility
-export type AIFeedback = InterviewFeedback;
-export type DraftRoadmap = EnhancedDraftRoadmap;
 
 interface UseProgressiveRoadmapOptions {
   onComplete?: (roadmapId: string) => void;
@@ -30,28 +14,17 @@ interface UseProgressiveRoadmapReturn {
   sessionId: string | null;
   questions: InterviewQuestion[];
   answers: Map<string, string>;
-  roadmap: ProgressiveRoadmap | null;
   isStreaming: boolean;
   progress: number;
   error: string | null;
   isStarting: boolean;
   isSubmitting: boolean;
-  isReadyForGeneration: boolean;  // 배치 제출 완료 후 true
+  isReadyForGeneration: boolean;
 
-  // 다중 라운드 인터뷰 상태
+  // 단순화된 2라운드 인터뷰 상태
   currentRound: number;
   maxRounds: number;
-  feedback: AIFeedback | null;
-  draftRoadmap: DraftRoadmap | null;
-  informationLevel: InformationLevel | null;
-  aiRecommendsComplete: boolean;
-  canComplete: boolean;
-
-  // SMART 추적 (NEW)
-  smartStatus: SmartStatus | null;
-  smartCoverage: SmartCoverage | null;
-  keyResults: string[];
-  smartCompletionPercentage: number;  // 0-100, SMART 수집 진행률
+  isFollowup: boolean;
 
   // 액션
   startSession: (params: {
@@ -61,7 +34,6 @@ interface UseProgressiveRoadmapReturn {
   }) => Promise<void>;
   setAnswer: (questionId: string, answer: string) => void;
   submitRoundAnswers: (userWantsComplete?: boolean) => Promise<void>;
-  submitAllAnswers: () => Promise<void>;  // 레거시: 배치 제출
   generateFinalRoadmap: () => Promise<void>;
   reset: () => void;
 }
@@ -75,7 +47,6 @@ export function useProgressiveRoadmap(
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<InterviewQuestion[]>([]);
   const [answers, setAnswers] = useState<Map<string, string>>(new Map());
-  const [roadmap, setRoadmap] = useState<ProgressiveRoadmap | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -83,19 +54,10 @@ export function useProgressiveRoadmap(
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isReadyForGeneration, setIsReadyForGeneration] = useState(false);
 
-  // 다중 라운드 인터뷰 상태
+  // 단순화된 인터뷰 상태
   const [currentRound, setCurrentRound] = useState(1);
-  const [maxRounds, setMaxRounds] = useState(10);
-  const [feedback, setFeedback] = useState<AIFeedback | null>(null);
-  const [draftRoadmap, setDraftRoadmap] = useState<DraftRoadmap | null>(null);
-  const [informationLevel, setInformationLevel] = useState<InformationLevel | null>(null);
-  const [aiRecommendsComplete, setAiRecommendsComplete] = useState(false);
-  const [canComplete, setCanComplete] = useState(false);
-
-  // SMART 추적 상태 (NEW)
-  const [smartStatus, setSmartStatus] = useState<SmartStatus | null>(null);
-  const [smartCoverage, setSmartCoverage] = useState<SmartCoverage | null>(null);
-  const [keyResults, setKeyResults] = useState<string[]>([]);
+  const [maxRounds, setMaxRounds] = useState(2);
+  const [isFollowup, setIsFollowup] = useState(false);
 
   // 참조
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -107,10 +69,8 @@ export function useProgressiveRoadmap(
       response: Response,
       onEvent: (event: { type: string; data?: unknown; progress?: number }) => void
     ) => {
-      console.log('[SSE] Starting to read stream...');
       const reader = response.body?.getReader();
       if (!reader) {
-        console.error('[SSE] No reader available');
         throw new Error('응답 스트림을 읽을 수 없습니다');
       }
 
@@ -119,26 +79,20 @@ export function useProgressiveRoadmap(
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) {
-          console.log('[SSE] Stream done');
-          break;
-        }
+        if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
-        console.log('[SSE] Received chunk:', chunk);
         buffer += chunk;
         const lines = buffer.split('\n\n');
         buffer = lines.pop() || '';
 
         for (const line of lines) {
-          console.log('[SSE] Processing line:', line);
           if (line.startsWith('data: ')) {
             try {
               const event = JSON.parse(line.slice(6));
-              console.log('[SSE] Parsed event:', event);
               onEvent(event);
             } catch (e) {
-              console.error('[SSE] 파싱 오류:', line, e);
+              console.error('[SSE] 파싱 오류:', e);
             }
           }
         }
@@ -150,23 +104,13 @@ export function useProgressiveRoadmap(
   // 세션 시작
   const startSession = useCallback(
     async (params: { topic: string; mode: RoadmapMode; durationMonths: number }) => {
-      console.log('[startSession] Starting with params:', params);
-      console.log('[startSession] Token available:', !!token, token ? `${token.substring(0, 20)}...` : 'null');
+      console.log('[Interview] Starting session with:', params);
       setIsStarting(true);
       setError(null);
 
       try {
-        // 빈 스켈레톤으로 초기화 (모두 "???")
-        const skeleton = createEmptyProgressiveRoadmap(
-          params.topic,
-          params.mode,
-          params.durationMonths
-        );
-        setRoadmap(skeleton);
-
         abortControllerRef.current = new AbortController();
 
-        console.log('[startSession] Fetching SSE endpoint...');
         const response = await fetch(`${API_BASE}/stream/interviews/start`, {
           method: 'POST',
           headers: {
@@ -181,165 +125,47 @@ export function useProgressiveRoadmap(
           signal: abortControllerRef.current.signal,
         });
 
-        console.log('[startSession] Response status:', response.status, response.ok);
         if (!response.ok) {
           throw new Error('세션 시작 실패');
         }
 
-        console.log('[startSession] Starting to read SSE stream...');
         await readSSEStream(response, (event) => {
-          console.log('[startSession] Received event:', event.type);
           if (event.progress !== undefined) {
             setProgress(event.progress);
           }
 
-          // Handle SMART status updates
-          if (event.type === 'smart_status_updated' && event.data) {
-            const data = event.data as { smart_status: SmartStatus };
-            setSmartStatus(data.smart_status);
-          }
-
           if (event.type === 'complete' && event.data) {
-            console.log('[startSession] Complete event received!');
             const data = event.data as {
               session_id: string;
               questions: InterviewQuestion[];
-              skeleton?: ProgressiveRoadmap;
-              smart_status?: SmartStatus;
-              smart_coverage?: SmartCoverage;
-              key_results?: string[];
+              current_round?: number;
+              max_rounds?: number;
             };
             setSessionId(data.session_id);
             setQuestions(data.questions);
-            if (data.skeleton) {
-              setRoadmap(data.skeleton);
-            }
-            // Set initial SMART tracking state
-            if (data.smart_status) {
-              setSmartStatus(data.smart_status);
-            }
-            if (data.smart_coverage) {
-              setSmartCoverage(data.smart_coverage);
-            }
-            if (data.key_results) {
-              setKeyResults(data.key_results);
-            }
+            setCurrentRound(data.current_round || 1);
+            setMaxRounds(data.max_rounds || 2);
+            console.log('[Interview] Session started with', data.questions.length, 'questions');
           }
         });
-        console.log('[startSession] SSE stream finished');
       } catch (err) {
-        console.error('[startSession] Error:', err);
         if (err instanceof Error && err.name === 'AbortError') return;
         const message = err instanceof Error ? err.message : '알 수 없는 오류';
         setError(message);
         onError?.(message);
       } finally {
-        console.log('[startSession] Finally block - setting isStarting to false');
         setIsStarting(false);
       }
     },
     [token, readSSEStream, onError]
   );
 
-  // 구체화 이벤트 적용
-  const applyRefinement = useCallback(
-    (prev: ProgressiveRoadmap, event: RefinementEvent): ProgressiveRoadmap => {
-      const updated = { ...prev };
-
-      const createConfirmedItem = (value: string): RoadmapItemWithStatus => ({
-        content: value,
-        status: 'confirmed',
-        isNew: true,
-      });
-
-      switch (event.type) {
-        case 'title':
-          updated.title = createConfirmedItem(event.value);
-          break;
-        case 'description':
-          updated.description = createConfirmedItem(event.value);
-          break;
-        case 'monthly': {
-          const monthIdx = updated.monthly_goals.findIndex(
-            (m) => m.month_number === event.path.month_number
-          );
-          if (monthIdx !== -1) {
-            updated.monthly_goals = [...updated.monthly_goals];
-            updated.monthly_goals[monthIdx] = {
-              ...updated.monthly_goals[monthIdx],
-              [event.field]: createConfirmedItem(event.value),
-            };
-          }
-          break;
-        }
-        case 'weekly': {
-          const monthIdx = updated.monthly_goals.findIndex(
-            (m) => m.month_number === event.path.month_number
-          );
-          if (monthIdx !== -1) {
-            const weekIdx = updated.monthly_goals[monthIdx].weekly_tasks.findIndex(
-              (w) => w.week_number === event.path.week_number
-            );
-            if (weekIdx !== -1) {
-              updated.monthly_goals = [...updated.monthly_goals];
-              updated.monthly_goals[monthIdx] = {
-                ...updated.monthly_goals[monthIdx],
-                weekly_tasks: [...updated.monthly_goals[monthIdx].weekly_tasks],
-              };
-              updated.monthly_goals[monthIdx].weekly_tasks[weekIdx] = {
-                ...updated.monthly_goals[monthIdx].weekly_tasks[weekIdx],
-                [event.field]: createConfirmedItem(event.value),
-              };
-            }
-          }
-          break;
-        }
-        case 'daily': {
-          const monthIdx = updated.monthly_goals.findIndex(
-            (m) => m.month_number === event.path.month_number
-          );
-          if (monthIdx !== -1) {
-            const weekIdx = updated.monthly_goals[monthIdx].weekly_tasks.findIndex(
-              (w) => w.week_number === event.path.week_number
-            );
-            if (weekIdx !== -1) {
-              const dayIdx = updated.monthly_goals[monthIdx].weekly_tasks[
-                weekIdx
-              ].daily_tasks.findIndex((d) => d.day_number === event.path.day_number);
-              if (dayIdx !== -1) {
-                updated.monthly_goals = [...updated.monthly_goals];
-                updated.monthly_goals[monthIdx] = {
-                  ...updated.monthly_goals[monthIdx],
-                  weekly_tasks: [...updated.monthly_goals[monthIdx].weekly_tasks],
-                };
-                updated.monthly_goals[monthIdx].weekly_tasks[weekIdx] = {
-                  ...updated.monthly_goals[monthIdx].weekly_tasks[weekIdx],
-                  daily_tasks: [
-                    ...updated.monthly_goals[monthIdx].weekly_tasks[weekIdx].daily_tasks,
-                  ],
-                };
-                updated.monthly_goals[monthIdx].weekly_tasks[weekIdx].daily_tasks[dayIdx] = {
-                  ...updated.monthly_goals[monthIdx].weekly_tasks[weekIdx].daily_tasks[dayIdx],
-                  [event.field]: createConfirmedItem(event.value),
-                };
-              }
-            }
-          }
-          break;
-        }
-      }
-
-      return updated;
-    },
-    []
-  );
-
-  // 답변 저장 (로컬 상태만 업데이트)
+  // 답변 저장 (로컬 상태만)
   const setAnswer = useCallback((questionId: string, answer: string) => {
     setAnswers((prev) => new Map(prev).set(questionId, answer));
   }, []);
 
-  // 라운드별 답변 제출 (NEW: 다중 라운드 인터뷰)
+  // 라운드별 답변 제출
   const submitRoundAnswers = useCallback(async (userWantsComplete: boolean = false) => {
     if (!sessionId || answers.size === 0) return;
 
@@ -350,7 +176,6 @@ export function useProgressiveRoadmap(
     try {
       abortControllerRef.current = new AbortController();
 
-      // Convert Map to array of answer objects
       const answersArray = Array.from(answers.entries()).map(([questionId, answer]) => ({
         question_id: questionId,
         answer: answer,
@@ -378,24 +203,6 @@ export function useProgressiveRoadmap(
           setProgress(event.progress);
         }
 
-        // Handle SMART status updates during analysis
-        if (event.type === 'smart_status_updated' && event.data) {
-          const data = event.data as { smart_status: SmartStatus };
-          setSmartStatus(data.smart_status);
-        }
-
-        // Handle Key Results generation
-        if (event.type === 'key_results_generated' && event.data) {
-          const data = event.data as { key_results: string[] };
-          setKeyResults(data.key_results);
-        }
-
-        // Handle draft roadmap updates
-        if (event.type === 'draft_roadmap_updated' && event.data) {
-          const data = event.data as { draft_roadmap: DraftRoadmap };
-          setDraftRoadmap(data.draft_roadmap);
-        }
-
         if (event.type === 'complete' && event.data) {
           const data = event.data as {
             session_id: string;
@@ -403,45 +210,21 @@ export function useProgressiveRoadmap(
             current_round?: number;
             max_rounds?: number;
             questions?: InterviewQuestion[];
-            feedback?: AIFeedback;
-            draft_roadmap?: DraftRoadmap;
-            information_level?: InformationLevel;
-            ai_recommends_complete?: boolean;
-            can_complete?: boolean;
-            // SMART tracking
-            smart_status?: SmartStatus;
-            key_results?: string[];
-            // 완료 시 추가 필드
-            compiled_context?: string;
-            key_insights?: string[];
-            schedule?: object;
+            is_followup?: boolean;
           };
-
-          // Update SMART tracking
-          if (data.smart_status) {
-            setSmartStatus(data.smart_status);
-          }
-          if (data.key_results) {
-            setKeyResults(data.key_results);
-          }
 
           if (data.is_complete) {
             // 인터뷰 완료 - 로드맵 생성 준비
+            console.log('[Interview] Complete! Ready for roadmap generation');
             setIsReadyForGeneration(true);
-            setFeedback(data.feedback || null);
-            setDraftRoadmap(data.draft_roadmap || null);
           } else {
-            // 다음 라운드
-            setCurrentRound(data.current_round || currentRound + 1);
-            setMaxRounds(data.max_rounds || 10);
+            // 추가질문 라운드
+            console.log('[Interview] Followup questions received:', data.questions?.length);
+            setCurrentRound(data.current_round || 2);
+            setMaxRounds(data.max_rounds || 2);
             setQuestions(data.questions || []);
-            setFeedback(data.feedback || null);
-            setDraftRoadmap(data.draft_roadmap || null);
-            setInformationLevel(data.information_level || null);
-            setAiRecommendsComplete(data.ai_recommends_complete || false);
-            setCanComplete(data.can_complete || false);
-            // 새 질문에 대한 답변 초기화
-            setAnswers(new Map());
+            setIsFollowup(data.is_followup || true);
+            setAnswers(new Map());  // 새 질문에 대한 답변 초기화
           }
         }
       });
@@ -454,77 +237,7 @@ export function useProgressiveRoadmap(
       setIsStreaming(false);
       setIsSubmitting(false);
     }
-  }, [sessionId, answers, token, readSSEStream, onError, currentRound]);
-
-  // 모든 답변 일괄 제출 (레거시: 배치 제출)
-  const submitAllAnswers = useCallback(async () => {
-    if (!sessionId || answers.size === 0) return;
-
-    setIsSubmitting(true);
-    setIsStreaming(true);
-    setError(null);
-
-    try {
-      abortControllerRef.current = new AbortController();
-
-      // Convert Map to object
-      const answersObj: Record<string, string> = {};
-      answers.forEach((value, key) => {
-        answersObj[key] = value;
-      });
-
-      const response = await fetch(`${API_BASE}/stream/interviews/batch-answers`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
-        body: JSON.stringify({
-          session_id: sessionId,
-          answers: answersObj,
-        }),
-        signal: abortControllerRef.current.signal,
-      });
-
-      if (!response.ok) {
-        throw new Error('답변 제출 실패');
-      }
-
-      await readSSEStream(response, (event) => {
-        if (event.progress !== undefined) {
-          setProgress(event.progress);
-        }
-
-        // Handle refinement events from batch processing
-        if (event.data && typeof event.data === 'object' && 'type' in event.data) {
-          const eventData = event.data as { type: string; data?: RefinementEvent };
-          if (eventData.type === 'refined' && eventData.data) {
-            const refinement = eventData.data;
-            setRoadmap((prev) => (prev ? applyRefinement(prev, refinement) : prev));
-          }
-        }
-      });
-
-      // 배치 제출 성공 - 로드맵 생성 준비 완료
-      setIsReadyForGeneration(true);
-
-      // isNew 플래그 리셋 (애니메이션 후)
-      setTimeout(() => {
-        setRoadmap((prev) => {
-          if (!prev) return prev;
-          return resetIsNewFlags(prev);
-        });
-      }, 1000);
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') return;
-      const message = err instanceof Error ? err.message : '알 수 없는 오류';
-      setError(message);
-      onError?.(message);
-    } finally {
-      setIsStreaming(false);
-      setIsSubmitting(false);
-    }
-  }, [sessionId, answers, token, readSSEStream, applyRefinement, onError]);
+  }, [sessionId, answers, token, readSSEStream, onError]);
 
   // 최종 로드맵 생성
   const generateFinalRoadmap = useCallback(async () => {
@@ -536,6 +249,8 @@ export function useProgressiveRoadmap(
     try {
       abortControllerRef.current = new AbortController();
 
+      const today = new Date().toISOString().split('T')[0];
+
       const response = await fetch(`${API_BASE}/stream/roadmaps/generate`, {
         method: 'POST',
         headers: {
@@ -544,6 +259,8 @@ export function useProgressiveRoadmap(
         },
         body: JSON.stringify({
           interview_session_id: sessionId,
+          start_date: today,
+          use_web_search: true,
         }),
         signal: abortControllerRef.current.signal,
       });
@@ -559,6 +276,7 @@ export function useProgressiveRoadmap(
 
         if (event.type === 'complete' && event.data) {
           const data = event.data as { roadmap_id: string };
+          console.log('[Interview] Roadmap generated:', data.roadmap_id);
           onComplete?.(data.roadmap_id);
         }
       });
@@ -578,92 +296,34 @@ export function useProgressiveRoadmap(
     setSessionId(null);
     setQuestions([]);
     setAnswers(new Map());
-    setRoadmap(null);
     setIsStreaming(false);
     setProgress(0);
     setError(null);
     setIsStarting(false);
     setIsSubmitting(false);
     setIsReadyForGeneration(false);
-    // 다중 라운드 인터뷰 상태 리셋
     setCurrentRound(1);
-    setMaxRounds(10);
-    setFeedback(null);
-    setDraftRoadmap(null);
-    setInformationLevel(null);
-    setAiRecommendsComplete(false);
-    setCanComplete(false);
-    // SMART 상태 리셋
-    setSmartStatus(null);
-    setSmartCoverage(null);
-    setKeyResults([]);
+    setMaxRounds(2);
+    setIsFollowup(false);
   }, []);
-
-  // SMART 완료 퍼센트 계산 (collected된 요소 비율)
-  const smartCompletionPercentage = smartStatus
-    ? Math.round(
-        (Object.values(smartStatus).filter((s) => s.collected).length / 5) * 100
-      )
-    : 0;
 
   return {
     sessionId,
     questions,
     answers,
-    roadmap,
     isStreaming,
     progress,
     error,
     isStarting,
     isSubmitting,
     isReadyForGeneration,
-    // 다중 라운드 인터뷰 상태
     currentRound,
     maxRounds,
-    feedback,
-    draftRoadmap,
-    informationLevel,
-    aiRecommendsComplete,
-    canComplete,
-    // SMART 추적
-    smartStatus,
-    smartCoverage,
-    keyResults,
-    smartCompletionPercentage,
-    // 액션
+    isFollowup,
     startSession,
     setAnswer,
     submitRoundAnswers,
-    submitAllAnswers,
     generateFinalRoadmap,
     reset,
-  };
-}
-
-// isNew 플래그 리셋 헬퍼
-function resetIsNewFlags(roadmap: ProgressiveRoadmap): ProgressiveRoadmap {
-  return {
-    ...roadmap,
-    title: { ...roadmap.title, isNew: false },
-    description: { ...roadmap.description, isNew: false },
-    monthly_goals: roadmap.monthly_goals.map((month) => ({
-      ...month,
-      title: { ...month.title, isNew: false },
-      description: { ...month.description, isNew: false },
-      weekly_tasks: month.weekly_tasks.map((week) => ({
-        ...week,
-        title: { ...week.title, isNew: false },
-        daily_tasks: week.daily_tasks.map((day) => ({
-          ...day,
-          ...(day.title && { title: { ...day.title, isNew: false } }),
-          ...(day.description && { description: { ...day.description, isNew: false } }),
-          tasks: day.tasks?.map((task) => ({
-            ...task,
-            title: { ...task.title, isNew: false },
-            ...(task.description && { description: { ...task.description, isNew: false } }),
-          })) || [],
-        })),
-      })),
-    })),
   };
 }

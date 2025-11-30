@@ -2,30 +2,24 @@ import { useState } from 'react';
 import { cn } from '../../lib/utils';
 import { QuestionPanel } from './QuestionPanel';
 import { RoadmapPanel } from './RoadmapPanel';
-import type { InterviewQuestion, ProgressiveRoadmap } from '../../types';
-import type { AIFeedback, DraftRoadmap } from '../../hooks/useProgressiveRoadmap';
+import type { InterviewQuestion } from '../../types';
 
 interface SplitViewContainerProps {
   // 질문 관련
   questions: InterviewQuestion[];
   answers: Map<string, string>;
   onAnswerChange: (questionId: string, answer: string) => void;
-  onSubmit: (userWantsComplete?: boolean) => Promise<void>;  // 변경: 완료 여부 파라미터
+  onSubmit: (userWantsComplete?: boolean) => Promise<void>;
   isSubmitting: boolean;
 
   // 로드맵 관련
-  roadmap: ProgressiveRoadmap | null;
   isStreaming: boolean;
   progress: number;
 
-  // 다중 라운드 인터뷰 (NEW)
+  // 2라운드 인터뷰 시스템
   currentRound?: number;
   maxRounds?: number;
-  feedback?: AIFeedback | null;
-  draftRoadmap?: DraftRoadmap | null;
-  informationLevel?: 'insufficient' | 'minimal' | 'sufficient' | 'complete' | null;
-  aiRecommendsComplete?: boolean;
-  canComplete?: boolean;
+  isReadyForGeneration?: boolean;
 
   // 옵션
   className?: string;
@@ -39,17 +33,11 @@ export function SplitViewContainer({
   onAnswerChange,
   onSubmit,
   isSubmitting,
-  roadmap,
   isStreaming,
   progress,
-  // 다중 라운드 인터뷰 props
   currentRound = 1,
-  maxRounds = 10,
-  feedback,
-  draftRoadmap,
-  informationLevel,
-  aiRecommendsComplete = false,
-  canComplete = false,
+  maxRounds = 2,
+  isReadyForGeneration = false,
   className,
 }: SplitViewContainerProps) {
   const [mobileTab, setMobileTab] = useState<MobileTab>('questions');
@@ -98,19 +86,14 @@ export function SplitViewContainer({
             isSubmitting={isSubmitting}
             currentRound={currentRound}
             maxRounds={maxRounds}
-            feedback={feedback}
-            draftRoadmap={draftRoadmap}
-            informationLevel={informationLevel}
-            aiRecommendsComplete={aiRecommendsComplete}
-            canComplete={canComplete}
             className="h-full"
           />
         ) : (
           <RoadmapPanel
-            roadmap={roadmap}
+            isReadyForGeneration={isReadyForGeneration}
             isStreaming={isStreaming}
+            currentRound={currentRound}
             progress={progress}
-            draftRoadmap={draftRoadmap}
             className="h-full"
           />
         )}
@@ -127,20 +110,15 @@ export function SplitViewContainer({
             isSubmitting={isSubmitting}
             currentRound={currentRound}
             maxRounds={maxRounds}
-            feedback={feedback}
-            draftRoadmap={draftRoadmap}
-            informationLevel={informationLevel}
-            aiRecommendsComplete={aiRecommendsComplete}
-            canComplete={canComplete}
             className="h-full"
           />
         </div>
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 overflow-hidden">
           <RoadmapPanel
-            roadmap={roadmap}
+            isReadyForGeneration={isReadyForGeneration}
             isStreaming={isStreaming}
+            currentRound={currentRound}
             progress={progress}
-            draftRoadmap={draftRoadmap}
             className="h-full"
           />
         </div>

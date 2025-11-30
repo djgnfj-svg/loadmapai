@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { SplitViewContainer } from '@/components/roadmap-builder';
-import { StreamingGeneratingState, ProgressiveRoadmapPreview } from '@/components/roadmap';
+import { StreamingGeneratingState } from '@/components/roadmap';
 import { useProgressiveRoadmap } from '@/hooks/useProgressiveRoadmap';
 import { cn } from '@/lib/utils';
 import type { RoadmapMode } from '@/types';
@@ -246,8 +246,6 @@ function DurationSelection({
     { months: 1, label: '1개월', description: '집중 학습' },
     { months: 2, label: '2개월', description: '기초부터 차근차근' },
     { months: 3, label: '3개월', description: '균형 잡힌 학습' },
-    { months: 4, label: '4개월', description: '깊이 있는 학습' },
-    { months: 6, label: '6개월', description: '전문가 과정' },
   ];
 
   const endDate = addMonths(new Date(startDate), duration);
@@ -259,7 +257,7 @@ function DurationSelection({
         <p className="text-gray-500 dark:text-gray-400">{text.durationSubtitle}</p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {durations.map((d) => (
           <button
             key={d.months}
@@ -432,43 +430,19 @@ export function RoadmapCreate() {
   // Generating step
   if (step === 'generating') {
     return (
-      <div className="max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left: Progress Panel */}
-          <Card variant="bordered">
-            <CardContent>
-              <StreamingGeneratingState
-                topic={formData.topic}
-                events={[]}
-                currentEvent={null}
-                progress={progressiveRoadmap.progress}
-                isStreaming={progressiveRoadmap.isStreaming}
-                error={progressiveRoadmap.error}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Right: Roadmap Preview */}
-          <Card variant="bordered">
-            <CardContent>
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  <Map className="h-5 w-5 text-primary-500" />
-                  로드맵 미리보기
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  생성되는 로드맵을 실시간으로 확인하세요
-                </p>
-              </div>
-              <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
-                <ProgressiveRoadmapPreview
-                  partialRoadmap={null}
-                  isStreaming={progressiveRoadmap.isStreaming}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="max-w-2xl mx-auto">
+        <Card variant="bordered">
+          <CardContent>
+            <StreamingGeneratingState
+              topic={formData.topic}
+              events={[]}
+              currentEvent={null}
+              progress={progressiveRoadmap.progress}
+              isStreaming={progressiveRoadmap.isStreaming}
+              error={progressiveRoadmap.error}
+            />
+          </CardContent>
+        </Card>
 
         {/* Cancel button */}
         {progressiveRoadmap.isStreaming && (
@@ -588,17 +562,11 @@ export function RoadmapCreate() {
                   onAnswerChange={progressiveRoadmap.setAnswer}
                   onSubmit={progressiveRoadmap.submitRoundAnswers}
                   isSubmitting={progressiveRoadmap.isSubmitting}
-                  roadmap={progressiveRoadmap.roadmap}
                   isStreaming={progressiveRoadmap.isStreaming}
                   progress={progressiveRoadmap.progress}
-                  // 다중 라운드 인터뷰 props
                   currentRound={progressiveRoadmap.currentRound}
                   maxRounds={progressiveRoadmap.maxRounds}
-                  feedback={progressiveRoadmap.feedback}
-                  draftRoadmap={progressiveRoadmap.draftRoadmap}
-                  informationLevel={progressiveRoadmap.informationLevel}
-                  aiRecommendsComplete={progressiveRoadmap.aiRecommendsComplete}
-                  canComplete={progressiveRoadmap.canComplete}
+                  isReadyForGeneration={progressiveRoadmap.isReadyForGeneration}
                 />
               )}
             </CardContent>
