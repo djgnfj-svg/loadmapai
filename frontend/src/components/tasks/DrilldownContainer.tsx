@@ -1,5 +1,5 @@
 import { MonthlyGoalView } from './MonthlyGoalView';
-import { Skeleton } from '@/components/common/Loading';
+import { Skeleton } from '@/components/common';
 import type { RoadmapFull, DailyTask, WeeklyTask, MonthlyGoal } from '@/types';
 
 interface DrilldownContainerProps {

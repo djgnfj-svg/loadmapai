@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { Skeleton } from './Skeleton';
 
 export interface LoadingProps {
   size?: 'sm' | 'md' | 'lg';
@@ -61,21 +62,6 @@ export function LoadingOverlay({ message }: LoadingOverlayProps) {
       <Loading size="md" />
       {message && <p className="mt-2 text-sm text-gray-600">{message}</p>}
     </div>
-  );
-}
-
-export interface SkeletonProps {
-  className?: string;
-}
-
-export function Skeleton({ className }: SkeletonProps) {
-  return (
-    <div
-      className={cn(
-        'animate-pulse rounded-md bg-gray-200',
-        className
-      )}
-    />
   );
 }
 

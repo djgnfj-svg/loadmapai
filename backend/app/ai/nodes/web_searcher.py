@@ -42,16 +42,8 @@ def _get_tavily_search():
         return None
 
 
-def _extract_level_from_context(interview_context: Optional[str]) -> str:
-    """Extract user's experience level from interview context."""
-    if not interview_context:
-        return "beginner"
-
-    context_lower = interview_context.lower()
-    if any(word in context_lower for word in ["고급", "경험 있", "실무", "advanced", "expert"]):
-        return "advanced"
-    elif any(word in context_lower for word in ["중급", "intermediate", "어느 정도", "조금"]):
-        return "intermediate"
+def _get_default_level() -> str:
+    """Return default experience level."""
     return "beginner"
 
 
@@ -172,8 +164,7 @@ def web_searcher(state: RoadmapGenerationState) -> RoadmapGenerationState:
 
     topic = state["topic"]
     mode = state["mode"].value if hasattr(state["mode"], "value") else state["mode"]
-    interview_context = state.get("interview_context", "")
-    level = _extract_level_from_context(interview_context)
+    level = _get_default_level()
 
     # Generate and execute search queries
     queries = _generate_search_queries(topic, level, mode)

@@ -2,28 +2,18 @@ from langchain_core.messages import HumanMessage
 
 from app.ai.llm import create_llm, parse_json_response
 from app.ai.state import RoadmapGenerationState
-from app.ai.prompts.templates import MONTHLY_GOALS_PROMPT, MONTHLY_GOALS_WITH_CONTEXT_PROMPT
+from app.ai.prompts.templates import MONTHLY_GOALS_PROMPT
 
 
 def monthly_generator(state: RoadmapGenerationState) -> RoadmapGenerationState:
     """Generate monthly goals for the roadmap."""
     llm = create_llm()
 
-    # Use context-aware prompt if interview context is available
-    if state.get("interview_context"):
-        prompt = MONTHLY_GOALS_WITH_CONTEXT_PROMPT.format(
-            topic=state["topic"],
-            duration_months=state["duration_months"],
-            title=state["title"],
-            mode=state["mode"].value if hasattr(state["mode"], "value") else state["mode"],
-            interview_context=state["interview_context"],
-        )
-    else:
-        prompt = MONTHLY_GOALS_PROMPT.format(
-            topic=state["topic"],
-            duration_months=state["duration_months"],
-            title=state["title"],
-        )
+    prompt = MONTHLY_GOALS_PROMPT.format(
+        topic=state["topic"],
+        duration_months=state["duration_months"],
+        title=state["title"],
+    )
 
     response = llm.invoke([HumanMessage(content=prompt)])
 

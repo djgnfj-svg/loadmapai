@@ -71,8 +71,6 @@ async def generate_roadmap(
         "start_date": start_date,
         "mode": mode,
         "user_id": user_id,
-        "interview_context": None,
-        "daily_time": None,
         "daily_available_minutes": None,
         "rest_days": [],
         "intensity": "moderate",

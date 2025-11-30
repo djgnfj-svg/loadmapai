@@ -37,7 +37,7 @@ export const useThemeStore = create<ThemeStore>()(
 
       toggleTheme: () => {
         const { theme, resolvedTheme } = get();
-        let newTheme: Theme;
+        let newTheme: 'light' | 'dark';
 
         if (theme === 'system') {
           newTheme = resolvedTheme === 'dark' ? 'light' : 'dark';
@@ -45,9 +45,8 @@ export const useThemeStore = create<ThemeStore>()(
           newTheme = theme === 'dark' ? 'light' : 'dark';
         }
 
-        const newResolvedTheme = newTheme === 'system' ? getSystemTheme() : newTheme;
-        applyTheme(newResolvedTheme);
-        set({ theme: newTheme, resolvedTheme: newResolvedTheme });
+        applyTheme(newTheme);
+        set({ theme: newTheme, resolvedTheme: newTheme });
       },
     }),
     {
@@ -65,7 +64,7 @@ export const useThemeStore = create<ThemeStore>()(
 
 // Listen for system theme changes
 if (typeof window !== 'undefined') {
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
     const { theme, setTheme } = useThemeStore.getState();
     if (theme === 'system') {
       setTheme('system');

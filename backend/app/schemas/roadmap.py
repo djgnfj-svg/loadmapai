@@ -127,7 +127,7 @@ class RoadmapCreate(BaseModel):
     duration_months: int = Field(..., ge=1, le=6)
     start_date: date
     mode: RoadmapMode = RoadmapMode.PLANNING
-    # Optional schedule fields (can be set during interview or later)
+    # Optional schedule fields
     daily_available_minutes: Optional[int] = Field(default=60, ge=15, le=480)
     rest_days: Optional[List[int]] = Field(default=[])
     intensity: Optional[Literal['light', 'moderate', 'intense']] = Field(default='moderate')

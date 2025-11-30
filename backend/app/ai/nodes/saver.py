@@ -22,7 +22,7 @@ def save_roadmap(state: RoadmapGenerationState, db: Session) -> RoadmapGeneratio
         start_date=state["start_date"],
         end_date=end_date,
         mode=state["mode"],
-        # Schedule fields (from interview or defaults)
+        # Schedule fields
         daily_available_minutes=state.get("daily_available_minutes", 60),
         rest_days=state.get("rest_days", []),
         intensity=state.get("intensity", "moderate"),

@@ -16,7 +16,7 @@ describe('authStore', () => {
 
   describe('login', () => {
     it('sets user and token', () => {
-      const user = { id: '1', email: 'test@example.com', name: 'Test User' };
+      const user = { id: '1', email: 'test@example.com', name: 'Test User', created_at: '2024-01-01' };
       const token = 'test-token';
 
       act(() => {
@@ -35,7 +35,7 @@ describe('authStore', () => {
       // First login
       act(() => {
         useAuthStore.getState().login(
-          { id: '1', email: 'test@example.com', name: 'Test' },
+          { id: '1', email: 'test@example.com', name: 'Test', created_at: '2024-01-01' },
           'test-token'
         );
       });
@@ -54,8 +54,8 @@ describe('authStore', () => {
 
   describe('setUser', () => {
     it('updates user without changing token', () => {
-      const initialUser = { id: '1', email: 'test@example.com', name: 'Test' };
-      const updatedUser = { id: '1', email: 'test@example.com', name: 'Updated' };
+      const initialUser = { id: '1', email: 'test@example.com', name: 'Test', created_at: '2024-01-01' };
+      const updatedUser = { id: '1', email: 'test@example.com', name: 'Updated', created_at: '2024-01-01' };
 
       act(() => {
         useAuthStore.getState().login(initialUser, 'test-token');
@@ -70,7 +70,7 @@ describe('authStore', () => {
 
   describe('setToken', () => {
     it('updates token without changing user', () => {
-      const user = { id: '1', email: 'test@example.com', name: 'Test' };
+      const user = { id: '1', email: 'test@example.com', name: 'Test', created_at: '2024-01-01' };
 
       act(() => {
         useAuthStore.getState().login(user, 'old-token');

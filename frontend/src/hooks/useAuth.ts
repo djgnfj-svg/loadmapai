@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '@/lib/api';
@@ -32,22 +33,27 @@ export function useRegister() {
 export function useCurrentUser() {
   const { setUser, setLoading, token } = useAuthStore();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['currentUser'],
     queryFn: async () => {
       const response = await authApi.me();
       return response.data as User;
     },
     enabled: !!token,
-    onSuccess: (user) => {
-      setUser(user);
+  });
+
+  useEffect(() => {
+    if (query.isSuccess && query.data) {
+      setUser(query.data);
       setLoading(false);
-    },
-    onError: () => {
+    }
+    if (query.isError) {
       setUser(null);
       setLoading(false);
-    },
-  });
+    }
+  }, [query.isSuccess, query.isError, query.data, setUser, setLoading]);
+
+  return query;
 }
 
 export function useLogout() {

@@ -31,10 +31,6 @@ class RoadmapGenerationState(TypedDict):
     mode: RoadmapMode
     user_id: str
 
-    # Optional context (for future personalization)
-    interview_context: Optional[str]
-    daily_time: Optional[str]
-
     # Schedule info
     daily_available_minutes: Optional[int]
     rest_days: Optional[List[int]]
