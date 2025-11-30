@@ -10,7 +10,6 @@ import {
   Pause,
   Play,
   Map,
-  BookOpen,
   MessageSquare,
   Edit3,
   Lock,
@@ -103,10 +102,6 @@ export function RoadmapDetail() {
         },
       });
     }
-  };
-
-  const handleStartQuiz = (taskId: string) => {
-    navigate(`/quiz/${taskId}`);
   };
 
   // Edit handlers
@@ -341,24 +336,10 @@ export function RoadmapDetail() {
             {/* Info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-3">
-                {/* Mode Badge - Prominent */}
-                <span className={cn(
-                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold',
-                  roadmap.mode === 'learning'
-                    ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
-                    : 'bg-primary-100 dark:bg-primary-500/20 text-primary-700 dark:text-primary-400'
-                )}>
-                  {roadmap.mode === 'learning' ? (
-                    <>
-                      <BookOpen className="h-4 w-4" />
-                      러닝 모드
-                    </>
-                  ) : (
-                    <>
-                      <Map className="h-4 w-4" />
-                      플래닝 모드
-                    </>
-                  )}
+                {/* Mode Badge */}
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold bg-primary-100 dark:bg-primary-500/20 text-primary-700 dark:text-primary-400">
+                  <Map className="h-4 w-4" />
+                  플래닝 모드
                 </span>
                 {/* Status Badge */}
                 <span className={cn('px-2.5 py-1 text-xs font-medium rounded-full', statusColors[roadmap.status])}>
@@ -498,7 +479,6 @@ export function RoadmapDetail() {
         <DrilldownContainer
           roadmap={roadmap}
           onToggleDailyTask={handleToggleDailyTask}
-          onStartQuiz={handleStartQuiz}
           isEditable={isEditMode}
           onEditDailyTask={handleEditDailyTask}
           onEditWeeklyTask={handleEditWeeklyTask}

@@ -181,43 +181,6 @@ export const roadmapApi = {
     api.post('/roadmaps/daily-tasks/reorder', data),
 };
 
-// Quiz API
-export const quizApi = {
-  // List user's quizzes
-  list: (params?: { skip?: number; limit?: number }) =>
-    api.get('/quizzes', { params }),
-
-  // Get quiz for a daily task
-  getForDailyTask: (dailyTaskId: string) =>
-    api.get(`/quizzes/daily-task/${dailyTaskId}`),
-
-  // Generate new quiz for a daily task
-  generate: (dailyTaskId: string, numQuestions: number = 5) =>
-    api.post(`/quizzes/daily-task/${dailyTaskId}/generate`, null, {
-      params: { num_questions: numQuestions }
-    }),
-
-  // Get quiz with questions
-  get: (quizId: string) => api.get(`/quizzes/${quizId}`),
-
-  // Start quiz
-  start: (quizId: string) => api.post(`/quizzes/${quizId}/start`),
-
-  // Submit all answers
-  submit: (quizId: string, answers: { question_id: string; answer_text?: string; selected_option?: string }[]) =>
-    api.post(`/quizzes/${quizId}/submit`, { answers }),
-
-  // Grade quiz
-  grade: (quizId: string) => api.post(`/quizzes/${quizId}/grade`),
-
-  // Reset quiz (다시 풀기)
-  reset: (quizId: string) => api.post(`/quizzes/${quizId}/reset`),
-
-  // Submit single answer
-  submitAnswer: (questionId: string, answer: { question_id: string; answer_text?: string; selected_option?: string }) =>
-    api.post(`/quizzes/questions/${questionId}/answer`, answer),
-};
-
 // Roadmap Chat API
 export const chatApi = {
   // Send chat message for AI editing

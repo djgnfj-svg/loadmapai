@@ -58,18 +58,6 @@ export function Header({ onMenuClick, showMenuButton }: HeaderProps) {
                 >
                   로드맵
                 </Link>
-                <Link
-                  to="/learning"
-                  className={cn(
-                    'px-4 py-2 rounded-xl text-sm font-medium',
-                    'text-gray-600 dark:text-gray-400',
-                    'hover:text-gray-900 dark:hover:text-white',
-                    'hover:bg-gray-100 dark:hover:bg-dark-700',
-                    'transition-colors'
-                  )}
-                >
-                  학습
-                </Link>
               </nav>
             )}
           </div>

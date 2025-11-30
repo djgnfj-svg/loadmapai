@@ -1,13 +1,13 @@
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { Map, Plus, ArrowRight, CheckCircle2, Circle, BookOpen, Rocket } from 'lucide-react';
+import { Map, Plus, ArrowRight } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useRoadmaps } from '@/hooks';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Progress, CircularProgress } from '@/components/common/Progress';
-import { Skeleton, CardSkeleton } from '@/components/common/Loading';
+import { CardSkeleton } from '@/components/common/Loading';
 import { cn } from '@/lib/utils';
 import type { Roadmap } from '@/types';
 
@@ -59,18 +59,6 @@ function TodayTasks({ roadmaps }: { roadmaps: Roadmap[] }) {
                   <span className="font-medium text-gray-900 dark:text-white truncate">
                     {roadmap.title}
                   </span>
-                  <span className={cn(
-                    'flex items-center gap-1 px-2 py-0.5 text-xs rounded-full',
-                    roadmap.mode === 'learning'
-                      ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400'
-                      : 'bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400'
-                  )}>
-                    {roadmap.mode === 'learning' ? (
-                      <><BookOpen className="h-3 w-3" /> 학습</>
-                    ) : (
-                      <><Rocket className="h-3 w-3" /> 플래닝</>
-                    )}
-                  </span>
                 </div>
                 <Progress value={roadmap.progress || 0} size="sm" />
               </Link>
@@ -106,18 +94,6 @@ function RoadmapCard({ roadmap }: { roadmap: Roadmap }) {
                 {statusLabels[roadmap.status]}
               </span>
             </div>
-            <span className={cn(
-              'flex items-center gap-1 px-2 py-0.5 text-xs rounded-full',
-              roadmap.mode === 'learning'
-                ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400'
-                : 'bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400'
-            )}>
-              {roadmap.mode === 'learning' ? (
-                <><BookOpen className="h-3 w-3" /> 학습</>
-              ) : (
-                <><Rocket className="h-3 w-3" /> 플래닝</>
-              )}
-            </span>
           </div>
 
           <h3 className="font-semibold text-gray-900 dark:text-white mb-1 line-clamp-1">

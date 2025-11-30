@@ -12,8 +12,6 @@ import {
   RoadmapCreate,
   RoadmapList,
   RoadmapDetail,
-  QuizPage,
-  QuizResult,
 } from '@/pages';
 import { useAuthStore } from '@/stores/authStore';
 import { useToastStore } from '@/stores/toastStore';
@@ -64,64 +62,48 @@ function App() {
           <ThemeInitializer />
           <Routes>
             <Route element={<Layout />}>
-            <Route path="/" element={<PublicRoute><Home /></PublicRoute>} />
-            <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-            <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/roadmaps"
-              element={
-                <ProtectedRoute>
-                  <RoadmapList />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/roadmaps/create"
-              element={
-                <ProtectedRoute>
-                  <RoadmapCreate />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/roadmaps/:id"
-              element={
-                <ProtectedRoute>
-                  <RoadmapDetail />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/quiz/:taskId"
-              element={
-                <ProtectedRoute>
-                  <QuizPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/quiz/:taskId/result"
-              element={
-                <ProtectedRoute>
-                  <QuizResult />
-                </ProtectedRoute>
-              }
-            />
-          </Route>
-        </Routes>
-        <ToastContainer toasts={toasts} onClose={removeToast} />
-      </BrowserRouter>
-    </QueryClientProvider>
-  </ErrorBoundary>
+              <Route path="/" element={<PublicRoute><Home /></PublicRoute>} />
+              <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+              <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/roadmaps"
+                element={
+                  <ProtectedRoute>
+                    <RoadmapList />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/roadmaps/create"
+                element={
+                  <ProtectedRoute>
+                    <RoadmapCreate />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/roadmaps/:id"
+                element={
+                  <ProtectedRoute>
+                    <RoadmapDetail />
+                  </ProtectedRoute>
+                }
+              />
+            </Route>
+          </Routes>
+          <ToastContainer toasts={toasts} onClose={removeToast} />
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

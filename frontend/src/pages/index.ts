@@ -6,5 +6,3 @@ export { Dashboard } from './Dashboard';
 export { RoadmapCreate } from './RoadmapCreate';
 export { RoadmapList } from './RoadmapList';
 export { RoadmapDetail } from './RoadmapDetail';
-export { QuizPage } from './QuizPage';
-export { QuizResult } from './QuizResult';

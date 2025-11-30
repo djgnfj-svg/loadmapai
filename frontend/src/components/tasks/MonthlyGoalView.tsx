@@ -9,11 +9,9 @@ import type { MonthlyGoalWithWeekly, DailyTask, WeeklyTask, MonthlyGoal } from '
 
 interface MonthlyGoalViewProps {
   month: MonthlyGoalWithWeekly;
-  mode: 'planning' | 'learning';
   startDate: string;
   defaultExpanded?: boolean;
   onToggleDailyTask: (taskId: string) => void;
-  onStartQuiz?: (taskId: string) => void;
   isEditable?: boolean;
   onEditDailyTask?: (task: DailyTask, weeklyTaskId: string) => void;
   onEditWeeklyTask?: (task: WeeklyTask, monthlyGoalId: string) => void;
@@ -22,11 +20,9 @@ interface MonthlyGoalViewProps {
 
 export function MonthlyGoalView({
   month,
-  mode,
   startDate,
   defaultExpanded = false,
   onToggleDailyTask,
-  onStartQuiz,
   isEditable = false,
   onEditDailyTask,
   onEditWeeklyTask,
@@ -47,22 +43,6 @@ export function MonthlyGoalView({
 
   const isComplete = progress === 100;
 
-  // Mode-specific styles
-  const modeStyles = {
-    planning: {
-      accent: 'from-primary-500 to-indigo-600',
-      accentLight: 'from-primary-500/20 to-indigo-600/20',
-      badge: 'bg-primary-100 dark:bg-primary-500/20 text-primary-700 dark:text-primary-400',
-    },
-    learning: {
-      accent: 'from-emerald-500 to-teal-600',
-      accentLight: 'from-emerald-500/20 to-teal-600/20',
-      badge: 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400',
-    },
-  };
-
-  const currentMode = modeStyles[mode];
-
   return (
     <div
       className={cn(
@@ -73,7 +53,7 @@ export function MonthlyGoalView({
       )}
     >
       {/* Gradient Top Bar */}
-      <div className={cn('h-1.5 bg-gradient-to-r', currentMode.accent)} />
+      <div className="h-1.5 bg-gradient-to-r from-primary-500 to-indigo-600" />
 
       {/* Header Card */}
       <button
@@ -88,7 +68,7 @@ export function MonthlyGoalView({
                 value={progress}
                 size={72}
                 strokeWidth={6}
-                color={mode === 'learning' ? 'success' : 'primary'}
+                color="primary"
               />
               {isComplete && (
                 <div className="absolute -top-1 -right-1 bg-green-500 rounded-full p-1">
@@ -101,10 +81,7 @@ export function MonthlyGoalView({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-2">
                 {/* Month Badge - Actual Calendar Month */}
-                <span className={cn(
-                  'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold',
-                  currentMode.badge
-                )}>
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-primary-100 dark:bg-primary-500/20 text-primary-700 dark:text-primary-400">
                   <Calendar className="h-3 w-3" />
                   {monthLabel}
                 </span>
@@ -175,27 +152,22 @@ export function MonthlyGoalView({
         )}
       >
         {month.weekly_tasks && month.weekly_tasks.length > 0 && (
-          <div className={cn(
-            'px-5 pb-5 pt-2 space-y-3 bg-gradient-to-b',
-            currentMode.accentLight
-          )}>
+          <div className="px-5 pb-5 pt-2 space-y-3 bg-gradient-to-b from-primary-500/20 to-indigo-600/20">
             {/* Section Header */}
             <div className="flex items-center gap-2 mb-4">
-              <div className={cn('h-0.5 flex-1 bg-gradient-to-r', currentMode.accent, 'opacity-30')} />
+              <div className="h-0.5 flex-1 bg-gradient-to-r from-primary-500 to-indigo-600 opacity-30" />
               <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 주간 계획
               </span>
-              <div className={cn('h-0.5 flex-1 bg-gradient-to-l', currentMode.accent, 'opacity-30')} />
+              <div className="h-0.5 flex-1 bg-gradient-to-l from-primary-500 to-indigo-600 opacity-30" />
             </div>
 
             {month.weekly_tasks.map((week) => (
               <WeeklyTaskView
                 key={week.id}
                 week={week}
-                mode={mode}
                 defaultExpanded={false}
                 onToggleDailyTask={onToggleDailyTask}
-                onStartQuiz={onStartQuiz}
                 isEditable={isEditable}
                 onEditDailyTask={onEditDailyTask}
                 onEditWeeklyTask={(task) => onEditWeeklyTask?.(task, month.id)}

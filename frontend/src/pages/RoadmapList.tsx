@@ -107,9 +107,6 @@ function RoadmapCard({
                 <span className={`px-2 py-0.5 text-xs rounded-full ${statusColors[roadmap.status]}`}>
                   {statusLabels[roadmap.status]}
                 </span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {roadmap.mode === 'learning' ? '학습 모드' : '플래닝 모드'}
-                </span>
               </div>
               <h3 className="font-semibold text-gray-900 dark:text-white truncate pr-8">
                 {roadmap.title}

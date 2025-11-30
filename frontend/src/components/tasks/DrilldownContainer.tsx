@@ -6,7 +6,6 @@ interface DrilldownContainerProps {
   roadmap: RoadmapFull;
   isLoading?: boolean;
   onToggleDailyTask: (taskId: string) => void;
-  onStartQuiz?: (taskId: string) => void;
   isEditable?: boolean;
   onEditDailyTask?: (task: DailyTask, weeklyTaskId: string) => void;
   onEditWeeklyTask?: (task: WeeklyTask, monthlyGoalId: string) => void;
@@ -17,7 +16,6 @@ export function DrilldownContainer({
   roadmap,
   isLoading,
   onToggleDailyTask,
-  onStartQuiz,
   isEditable = false,
   onEditDailyTask,
   onEditWeeklyTask,
@@ -56,11 +54,9 @@ export function DrilldownContainer({
         <MonthlyGoalView
           key={month.id}
           month={month}
-          mode={roadmap.mode}
           startDate={roadmap.start_date}
           defaultExpanded={false}
           onToggleDailyTask={onToggleDailyTask}
-          onStartQuiz={onStartQuiz}
           isEditable={isEditable}
           onEditDailyTask={onEditDailyTask}
           onEditWeeklyTask={onEditWeeklyTask}

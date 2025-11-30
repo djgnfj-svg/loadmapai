@@ -2,7 +2,6 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   Home,
   Map,
-  GraduationCap,
   PlusCircle,
   Settings,
   X,
@@ -20,7 +19,6 @@ const navigation: NavItem[] = [
   { name: '대시보드', href: '/dashboard', icon: Home },
   { name: '내 로드맵', href: '/roadmaps', icon: Map },
   { name: '새 로드맵', href: '/roadmaps/create', icon: PlusCircle },
-  { name: '학습하기', href: '/learning', icon: GraduationCap },
 ];
 
 const secondaryNavigation: NavItem[] = [

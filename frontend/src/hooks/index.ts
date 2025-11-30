@@ -14,13 +14,6 @@ export {
   useGenerateRoadmap,
 } from './useRoadmaps';
 export {
-  useQuiz,
-  useGenerateQuiz,
-  useStartQuiz,
-  useSubmitQuiz,
-  useGradeQuiz,
-} from './useQuiz';
-export {
   // Finalization
   useFinalizeRoadmap,
   useUnfinalizeRoadmap,
