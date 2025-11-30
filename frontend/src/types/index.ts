@@ -68,7 +68,7 @@ export interface DailyTask {
   id: string;
   weekly_task_id: string;
   day_number: number;
-  order: number;  // 같은 day_number 내 순서 (다중 태스크 지원)
+  order: number;
   title: string;
   description: string;
   is_checked: boolean;
@@ -103,7 +103,6 @@ export interface Question {
   options?: string[];
   points: number;
   created_at: string;
-  // For review (after grading)
   correct_answer?: string;
   explanation?: string;
 }
@@ -141,7 +140,7 @@ export interface QuizResult extends Quiz {
 }
 
 export interface SubmitAnswerRequest {
-  question_id: string;  // 필수: 어느 문제에 대한 답변인지 식별
+  question_id: string;
   answer_text?: string;
   selected_option?: string;
 }
@@ -162,7 +161,6 @@ export interface PaginatedResponse<T> {
 
 // ============ Roadmap Editing Types ============
 
-// CRUD Update types
 export interface DailyTaskUpdate {
   title?: string;
   description?: string;
@@ -238,74 +236,3 @@ export interface FinalizeResponse {
   finalized_at?: string;
   message: string;
 }
-
-// ============ Interview Types ============
-
-// 질문 카테고리 (SMART 기반이지만 단순화됨)
-export type QuestionCategory = 'specific' | 'measurable' | 'achievable' | 'relevant' | 'time_bound' | 'general';
-
-// 인터뷰 질문 타입 (단순화)
-export type InterviewQuestionType = 'text' | 'textarea' | 'single_choice' | 'multiple_choice';
-
-export interface InterviewQuestion {
-  id: string;
-  question: string;
-  question_type: InterviewQuestionType;
-  options?: string[];
-  placeholder?: string;
-  description?: string;  // 질문에 대한 힌트/설명
-  category?: QuestionCategory;  // SMART 카테고리
-}
-
-export interface InterviewAnswer {
-  question_id: string;
-  answer: string;
-}
-
-export interface InterviewSchedule {
-  daily_minutes?: number;
-  rest_days?: number[];
-  intensity?: LearningIntensity;
-}
-
-// 단순화된 인터뷰 응답 (2라운드 시스템)
-export interface InterviewQuestionsResponse {
-  session_id: string;
-  current_round: number;  // 1 or 2
-  max_rounds: number;     // 2
-  questions: InterviewQuestion[];
-  is_complete: boolean;
-  is_followup?: boolean;  // true if round 2 (AI followup questions)
-}
-
-export interface InterviewCompletedResponse {
-  session_id: string;
-  is_complete: boolean;
-  compiled_context: string;
-  key_insights: string[];
-  schedule: InterviewSchedule;
-}
-
-// 레거시 호환용 인터뷰 세션 타입
-export type InterviewStatus = 'in_progress' | 'completed' | 'abandoned';
-
-export interface InterviewSession {
-  id: string;
-  user_id: string;
-  topic: string;
-  mode: string;
-  duration_months: number;
-  current_round: number;
-  max_rounds: number;
-  status: InterviewStatus;
-  is_complete: boolean;
-  created_at: string;
-  updated_at: string;
-  roadmap_id?: string;
-}
-
-export interface InterviewSessionListResponse {
-  sessions: InterviewSession[];
-  total: number;
-}
-

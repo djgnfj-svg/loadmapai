@@ -99,21 +99,6 @@ export const authApi = {
   githubLogin: () => `${OAUTH_URL}/api/v1/auth/github`,
 };
 
-// Interview Question type
-export interface InterviewQuestion {
-  id: string;
-  question: string;
-  question_type: 'single_choice' | 'multiple_choice' | 'text';
-  options: string[] | null;
-  placeholder: string | null;
-}
-
-// Interview Answer type
-export interface InterviewAnswer {
-  question_id: string;
-  answer: string;
-}
-
 // Roadmap API
 export const roadmapApi = {
   list: (params?: { skip?: number; limit?: number }) =>
@@ -130,19 +115,6 @@ export const roadmapApi = {
 
   generate: (data: { topic: string; duration_months: number; start_date: string; mode: string }) =>
     api.post('/roadmaps/generate', data),
-
-  // Interview-based generation
-  startInterview: (data: { topic: string; mode: string; duration_months: number }) =>
-    api.post<{ questions: InterviewQuestion[] }>('/roadmaps/interview/start', data),
-
-  generateWithContext: (data: {
-    topic: string;
-    duration_months: number;
-    start_date: string;
-    mode: string;
-    interview_answers: InterviewAnswer[];
-    interview_questions: InterviewQuestion[];
-  }) => api.post('/roadmaps/generate-with-context', data),
 
   update: (id: string, data: Partial<{ title: string; status: string }>) =>
     api.patch(`/roadmaps/${id}`, data),
@@ -244,41 +216,6 @@ export const quizApi = {
   // Submit single answer
   submitAnswer: (questionId: string, answer: { question_id: string; answer_text?: string; selected_option?: string }) =>
     api.post(`/quizzes/questions/${questionId}/answer`, answer),
-};
-
-// ============ Deep Interview API ============
-export const interviewApi = {
-  // Start a new deep interview session
-  start: (data: { topic: string; mode: string; duration_months: number }) =>
-    api.post('/interviews/start', data),
-
-  // Submit answers for current questions
-  submitAnswers: (sessionId: string, answers: { question_id: string; answer: string }[]) =>
-    api.post(`/interviews/${sessionId}/submit`, { answers }),
-
-  // Get interview session details
-  get: (sessionId: string) =>
-    api.get(`/interviews/${sessionId}`),
-
-  // Get current questions for a session
-  getQuestions: (sessionId: string) =>
-    api.get(`/interviews/${sessionId}/questions`),
-
-  // List user's interview sessions
-  list: (params?: { skip?: number; limit?: number; status_filter?: string }) =>
-    api.get('/interviews', { params }),
-
-  // Abandon an interview session
-  abandon: (sessionId: string) =>
-    api.post(`/interviews/${sessionId}/abandon`),
-
-  // Delete an interview session
-  delete: (sessionId: string) =>
-    api.delete(`/interviews/${sessionId}`),
-
-  // Generate roadmap from completed interview
-  generateRoadmap: (data: { interview_session_id: string; start_date: string; use_web_search?: boolean }) =>
-    api.post('/roadmaps/generate-from-interview', data),
 };
 
 // Roadmap Chat API

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { roadmapApi, InterviewQuestion, InterviewAnswer } from '@/lib/api';
+import { roadmapApi } from '@/lib/api';
 import type { Roadmap, MonthlyGoal, WeeklyTask, DailyTask, RoadmapFull, RoadmapWithMonthly } from '@/types';
 
 export function useRoadmaps(params?: { skip?: number; limit?: number }) {
@@ -132,31 +132,6 @@ export function useGenerateRoadmap() {
 
   return useMutation({
     mutationFn: roadmapApi.generate,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['roadmaps'] });
-    },
-  });
-}
-
-export function useStartInterview() {
-  return useMutation({
-    mutationFn: (data: { topic: string; mode: string; duration_months: number }) =>
-      roadmapApi.startInterview(data),
-  });
-}
-
-export function useGenerateRoadmapWithContext() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: {
-      topic: string;
-      duration_months: number;
-      start_date: string;
-      mode: string;
-      interview_answers: InterviewAnswer[];
-      interview_questions: InterviewQuestion[];
-    }) => roadmapApi.generateWithContext(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['roadmaps'] });
     },

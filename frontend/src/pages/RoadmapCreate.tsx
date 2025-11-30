@@ -1,24 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, addMonths } from 'date-fns';
-import { Map, BookOpen, Calendar, Clock, ArrowLeft, ArrowRight, MessageCircle, Globe } from 'lucide-react';
+import { Map, BookOpen, Calendar, Clock, ArrowLeft, ArrowRight, Sparkles, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
-import { SplitViewContainer } from '@/components/roadmap-builder';
-import { StreamingGeneratingState } from '@/components/roadmap';
-import { useProgressiveRoadmap } from '@/hooks/useProgressiveRoadmap';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/stores/authStore';
 import type { RoadmapMode } from '@/types';
 
-type Step = 'mode' | 'topic' | 'duration' | 'building' | 'generating';
+type Step = 'mode' | 'topic' | 'duration' | 'generating';
 
 interface FormData {
   mode: RoadmapMode;
   topic: string;
   duration_months: number;
   start_date: string;
-  use_web_search: boolean;
 }
 
 // Mode-specific text configuration
@@ -39,7 +36,6 @@ const MODE_PAGE_TEXT = {
     ],
     durationTitle: '학습 기간',
     durationSubtitle: '얼마 동안 학습하시겠어요?',
-    webSearchDescription: '최신 강의, 자료, 학습 경로를 검색하여 반영합니다',
   },
   planning: {
     topicTitle: '목표 설정',
@@ -57,7 +53,6 @@ const MODE_PAGE_TEXT = {
     ],
     durationTitle: '실행 기간',
     durationSubtitle: '얼마 동안 진행하시겠어요?',
-    webSearchDescription: '최신 자료, 방법론, 참고 경로를 검색하여 반영합니다',
   },
 };
 
@@ -72,7 +67,7 @@ function ModeSelection({
     {
       id: 'planning' as RoadmapMode,
       title: '플래닝 모드',
-      description: '프로젝트, 자격증 준비, 운동 등 실천 위주의 목표에 적합합니다. 매일 해야 할 일을 체크하며 꾸준히 목표를 달성해 나가세요.',
+      description: '프로젝트, 자격증 준비, 운동 등 실천 위주의 목표에 적합합니다.',
       icon: Map,
       features: [
         '월별 → 주별 → 일별 세분화된 태스크',
@@ -227,18 +222,14 @@ function TopicInput({
 function DurationSelection({
   duration,
   startDate,
-  useWebSearch,
   onDurationChange,
   onStartDateChange,
-  onWebSearchChange,
   mode,
 }: {
   duration: number;
   startDate: string;
-  useWebSearch: boolean;
   onDurationChange: (duration: number) => void;
   onStartDateChange: (date: string) => void;
-  onWebSearchChange: (enabled: boolean) => void;
   mode: RoadmapMode;
 }) {
   const text = MODE_PAGE_TEXT[mode];
@@ -297,50 +288,40 @@ function DurationSelection({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* Web Search Option */}
-      <div className="border-t border-gray-200 dark:border-dark-600 pt-4">
-        <button
-          type="button"
-          onClick={() => onWebSearchChange(!useWebSearch)}
-          className={cn(
-            'w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all',
-            useWebSearch
-              ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10'
-              : 'border-gray-200 dark:border-dark-600 hover:border-gray-300 dark:hover:border-dark-500'
-          )}
-        >
-          <div className="flex items-center gap-3">
-            <div className={cn(
-              'p-2 rounded-lg',
-              useWebSearch
-                ? 'bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400'
-                : 'bg-gray-100 dark:bg-dark-600 text-gray-500 dark:text-gray-400'
-            )}>
-              <Globe className="h-5 w-5" />
-            </div>
-            <div className="text-left">
-              <div className={cn(
-                'font-medium',
-                useWebSearch ? 'text-blue-700 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'
-              )}>
-                실시간 웹 검색
-              </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                {text.webSearchDescription}
-              </div>
-            </div>
+function GeneratingState({ topic }: { topic: string }) {
+  return (
+    <div className="py-12 space-y-6">
+      <div className="text-center">
+        <div className="relative inline-flex mb-6">
+          <div className="p-4 rounded-full bg-primary-100 dark:bg-primary-500/20">
+            <Sparkles className="h-10 w-10 text-primary-600 dark:text-primary-400" />
           </div>
-          <div className={cn(
-            'w-11 h-6 rounded-full transition-colors relative',
-            useWebSearch ? 'bg-blue-500' : 'bg-gray-300 dark:bg-dark-500'
-          )}>
-            <div className={cn(
-              'absolute top-0.5 w-5 h-5 bg-white rounded-full transition-transform shadow',
-              useWebSearch ? 'translate-x-5' : 'translate-x-0.5'
-            )} />
+          <div className="absolute -bottom-1 -right-1">
+            <Loader2 className="h-6 w-6 text-primary-500 animate-spin" />
           </div>
-        </button>
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+          AI가 맞춤형 로드맵을 생성 중입니다
+        </h2>
+        <p className="text-gray-500 dark:text-gray-400">
+          "{topic}"에 대한 개인 맞춤형 계획을 만들고 있어요
+        </p>
+      </div>
+
+      <div className="max-w-xs mx-auto">
+        <div className="h-2 bg-gray-200 dark:bg-dark-600 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-primary-500 rounded-full animate-pulse"
+            style={{ width: '60%' }}
+          />
+        </div>
+        <p className="text-center text-sm text-gray-400 dark:text-gray-500 mt-2">
+          잠시만 기다려주세요...
+        </p>
       </div>
     </div>
   );
@@ -348,6 +329,7 @@ function DurationSelection({
 
 export function RoadmapCreate() {
   const navigate = useNavigate();
+  const token = useAuthStore((state) => state.token);
 
   const [step, setStep] = useState<Step>('mode');
   const [formData, setFormData] = useState<FormData>({
@@ -355,34 +337,9 @@ export function RoadmapCreate() {
     topic: '',
     duration_months: 3,
     start_date: format(new Date(), 'yyyy-MM-dd'),
-    use_web_search: true,
   });
-
-  // Progressive roadmap hook
-  const progressiveRoadmap = useProgressiveRoadmap({
-    onComplete: (roadmapId) => {
-      navigate(`/roadmaps/${roadmapId}`);
-    },
-    onError: (error) => {
-      console.error('Progressive roadmap error:', error);
-    },
-  });
-
-  // 모든 질문에 답변했는지 확인
-  const allQuestionsAnswered =
-    progressiveRoadmap.questions.length > 0 &&
-    progressiveRoadmap.answers.size >= progressiveRoadmap.questions.length;
-
-  // building 스텝 진입 시 세션 시작 (에러 시 자동 재시도 안함)
-  useEffect(() => {
-    if (step === 'building' && !progressiveRoadmap.sessionId && !progressiveRoadmap.isStarting && !progressiveRoadmap.error) {
-      progressiveRoadmap.startSession({
-        topic: formData.topic,
-        mode: formData.mode,
-        durationMonths: formData.duration_months,
-      });
-    }
-  }, [step, progressiveRoadmap.sessionId, progressiveRoadmap.isStarting, progressiveRoadmap.error, formData]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const canProceed = () => {
     switch (step) {
@@ -397,18 +354,47 @@ export function RoadmapCreate() {
     }
   };
 
-  const handleGenerateRoadmap = async () => {
+  const handleGenerate = async () => {
     setStep('generating');
-    await progressiveRoadmap.generateFinalRoadmap();
+    setIsGenerating(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/v1/roadmaps/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify({
+          topic: formData.topic,
+          mode: formData.mode,
+          duration_months: formData.duration_months,
+          start_date: formData.start_date,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || '로드맵 생성에 실패했습니다.');
+      }
+
+      const data = await response.json();
+      navigate(`/roadmaps/${data.roadmap_id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
+      setStep('duration');
+      setIsGenerating(false);
+    }
   };
 
-  const handleNext = async () => {
+  const handleNext = () => {
     if (step === 'mode') {
       setStep('topic');
     } else if (step === 'topic') {
       setStep('duration');
     } else if (step === 'duration') {
-      setStep('building');
+      handleGenerate();
     }
   };
 
@@ -417,13 +403,10 @@ export function RoadmapCreate() {
       setStep('mode');
     } else if (step === 'duration') {
       setStep('topic');
-    } else if (step === 'building') {
-      setStep('duration');
-      progressiveRoadmap.reset();
     }
   };
 
-  const steps = ['mode', 'topic', 'duration', 'building'];
+  const steps = ['mode', 'topic', 'duration'];
   const currentStepIndex = steps.indexOf(step);
   const showProgress = step !== 'generating';
 
@@ -433,44 +416,19 @@ export function RoadmapCreate() {
       <div className="max-w-2xl mx-auto">
         <Card variant="bordered">
           <CardContent>
-            <StreamingGeneratingState
-              topic={formData.topic}
-              events={[]}
-              currentEvent={null}
-              progress={progressiveRoadmap.progress}
-              isStreaming={progressiveRoadmap.isStreaming}
-              error={progressiveRoadmap.error}
-            />
+            <GeneratingState topic={formData.topic} />
           </CardContent>
         </Card>
-
-        {/* Cancel button */}
-        {progressiveRoadmap.isStreaming && (
-          <div className="flex justify-center mt-6">
-            <Button
-              variant="ghost"
-              onClick={() => {
-                progressiveRoadmap.reset();
-                setStep('building');
-              }}
-            >
-              취소
-            </Button>
-          </div>
-        )}
       </div>
     );
   }
 
   return (
-    <div className={cn(
-      'mx-auto',
-      step === 'building' ? 'max-w-6xl' : 'max-w-2xl'
-    )}>
+    <div className="max-w-2xl mx-auto">
       {/* Progress */}
       {showProgress && (
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-2 max-w-2xl mx-auto">
+          <div className="flex items-center justify-between mb-2">
             {steps.map((s, i) => (
               <div
                 key={s}
@@ -486,148 +444,71 @@ export function RoadmapCreate() {
         </div>
       )}
 
-      {/* Mode, Topic, Duration Steps */}
-      {step !== 'building' && (
-        <Card variant="bordered">
-          <CardContent>
-            {step === 'mode' && (
-              <ModeSelection
-                selected={formData.mode}
-                onSelect={(mode) => setFormData({ ...formData, mode })}
-              />
-            )}
-            {step === 'topic' && (
-              <TopicInput
-                value={formData.topic}
-                onChange={(topic) => setFormData({ ...formData, topic })}
-                mode={formData.mode}
-              />
-            )}
-            {step === 'duration' && (
-              <DurationSelection
-                duration={formData.duration_months}
-                startDate={formData.start_date}
-                useWebSearch={formData.use_web_search}
-                onDurationChange={(duration_months) =>
-                  setFormData({ ...formData, duration_months })
-                }
-                onStartDateChange={(start_date) =>
-                  setFormData({ ...formData, start_date })
-                }
-                onWebSearchChange={(use_web_search) =>
-                  setFormData({ ...formData, use_web_search })
-                }
-                mode={formData.mode}
-              />
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Building Step - Split View */}
-      {step === 'building' && (
-        <div className="space-y-6">
-          <Card variant="bordered">
-            <CardContent className="min-h-[600px]">
-              {progressiveRoadmap.isStarting ? (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-center">
-                    <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                    <p className="text-gray-600 dark:text-gray-400">세션을 시작하는 중...</p>
-                  </div>
-                </div>
-              ) : progressiveRoadmap.error ? (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-center">
-                    <p className="text-red-600 dark:text-red-400 mb-4">{progressiveRoadmap.error}</p>
-                    <Button
-                      variant="primary"
-                      onClick={() => {
-                        progressiveRoadmap.reset();
-                        progressiveRoadmap.startSession({
-                          topic: formData.topic,
-                          mode: formData.mode,
-                          durationMonths: formData.duration_months,
-                        });
-                      }}
-                    >
-                      다시 시도
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <SplitViewContainer
-                  questions={progressiveRoadmap.questions}
-                  answers={progressiveRoadmap.answers}
-                  onAnswerChange={progressiveRoadmap.setAnswer}
-                  onSubmit={progressiveRoadmap.submitRoundAnswers}
-                  isSubmitting={progressiveRoadmap.isSubmitting}
-                  isStreaming={progressiveRoadmap.isStreaming}
-                  progress={progressiveRoadmap.progress}
-                  currentRound={progressiveRoadmap.currentRound}
-                  maxRounds={progressiveRoadmap.maxRounds}
-                  isReadyForGeneration={progressiveRoadmap.isReadyForGeneration}
-                />
-              )}
-            </CardContent>
-          </Card>
-
-          {/* 로드맵 생성 버튼 - 배치 제출 성공 후에만 표시 */}
-          {progressiveRoadmap.isReadyForGeneration && !progressiveRoadmap.isStreaming && (
-            <div className="flex justify-center">
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={handleGenerateRoadmap}
-                className="px-8"
-              >
-                <Map className="h-5 w-5 mr-2" />
-                최종 로드맵 생성하기
-              </Button>
-            </div>
-          )}
+      {/* Error message */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl">
+          <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
         </div>
       )}
+
+      <Card variant="bordered">
+        <CardContent>
+          {step === 'mode' && (
+            <ModeSelection
+              selected={formData.mode}
+              onSelect={(mode) => setFormData({ ...formData, mode })}
+            />
+          )}
+          {step === 'topic' && (
+            <TopicInput
+              value={formData.topic}
+              onChange={(topic) => setFormData({ ...formData, topic })}
+              mode={formData.mode}
+            />
+          )}
+          {step === 'duration' && (
+            <DurationSelection
+              duration={formData.duration_months}
+              startDate={formData.start_date}
+              onDurationChange={(duration_months) =>
+                setFormData({ ...formData, duration_months })
+              }
+              onStartDateChange={(start_date) =>
+                setFormData({ ...formData, start_date })
+              }
+              mode={formData.mode}
+            />
+          )}
+        </CardContent>
+      </Card>
 
       {/* Navigation */}
-      {step !== 'building' && (
-        <div className="flex justify-between mt-6">
-          <Button
-            variant="ghost"
-            onClick={step === 'mode' ? () => navigate(-1) : handleBack}
-          >
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            {step === 'mode' ? '취소' : '이전'}
-          </Button>
-          <Button
-            variant="primary"
-            onClick={handleNext}
-            disabled={!canProceed()}
-          >
-            {step === 'duration' ? (
-              <>
-                <MessageCircle className="h-4 w-4 mr-1" />
-                다음 (AI 인터뷰)
-              </>
-            ) : (
-              <>
-                다음
-                <ArrowRight className="h-4 w-4 ml-1" />
-              </>
-            )}
-          </Button>
-        </div>
-      )}
-
-      {/* Back button for building step */}
-      {step === 'building' && !progressiveRoadmap.isStarting && !allQuestionsAnswered && (
-        <div className="flex justify-start mt-6">
-          <Button variant="ghost" onClick={handleBack}>
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            이전
-          </Button>
-        </div>
-      )}
+      <div className="flex justify-between mt-6">
+        <Button
+          variant="ghost"
+          onClick={step === 'mode' ? () => navigate(-1) : handleBack}
+        >
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          {step === 'mode' ? '취소' : '이전'}
+        </Button>
+        <Button
+          variant="primary"
+          onClick={handleNext}
+          disabled={!canProceed() || isGenerating}
+        >
+          {step === 'duration' ? (
+            <>
+              <Sparkles className="h-4 w-4 mr-1" />
+              로드맵 생성
+            </>
+          ) : (
+            <>
+              다음
+              <ArrowRight className="h-4 w-4 ml-1" />
+            </>
+          )}
+        </Button>
+      </div>
     </div>
   );
 }
