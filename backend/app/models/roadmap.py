@@ -9,7 +9,6 @@ from app.db.base import Base, TimestampMixin
 
 class RoadmapMode(str, enum.Enum):
     PLANNING = "planning"  # 플래닝 모드 - 체크리스트 중심
-    LEARNING = "learning"  # 러닝 모드 - 퀴즈/학습 중심
 
 
 class RoadmapStatus(str, enum.Enum):

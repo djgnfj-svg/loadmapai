@@ -47,18 +47,14 @@ def _get_default_level() -> str:
     return "beginner"
 
 
-def _generate_search_queries(topic: str, level: str, mode: str) -> List[str]:
+def _generate_search_queries(topic: str, level: str) -> List[str]:
     """Generate search queries based on topic and user level."""
     queries = [
         f"{topic} learning roadmap 2025",
         f"best {topic} courses for {level} 2025",
         f"{topic} tutorial step by step guide",
+        f"{topic} project ideas portfolio",
     ]
-
-    if mode == "learning":
-        queries.append(f"{topic} study plan curriculum")
-    else:  # planning mode
-        queries.append(f"{topic} project ideas portfolio")
 
     return queries
 
@@ -163,11 +159,10 @@ def web_searcher(state: RoadmapGenerationState) -> RoadmapGenerationState:
         return state
 
     topic = state["topic"]
-    mode = state["mode"].value if hasattr(state["mode"], "value") else state["mode"]
     level = _get_default_level()
 
     # Generate and execute search queries
-    queries = _generate_search_queries(topic, level, mode)
+    queries = _generate_search_queries(topic, level)
     all_results = []
 
     for query in queries:

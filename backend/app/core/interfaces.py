@@ -143,45 +143,6 @@ class WebSearchProvider(ABC):
         pass
 
 
-# ============ Streaming Interface ============
-
-class StreamEventType(Enum):
-    """Types of streaming events."""
-    START = "start"
-    PROGRESS = "progress"
-    DATA = "data"
-    COMPLETE = "complete"
-    ERROR = "error"
-
-
-@dataclass
-class StreamEvent:
-    """Represents a streaming event."""
-    event_type: StreamEventType
-    message: str
-    data: Optional[Dict[str, Any]] = None
-    progress: Optional[int] = None
-
-
-class StreamHandler(ABC):
-    """Abstract interface for handling streaming events."""
-
-    @abstractmethod
-    async def emit(self, event: StreamEvent) -> None:
-        """Emit a streaming event."""
-        pass
-
-    @abstractmethod
-    async def complete(self, data: Optional[Dict[str, Any]] = None) -> None:
-        """Signal completion of the stream."""
-        pass
-
-    @abstractmethod
-    async def error(self, message: str) -> None:
-        """Signal an error in the stream."""
-        pass
-
-
 # ============ Repository Interface ============
 
 EntityT = TypeVar("EntityT")

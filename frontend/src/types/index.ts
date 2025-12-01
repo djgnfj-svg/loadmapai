@@ -16,7 +16,7 @@ export interface AuthState {
 }
 
 // Roadmap types
-export type RoadmapMode = 'planning' | 'learning';
+export type RoadmapMode = 'planning';
 
 export type LearningIntensity = 'light' | 'moderate' | 'intense';
 

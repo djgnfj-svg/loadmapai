@@ -65,14 +65,14 @@ class TestCreateRoadmap:
                 "topic": "React 학습",
                 "duration_months": 2,
                 "start_date": str(date.today()),
-                "mode": "learning",
+                "mode": "planning",
             },
         )
         assert response.status_code == 201
         data = response.json()
         assert data["topic"] == "React 학습"
         assert data["duration_months"] == 2
-        assert data["mode"] == "learning"
+        assert data["mode"] == "planning"
 
     def test_create_roadmap_invalid_duration(self, authorized_client: TestClient):
         """Test creating roadmap with invalid duration."""

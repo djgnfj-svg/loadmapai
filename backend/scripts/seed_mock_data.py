@@ -233,7 +233,7 @@ def seed_mock_data():
         create_weekly_tasks(db, month2_r1.id, month2_r1_weeks)
 
         # ================================================================
-        # ROADMAP 2: Learning Mode - Python 데이터 분석 (3개월)
+        # ROADMAP 2: Planning Mode - Python 데이터 분석 (3개월)
         # ================================================================
         roadmap2 = Roadmap(
             id=uuid.uuid4(),
@@ -244,7 +244,7 @@ def seed_mock_data():
             duration_months=3,
             start_date=date.today() - timedelta(days=7),
             end_date=date.today() + timedelta(days=83),
-            mode=RoadmapMode.LEARNING,
+            mode=RoadmapMode.PLANNING,
             status=RoadmapStatus.ACTIVE,
             progress=15,
         )
@@ -494,7 +494,7 @@ def seed_mock_data():
             duration_months=1,
             start_date=date.today() - timedelta(days=45),
             end_date=date.today() - timedelta(days=15),
-            mode=RoadmapMode.LEARNING,
+            mode=RoadmapMode.PLANNING,
             status=RoadmapStatus.COMPLETED,
             progress=100,
         )
@@ -581,8 +581,8 @@ def seed_mock_data():
         print("\n✅ Mock data seeded successfully!")
         print(f"Created 3 roadmaps for user {user.email}:")
         print("  1. React 포트폴리오 프로젝트 (Planning, 2개월, 진행중)")
-        print("  2. Python 데이터 분석 마스터 (Learning, 3개월, 진행중)")
-        print("  3. Git & GitHub 마스터 (Learning, 1개월, 완료)")
+        print("  2. Python 데이터 분석 마스터 (Planning, 3개월, 진행중)")
+        print("  3. Git & GitHub 마스터 (Planning, 1개월, 완료)")
 
     except Exception as e:
         db.rollback()
