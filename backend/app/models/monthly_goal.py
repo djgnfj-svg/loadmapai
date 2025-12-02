@@ -28,7 +28,12 @@ class MonthlyGoal(Base, TimestampMixin):
 
     # Relationships
     roadmap = relationship("Roadmap", back_populates="monthly_goals")
-    weekly_tasks = relationship("WeeklyTask", back_populates="monthly_goal", cascade="all, delete-orphan")
+    weekly_tasks = relationship(
+        "WeeklyTask",
+        back_populates="monthly_goal",
+        cascade="all, delete-orphan",
+        order_by="WeeklyTask.week_number"
+    )
 
     def __repr__(self):
         return f"<MonthlyGoal {self.month_number}: {self.title}>"

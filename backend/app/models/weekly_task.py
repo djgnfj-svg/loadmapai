@@ -22,7 +22,12 @@ class WeeklyTask(Base, TimestampMixin):
 
     # Relationships
     monthly_goal = relationship("MonthlyGoal", back_populates="weekly_tasks")
-    daily_tasks = relationship("DailyTask", back_populates="weekly_task", cascade="all, delete-orphan")
+    daily_tasks = relationship(
+        "DailyTask",
+        back_populates="weekly_task",
+        cascade="all, delete-orphan",
+        order_by="DailyTask.day_number, DailyTask.order"
+    )
 
     def __repr__(self):
         return f"<WeeklyTask Week {self.week_number}: {self.title}>"

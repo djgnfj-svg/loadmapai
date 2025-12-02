@@ -51,7 +51,12 @@ class Roadmap(Base, TimestampMixin):
 
     # Relationships
     user = relationship("User", backref="roadmaps")
-    monthly_goals = relationship("MonthlyGoal", back_populates="roadmap", cascade="all, delete-orphan")
+    monthly_goals = relationship(
+        "MonthlyGoal",
+        back_populates="roadmap",
+        cascade="all, delete-orphan",
+        order_by="MonthlyGoal.month_number"
+    )
     conversations = relationship("RoadmapConversation", back_populates="roadmap", cascade="all, delete-orphan")
 
     def __repr__(self):
