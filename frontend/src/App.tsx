@@ -12,6 +12,8 @@ import {
   RoadmapCreate,
   RoadmapList,
   RoadmapDetail,
+  NotFound,
+  Settings,
 } from '@/pages';
 import { useAuthStore } from '@/stores/authStore';
 import { useToastStore } from '@/stores/toastStore';
@@ -98,6 +100,15 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute>
+                    <Settings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>
           <ToastContainer toasts={toasts} onClose={removeToast} />

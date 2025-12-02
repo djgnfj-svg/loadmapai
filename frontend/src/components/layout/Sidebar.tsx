@@ -3,7 +3,6 @@ import {
   Home,
   Map,
   PlusCircle,
-  Settings,
   X,
   LucideIcon,
 } from 'lucide-react';
@@ -21,9 +20,7 @@ const navigation: NavItem[] = [
   { name: '새 로드맵', href: '/roadmaps/create', icon: PlusCircle },
 ];
 
-const secondaryNavigation: NavItem[] = [
-  { name: '설정', href: '/settings', icon: Settings },
-];
+const secondaryNavigation: NavItem[] = [];
 
 interface SidebarProps {
   isOpen?: boolean;

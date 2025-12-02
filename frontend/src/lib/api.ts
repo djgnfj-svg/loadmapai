@@ -92,6 +92,9 @@ export const authApi = {
 
   me: () => api.get('/auth/me'),
 
+  updateProfile: (data: { name?: string; avatar_url?: string }) =>
+    api.patch('/auth/me', data),
+
   refresh: () => api.post('/auth/refresh'),
 
   googleLogin: () => `${OAUTH_URL}/api/v1/auth/google`,

@@ -1,5 +1,6 @@
-import { Link } from 'react-router-dom';
-import { Menu, User, LogOut } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Menu, User, LogOut, Settings, ChevronDown } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
 
@@ -10,6 +11,30 @@ interface HeaderProps {
 
 export function Header({ onMenuClick, showMenuButton }: HeaderProps) {
   const { isAuthenticated, user, logout } = useAuthStore();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    setIsDropdownOpen(false);
+    logout();
+    navigate('/');
+  };
+
+  const handleSettingsClick = () => {
+    setIsDropdownOpen(false);
+    navigate('/settings');
+  };
 
   return (
     <header className={cn(
@@ -63,17 +88,9 @@ export function Header({ onMenuClick, showMenuButton }: HeaderProps) {
 
           <div className="flex items-center gap-2 sm:gap-3">
             {isAuthenticated ? (
-              <>
-                <div className={cn(
-                  'hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl',
-                  'bg-gray-100 dark:bg-dark-700',
-                  'text-sm text-gray-600 dark:text-gray-400'
-                )}>
-                  <User className="h-4 w-4" />
-                  <span>{user?.name}</span>
-                </div>
+              <div className="relative" ref={dropdownRef}>
                 <button
-                  onClick={logout}
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                   className={cn(
                     'flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium',
                     'text-gray-700 dark:text-gray-300',
@@ -82,10 +99,49 @@ export function Header({ onMenuClick, showMenuButton }: HeaderProps) {
                     'transition-colors'
                   )}
                 >
-                  <LogOut className="h-4 w-4" />
-                  <span className="hidden sm:inline">로그아웃</span>
+                  <User className="h-4 w-4" />
+                  <span className="hidden sm:inline">{user?.name}</span>
+                  <ChevronDown className={cn(
+                    'h-4 w-4 transition-transform',
+                    isDropdownOpen && 'rotate-180'
+                  )} />
                 </button>
-              </>
+
+                {isDropdownOpen && (
+                  <div className={cn(
+                    'absolute right-0 mt-2 w-48 py-1 rounded-xl',
+                    'bg-white dark:bg-dark-800',
+                    'border border-gray-200 dark:border-dark-700',
+                    'shadow-lg shadow-gray-200/50 dark:shadow-dark-900/50'
+                  )}>
+                    <button
+                      onClick={handleSettingsClick}
+                      className={cn(
+                        'w-full flex items-center gap-3 px-4 py-2.5 text-sm',
+                        'text-gray-700 dark:text-gray-300',
+                        'hover:bg-gray-100 dark:hover:bg-dark-700',
+                        'transition-colors'
+                      )}
+                    >
+                      <Settings className="h-4 w-4" />
+                      설정
+                    </button>
+                    <div className="my-1 border-t border-gray-200 dark:border-dark-700" />
+                    <button
+                      onClick={handleLogout}
+                      className={cn(
+                        'w-full flex items-center gap-3 px-4 py-2.5 text-sm',
+                        'text-red-600 dark:text-red-400',
+                        'hover:bg-red-50 dark:hover:bg-red-500/10',
+                        'transition-colors'
+                      )}
+                    >
+                      <LogOut className="h-4 w-4" />
+                      로그아웃
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
               <>
                 <Link

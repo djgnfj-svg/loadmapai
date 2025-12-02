@@ -6,3 +6,5 @@ export { Dashboard } from './Dashboard';
 export { RoadmapCreate } from './RoadmapCreate';
 export { RoadmapList } from './RoadmapList';
 export { RoadmapDetail } from './RoadmapDetail';
+export { NotFound } from './NotFound';
+export { Settings } from './Settings';

@@ -6,7 +6,7 @@ from uuid import UUID
 from app.db import get_db
 from app.config import settings
 from app.models.user import User
-from app.schemas import UserCreate, UserLogin, AuthResponse, UserResponse, RefreshTokenRequest, Token, TokenPayload
+from app.schemas import UserCreate, UserLogin, UserUpdate, AuthResponse, UserResponse, RefreshTokenRequest, Token, TokenPayload
 from app.services.auth_service import AuthService
 from app.core.security import create_access_token, create_refresh_token
 from app.api.deps import get_current_user
@@ -70,6 +70,23 @@ async def get_me(
     current_user: User = Depends(get_current_user),
 ):
     """Get current authenticated user info."""
+    return current_user
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_me(
+    user_data: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update current user's profile."""
+    if user_data.name is not None:
+        current_user.name = user_data.name
+    if user_data.avatar_url is not None:
+        current_user.avatar_url = user_data.avatar_url
+
+    db.commit()
+    db.refresh(current_user)
     return current_user
 
 
