@@ -52,19 +52,6 @@ export function LoadingScreen({ message = '로딩 중...' }: LoadingScreenProps)
   );
 }
 
-export interface LoadingOverlayProps {
-  message?: string;
-}
-
-export function LoadingOverlay({ message }: LoadingOverlayProps) {
-  return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm z-10">
-      <Loading size="md" />
-      {message && <p className="mt-2 text-sm text-gray-600">{message}</p>}
-    </div>
-  );
-}
-
 export function CardSkeleton() {
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm">

@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Menu, User, LogOut } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
-import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { cn } from '@/lib/utils';
 
 interface HeaderProps {
@@ -63,8 +62,6 @@ export function Header({ onMenuClick, showMenuButton }: HeaderProps) {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <ThemeToggle />
-
             {isAuthenticated ? (
               <>
                 <div className={cn(

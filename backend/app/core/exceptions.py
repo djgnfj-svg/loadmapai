@@ -74,17 +74,6 @@ class ConflictException(AppException):
         )
 
 
-class RateLimitException(AppException):
-    """Rate limit exceeded exception."""
-
-    def __init__(self, detail: str = "요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요."):
-        super().__init__(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=detail,
-            error_code="RATE_LIMIT_EXCEEDED",
-        )
-
-
 class AIServiceException(AppException):
     """AI service related exception."""
 
@@ -107,42 +96,6 @@ class ValidationException(AppException):
         )
 
 
-# ============ AI/LLM Specific Exceptions ============
-
-class LLMException(AIServiceException):
-    """Base exception for LLM-related errors."""
-
-    def __init__(self, detail: str, provider: str = None):
-        super().__init__(detail=detail)
-        self.error_code = "LLM_ERROR"
-        self.provider = provider
-
-
-class LLMInvocationException(LLMException):
-    """Raised when LLM invocation fails."""
-
-    def __init__(self, detail: str = "LLM 호출에 실패했습니다.", provider: str = None):
-        super().__init__(detail=detail, provider=provider)
-        self.error_code = "LLM_INVOCATION_ERROR"
-
-
-class LLMParsingException(LLMException):
-    """Raised when LLM response parsing fails."""
-
-    def __init__(self, detail: str = "LLM 응답 파싱에 실패했습니다."):
-        super().__init__(detail=detail)
-        self.error_code = "LLM_PARSING_ERROR"
-
-
-class RoadmapGenerationException(AIServiceException):
-    """Raised when roadmap generation fails."""
-
-    def __init__(self, detail: str = "로드맵 생성에 실패했습니다.", stage: str = None):
-        super().__init__(detail=detail)
-        self.error_code = "ROADMAP_GENERATION_ERROR"
-        self.stage = stage
-
-
 # ============ Resource Specific Exceptions ============
 
 class UserNotFoundException(NotFoundException):
@@ -158,22 +111,3 @@ class RoadmapNotFoundException(NotFoundException):
 
     def __init__(self, roadmap_id: str = None):
         super().__init__(resource="로드맵", detail=f"로드맵을 찾을 수 없습니다.")
-
-
-# ============ Business Logic Exceptions ============
-
-class InvalidStateException(BadRequestException):
-    """Raised when operation is invalid for current state."""
-
-    def __init__(self, detail: str, current_state: str = None):
-        super().__init__(detail=detail)
-        self.error_code = "INVALID_STATE"
-        self.current_state = current_state
-
-
-class WebSearchException(AIServiceException):
-    """Raised when web search fails."""
-
-    def __init__(self, detail: str = "웹 검색에 실패했습니다."):
-        super().__init__(detail=detail)
-        self.error_code = "WEB_SEARCH_ERROR"

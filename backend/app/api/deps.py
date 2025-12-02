@@ -1,24 +1,15 @@
-from typing import Generator, Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 from uuid import UUID
 
-from app.db import get_db, SessionLocal
+from app.db import get_db
 from app.config import settings
 from app.models.user import User
 from app.schemas.auth import TokenPayload
 
 security = HTTPBearer()
-
-
-def get_db_session() -> Generator:
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 async def get_current_user(
@@ -62,31 +53,3 @@ async def get_current_user(
         )
 
     return user
-
-
-async def get_current_user_optional(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(
-        HTTPBearer(auto_error=False)
-    ),
-    db: Session = Depends(get_db),
-) -> Optional[User]:
-    """Get the current user if authenticated, otherwise return None."""
-    if not credentials:
-        return None
-
-    try:
-        payload = jwt.decode(
-            credentials.credentials,
-            settings.secret_key,
-            algorithms=[settings.algorithm],
-        )
-        token_data = TokenPayload(**payload)
-
-        if token_data.type != "access":
-            return None
-
-        user = db.query(User).filter(User.id == UUID(token_data.sub)).first()
-        return user if user and user.is_active else None
-
-    except JWTError:
-        return None

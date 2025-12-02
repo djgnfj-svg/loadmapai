@@ -44,7 +44,6 @@ class RoadmapGenerateRequest(BaseModel):
     duration_months: int = Field(..., ge=1, le=6)
     start_date: date
     mode: RoadmapMode = RoadmapMode.PLANNING
-    use_web_search: bool = False
 
 
 class RoadmapGenerateResponse(BaseModel):
@@ -179,7 +178,6 @@ async def generate_roadmap_endpoint(
             mode=data.mode,
             user_id=str(current_user.id),
             db=db,
-            use_web_search=data.use_web_search,
         )
 
         return RoadmapGenerateResponse(

@@ -47,7 +47,6 @@ async def generate_roadmap(
     mode,
     user_id: str,
     db: Session,
-    use_web_search: bool = False,  # Kept for API compatibility, not used
 ) -> dict:
     """Generate a complete roadmap using LangGraph.
 
@@ -58,7 +57,6 @@ async def generate_roadmap(
         mode: Roadmap mode (planning)
         user_id: User ID
         db: Database session
-        use_web_search: Not used (kept for API compatibility)
 
     Returns:
         Dict with roadmap_id, title, and status
