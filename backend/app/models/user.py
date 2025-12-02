@@ -8,9 +8,10 @@ from app.db.base import Base, TimestampMixin
 
 
 class AuthProvider(str, enum.Enum):
+    """인증 제공자. 현재는 EMAIL만 사용 (DB 호환성을 위해 enum 값 유지)"""
     EMAIL = "email"
-    GOOGLE = "google"
-    GITHUB = "github"
+    GOOGLE = "google"  # deprecated
+    GITHUB = "github"  # deprecated
 
 
 class User(Base, TimestampMixin):

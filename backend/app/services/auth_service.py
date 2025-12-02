@@ -3,7 +3,7 @@ from fastapi import HTTPException, status
 from typing import Optional
 from uuid import UUID
 
-from app.models.user import User, AuthProvider
+from app.models.user import User
 from app.schemas.user import UserCreate
 from app.core.security import get_password_hash, verify_password
 
@@ -47,38 +47,4 @@ class AuthService:
             return None
         if not verify_password(password, user.hashed_password):
             return None
-        return user
-
-    def create_oauth_user(
-        self,
-        email: str,
-        name: str,
-        provider: AuthProvider,
-        provider_id: str,
-        avatar_url: Optional[str] = None,
-    ) -> User:
-        # Check if user already exists
-        existing_user = self.get_user_by_email(email)
-        if existing_user:
-            # Update provider info if user exists
-            existing_user.auth_provider = provider
-            existing_user.provider_id = provider_id
-            if avatar_url:
-                existing_user.avatar_url = avatar_url
-            self.db.commit()
-            self.db.refresh(existing_user)
-            return existing_user
-
-        # Create new OAuth user
-        user = User(
-            email=email,
-            name=name,
-            auth_provider=provider,
-            provider_id=provider_id,
-            avatar_url=avatar_url,
-            is_verified=True,  # OAuth users are verified
-        )
-        self.db.add(user)
-        self.db.commit()
-        self.db.refresh(user)
         return user

@@ -4,14 +4,13 @@ from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-from starlette.middleware.sessions import SessionMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from app.config import settings
 from app.api.v1.router import api_router
-from app.db import get_db, engine
+from app.db import get_db
 from app.core.exceptions import AppException
 
 logger = logging.getLogger(__name__)
@@ -33,7 +32,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS 설정 (must be added first, processed last)
+# CORS 설정
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", settings.frontend_url],
@@ -41,9 +40,6 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
-
-# Session Middleware (for OAuth)
-app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
 
 
 @app.get("/")
