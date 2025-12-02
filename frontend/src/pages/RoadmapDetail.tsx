@@ -38,6 +38,7 @@ import { LoadingScreen } from '@/components/common/Loading';
 import { DrilldownContainer } from '@/components/tasks';
 import { EditTaskModal } from '@/components/edit';
 import { cn } from '@/lib/utils';
+import { STATUS_COLORS, STATUS_LABELS } from '@/constants';
 import type { DailyTask, WeeklyTask, MonthlyGoal } from '@/types';
 
 // Edit state types
@@ -240,17 +241,7 @@ export function RoadmapDetail() {
   const elapsedDays = Math.max(0, Math.min(differenceInDays(today, startDate), totalDays));
   const daysRemaining = Math.max(0, differenceInDays(endDate, today));
 
-  const statusColors = {
-    active: 'bg-green-100 dark:bg-green-500/20 text-green-800 dark:text-green-400',
-    completed: 'bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-400',
-    paused: 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-800 dark:text-yellow-400',
-  };
-
-  const statusLabels = {
-    active: '진행 중',
-    completed: '완료',
-    paused: '일시정지',
-  };
+  const statusKey = roadmap.status.toUpperCase() as keyof typeof STATUS_COLORS;
 
   return (
     <div className="space-y-6">
@@ -340,8 +331,8 @@ export function RoadmapDetail() {
                   플래닝 모드
                 </span>
                 {/* Status Badge */}
-                <span className={cn('px-2.5 py-1 text-xs font-medium rounded-full', statusColors[roadmap.status])}>
-                  {statusLabels[roadmap.status]}
+                <span className={cn('px-2.5 py-1 text-xs font-medium rounded-full', STATUS_COLORS[statusKey])}>
+                  {STATUS_LABELS[statusKey]}
                 </span>
               </div>
 

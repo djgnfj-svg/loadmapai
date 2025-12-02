@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -8,15 +9,16 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/common/Ca
 import { Button } from '@/components/common/Button';
 import { Progress, CircularProgress } from '@/components/common/Progress';
 import { CardSkeleton } from '@/components/common/Loading';
+import { STATUS_COLORS, STATUS_LABELS } from '@/constants';
 import { cn } from '@/lib/utils';
 import type { Roadmap } from '@/types';
 
-function TodayTasks({ roadmaps }: { roadmaps: Roadmap[] }) {
+const TodayTasks = memo(function TodayTasks({ roadmaps }: { roadmaps: Roadmap[] }) {
   const totalProgress = roadmaps.length > 0
     ? Math.round(roadmaps.reduce((sum, r) => sum + (r.progress || 0), 0) / roadmaps.length)
     : 0;
 
-  const activeRoadmaps = roadmaps.filter(r => r.status === 'active');
+  const activeRoadmaps = roadmaps.filter(r => r.status.toUpperCase() === 'ACTIVE');
 
   return (
     <Card variant="bordered" className="h-full">
@@ -68,20 +70,10 @@ function TodayTasks({ roadmaps }: { roadmaps: Roadmap[] }) {
       </CardContent>
     </Card>
   );
-}
+});
 
-function RoadmapCard({ roadmap }: { roadmap: Roadmap }) {
-  const statusColors = {
-    active: 'bg-green-100 dark:bg-green-500/20 text-green-800 dark:text-green-400',
-    completed: 'bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-400',
-    paused: 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-800 dark:text-yellow-400',
-  };
-
-  const statusLabels = {
-    active: '진행 중',
-    completed: '완료',
-    paused: '일시정지',
-  };
+const RoadmapCard = memo(function RoadmapCard({ roadmap }: { roadmap: Roadmap }) {
+  const statusKey = roadmap.status.toUpperCase() as keyof typeof STATUS_COLORS;
 
   return (
     <Link to={`/roadmaps/${roadmap.id}`}>
@@ -90,8 +82,8 @@ function RoadmapCard({ roadmap }: { roadmap: Roadmap }) {
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-2">
               <Map className="h-5 w-5 text-primary-600 dark:text-primary-400" />
-              <span className={cn('px-2 py-0.5 text-xs rounded-full', statusColors[roadmap.status])}>
-                {statusLabels[roadmap.status]}
+              <span className={cn('px-2 py-0.5 text-xs rounded-full', STATUS_COLORS[statusKey])}>
+                {STATUS_LABELS[statusKey]}
               </span>
             </div>
           </div>

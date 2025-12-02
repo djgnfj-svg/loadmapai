@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -11,9 +11,10 @@ import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Progress } from '@/components/common/Progress';
 import { CardSkeleton } from '@/components/common/Loading';
+import { STATUS_COLORS, STATUS_LABELS } from '@/constants';
 import type { Roadmap } from '@/types';
 
-function RoadmapCard({
+const RoadmapCard = memo(function RoadmapCard({
   roadmap,
   onDelete,
   onToggleStatus,
@@ -23,18 +24,7 @@ function RoadmapCard({
   onToggleStatus: (id: string, status: string) => void;
 }) {
   const [showMenu, setShowMenu] = useState(false);
-
-  const statusColors = {
-    active: 'bg-green-100 dark:bg-green-500/20 text-green-800 dark:text-green-400',
-    completed: 'bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-400',
-    paused: 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-800 dark:text-yellow-400',
-  };
-
-  const statusLabels = {
-    active: '진행 중',
-    completed: '완료',
-    paused: '일시정지',
-  };
+  const statusKey = roadmap.status.toUpperCase() as keyof typeof STATUS_COLORS;
 
   return (
     <Card variant="bordered" className="relative hover:shadow-md transition-shadow">
@@ -104,8 +94,8 @@ function RoadmapCard({
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <span className={`px-2 py-0.5 text-xs rounded-full ${statusColors[roadmap.status]}`}>
-                  {statusLabels[roadmap.status]}
+                <span className={`px-2 py-0.5 text-xs rounded-full ${STATUS_COLORS[statusKey]}`}>
+                  {STATUS_LABELS[statusKey]}
                 </span>
               </div>
               <h3 className="font-semibold text-gray-900 dark:text-white truncate pr-8">
@@ -154,12 +144,14 @@ export function RoadmapList() {
     },
   });
 
-  const filteredRoadmaps = (roadmaps || []).filter((roadmap) => {
-    const matchesSearch = roadmap.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      roadmap.topic.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = filter === 'all' || roadmap.status === filter;
-    return matchesSearch && matchesFilter;
-  });
+  const filteredRoadmaps = useMemo(() => {
+    return (roadmaps || []).filter((roadmap) => {
+      const matchesSearch = roadmap.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        roadmap.topic.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesFilter = filter === 'all' || roadmap.status.toUpperCase() === filter.toUpperCase();
+      return matchesSearch && matchesFilter;
+    });
+  }, [roadmaps, searchQuery, filter]);
 
   const handleDelete = (id: string) => {
     deleteRoadmap.mutate(id);
