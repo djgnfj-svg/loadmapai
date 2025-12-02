@@ -36,8 +36,12 @@ def daily_generator(state: RoadmapGenerationState) -> RoadmapGenerationState:
                     "days": [
                         {
                             "day_number": d + 1,
-                            "title": f"{d + 1}일차 학습" if d < 5 else f"{d + 1}일차 복습",
-                            "description": f"{week['title']}의 {d + 1}일차 내용"
+                            "tasks": [
+                                {"title": f"이론 학습", "description": f"{week['title']} 관련 개념 학습"},
+                                {"title": f"실습", "description": f"{week['title']} 실습 과제"},
+                            ] if d < 5 else [
+                                {"title": f"복습", "description": f"이번 주 학습 내용 복습"},
+                            ]
                         }
                         for d in range(7)
                     ]

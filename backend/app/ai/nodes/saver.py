@@ -70,15 +70,20 @@ def save_roadmap(state: RoadmapGenerationState, db: Session) -> RoadmapGeneratio
                 )
 
                 if daily_week and "days" in daily_week:
-                    for order, day_data in enumerate(daily_week["days"]):
-                        daily_task = DailyTask(
-                            weekly_task_id=weekly_task.id,
-                            day_number=day_data["day_number"],
-                            order=order,
-                            title=day_data["title"],
-                            description=day_data["description"],
-                        )
-                        db.add(daily_task)
+                    for day_data in daily_week["days"]:
+                        tasks = day_data.get("tasks", [])
+                        # 기존 형식 호환 (tasks 배열 없이 title/description만 있는 경우)
+                        if not tasks and "title" in day_data:
+                            tasks = [{"title": day_data["title"], "description": day_data.get("description", "")}]
+                        for order, task in enumerate(tasks):
+                            daily_task = DailyTask(
+                                weekly_task_id=weekly_task.id,
+                                day_number=day_data["day_number"],
+                                order=order,
+                                title=task["title"],
+                                description=task.get("description", ""),
+                            )
+                            db.add(daily_task)
 
     db.commit()
     state["roadmap_id"] = str(roadmap.id)

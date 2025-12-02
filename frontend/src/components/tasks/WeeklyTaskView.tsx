@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ChevronDown, Calendar, CheckCircle2, Pencil } from 'lucide-react';
 import { Progress } from '@/components/common/Progress';
-import { DailyTaskView } from './DailyTaskView';
+import { DayGroupView } from './DayGroupView';
 import { cn } from '@/lib/utils';
 import type { WeeklyTaskWithDaily, DailyTask, WeeklyTask } from '@/types';
 
@@ -28,6 +28,28 @@ export function WeeklyTaskView({
   const totalCount = week.daily_tasks?.length || 0;
   const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
   const isComplete = progress === 100;
+
+  // Group daily tasks by day_number
+  const tasksByDay = useMemo(() => {
+    if (!week.daily_tasks) return [];
+
+    const grouped = week.daily_tasks.reduce((acc, task) => {
+      const dayNum = task.day_number;
+      if (!acc[dayNum]) {
+        acc[dayNum] = [];
+      }
+      acc[dayNum].push(task);
+      return acc;
+    }, {} as Record<number, DailyTask[]>);
+
+    // Sort by day number and return as array
+    return Object.entries(grouped)
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .map(([dayNumber, tasks]) => ({
+        dayNumber: Number(dayNumber),
+        tasks: tasks.sort((a, b) => a.order - b.order),
+      }));
+  }, [week.daily_tasks]);
 
   return (
     <div
@@ -122,10 +144,10 @@ export function WeeklyTaskView({
       <div
         className={cn(
           'overflow-hidden transition-all duration-300 ease-in-out',
-          isExpanded ? 'max-h-[1500px] opacity-100' : 'max-h-0 opacity-0'
+          isExpanded ? 'max-h-[3000px] opacity-100' : 'max-h-0 opacity-0'
         )}
       >
-        {week.daily_tasks && week.daily_tasks.length > 0 && (
+        {tasksByDay.length > 0 && (
           <div className="px-4 pb-4 pt-2 bg-primary-50 dark:bg-primary-500/10">
             {/* Section Divider */}
             <div className="flex items-center gap-2 mb-3">
@@ -137,15 +159,17 @@ export function WeeklyTaskView({
               <div className="h-px flex-1 bg-primary-200 dark:bg-primary-500/30" />
             </div>
 
-            {/* Daily Tasks Grid */}
+            {/* Daily Tasks by Day */}
             <div className="grid gap-2">
-              {week.daily_tasks.map((task) => (
-                <DailyTaskView
-                  key={task.id}
-                  task={task}
-                  onToggle={onToggleDailyTask}
+              {tasksByDay.map(({ dayNumber, tasks }) => (
+                <DayGroupView
+                  key={dayNumber}
+                  dayNumber={dayNumber}
+                  tasks={tasks}
+                  defaultExpanded={false}
+                  onToggleTask={onToggleDailyTask}
                   isEditable={isEditable}
-                  onEdit={(t) => onEditDailyTask?.(t, week.id)}
+                  onEditTask={(t) => onEditDailyTask?.(t, week.id)}
                 />
               ))}
             </div>

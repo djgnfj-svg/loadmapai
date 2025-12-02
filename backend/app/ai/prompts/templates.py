@@ -39,7 +39,8 @@ WEEKLY_TASKS_PROMPT = """주제: {topic}
 월별 목표:
 {monthly_goals_summary}
 
-각 월별 목표에 대해 4주간의 주별 학습 과제를 한 번에 모두 생성해주세요.
+위의 모든 월({duration_months}개월)에 대해 각각 4주간의 주별 학습 과제를 생성해주세요.
+반드시 1개월차부터 {duration_months}개월차까지 모두 포함해야 합니다.
 각 주의 과제는 점진적으로 심화되어야 합니다.
 
 응답 형식 (JSON):
@@ -53,6 +54,10 @@ WEEKLY_TASKS_PROMPT = """주제: {topic}
                 {{"week_number": 3, "title": "3주차 과제", "description": "설명"}},
                 {{"week_number": 4, "title": "4주차 과제", "description": "설명"}}
             ]
+        }},
+        {{
+            "month_number": 2,
+            "weeks": [...]
         }}
     ]
 }}
@@ -65,7 +70,9 @@ DAILY_TASKS_PROMPT = """주제: {topic}
 주별 과제 목록:
 {weekly_tasks_summary}
 
-각 주별 과제에 대해 7일간의 일별 학습 태스크를 한 번에 모두 생성해주세요.
+위의 모든 주별 과제에 대해 각각 7일간의 일별 학습 태스크를 생성해주세요.
+반드시 모든 월의 모든 주차(1-4주)를 포함해야 합니다.
+각 일자에는 2-4개의 구체적인 학습 태스크를 포함해주세요.
 주말(6-7일차)은 복습 또는 가벼운 과제로 구성해주세요.
 
 응답 형식 (JSON):
@@ -75,15 +82,20 @@ DAILY_TASKS_PROMPT = """주제: {topic}
             "month_number": 1,
             "week_number": 1,
             "days": [
-                {{"day_number": 1, "title": "1일차", "description": "설명"}},
-                {{"day_number": 2, "title": "2일차", "description": "설명"}},
-                {{"day_number": 3, "title": "3일차", "description": "설명"}},
-                {{"day_number": 4, "title": "4일차", "description": "설명"}},
-                {{"day_number": 5, "title": "5일차", "description": "설명"}},
-                {{"day_number": 6, "title": "6일차 복습", "description": "설명"}},
-                {{"day_number": 7, "title": "7일차 복습", "description": "설명"}}
+                {{"day_number": 1, "tasks": [{{"title": "태스크1", "description": "설명"}}, {{"title": "태스크2", "description": "설명"}}]}},
+                {{"day_number": 2, "tasks": [{{"title": "태스크1", "description": "설명"}}, {{"title": "태스크2", "description": "설명"}}]}},
+                {{"day_number": 3, "tasks": [...]}},
+                {{"day_number": 4, "tasks": [...]}},
+                {{"day_number": 5, "tasks": [...]}},
+                {{"day_number": 6, "tasks": [...]}},
+                {{"day_number": 7, "tasks": [...]}}
             ]
-        }}
+        }},
+        {{"month_number": 1, "week_number": 2, "days": [...]}},
+        {{"month_number": 1, "week_number": 3, "days": [...]}},
+        {{"month_number": 1, "week_number": 4, "days": [...]}},
+        {{"month_number": 2, "week_number": 1, "days": [...]}},
+        ...
     ]
 }}
 
