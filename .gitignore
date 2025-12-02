@@ -85,3 +85,6 @@ dump.rdb
 
 # MSW (Mock Service Worker)
 frontend/public/mockServiceWorker.js
+
+# local
+image*.png

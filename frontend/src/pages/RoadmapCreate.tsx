@@ -5,7 +5,7 @@ import { Calendar, Clock, ArrowLeft, ArrowRight, Sparkles, Loader2 } from 'lucid
 import { Card, CardContent } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
-import { useAuthStore } from '@/stores/authStore';
+import { roadmapApi } from '@/lib/api';
 
 type Step = 'topic' | 'duration' | 'generating';
 
@@ -179,7 +179,6 @@ function GeneratingState({ topic }: { topic: string }) {
 
 export function RoadmapCreate() {
   const navigate = useNavigate();
-  const token = useAuthStore((state) => state.token);
 
   const [step, setStep] = useState<Step>('topic');
   const [formData, setFormData] = useState<FormData>({
@@ -207,27 +206,14 @@ export function RoadmapCreate() {
     setError(null);
 
     try {
-      const response = await fetch('/api/v1/roadmaps/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
-        body: JSON.stringify({
-          topic: formData.topic,
-          mode: 'planning',
-          duration_months: formData.duration_months,
-          start_date: formData.start_date,
-        }),
+      const response = await roadmapApi.generate({
+        topic: formData.topic,
+        mode: 'planning',
+        duration_months: formData.duration_months,
+        start_date: formData.start_date,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || '로드맵 생성에 실패했습니다.');
-      }
-
-      const data = await response.json();
-      navigate(`/roadmaps/${data.roadmap_id}`);
+      navigate(`/roadmaps/${response.data.roadmap_id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
       setStep('duration');
