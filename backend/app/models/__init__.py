@@ -3,7 +3,6 @@ from app.models.roadmap import Roadmap, RoadmapMode, RoadmapStatus
 from app.models.monthly_goal import MonthlyGoal, TaskStatus
 from app.models.weekly_task import WeeklyTask
 from app.models.daily_task import DailyTask
-from app.models.roadmap_conversation import RoadmapConversation
 
 __all__ = [
     "User",
@@ -15,5 +14,4 @@ __all__ = [
     "WeeklyTask",
     "DailyTask",
     "TaskStatus",
-    "RoadmapConversation",
 ]

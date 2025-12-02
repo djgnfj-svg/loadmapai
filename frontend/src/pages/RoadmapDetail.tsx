@@ -10,7 +10,6 @@ import {
   Pause,
   Play,
   Map,
-  MessageSquare,
   Edit3,
   Lock,
   Unlock,
@@ -37,7 +36,7 @@ import { Button } from '@/components/common/Button';
 import { CircularProgress, Progress } from '@/components/common/Progress';
 import { LoadingScreen } from '@/components/common/Loading';
 import { DrilldownContainer } from '@/components/tasks';
-import { EditTaskModal, ChatPanel } from '@/components/edit';
+import { EditTaskModal } from '@/components/edit';
 import { cn } from '@/lib/utils';
 import type { DailyTask, WeeklyTask, MonthlyGoal } from '@/types';
 
@@ -57,7 +56,6 @@ export function RoadmapDetail() {
   const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [showChatPanel, setShowChatPanel] = useState(false);
 
   // Edit modal state
   const [editingDaily, setEditingDaily] = useState<EditingDaily | null>(null);
@@ -463,16 +461,6 @@ export function RoadmapDetail() {
                 </>
               )}
             </Button>
-
-            {/* AI Chat Button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowChatPanel(true)}
-            >
-              <MessageSquare className="h-4 w-4 mr-1" />
-              AI 도우미
-            </Button>
           </div>
         </div>
 
@@ -529,13 +517,6 @@ export function RoadmapDetail() {
           showFinalizeWarning={roadmap.is_finalized}
         />
       )}
-
-      {/* AI Chat Panel */}
-      <ChatPanel
-        roadmapId={id || ''}
-        isOpen={showChatPanel}
-        onClose={() => setShowChatPanel(false)}
-      />
     </div>
   );
 }

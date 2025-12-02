@@ -122,52 +122,6 @@ export interface RoadmapScheduleUpdate {
   intensity?: LearningIntensity;
 }
 
-// Chat types
-export interface ChatChangeItem {
-  id: string;
-  target_type: 'roadmap' | 'monthly' | 'weekly' | 'daily';
-  target_id?: string;
-  action: 'modify' | 'add' | 'delete';
-  field?: string;
-  old_value?: string;
-  new_value?: string;
-  parent_id?: string;
-}
-
-export interface ChatMessageRequest {
-  message: string;
-  context?: {
-    target_type?: string;
-    target_id?: string;
-  };
-}
-
-export interface ChatMessageResponse {
-  message: string;
-  changes: ChatChangeItem[];
-  suggestions: string[];
-}
-
-export interface ApplyChangesRequest {
-  change_ids: string[];
-  changes: ChatChangeItem[];
-}
-
-export interface ApplyChangesResponse {
-  success: boolean;
-  applied_count: number;
-  message: string;
-}
-
-export interface ConversationMessage {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  target_type?: string;
-  target_id?: string;
-  created_at: string;
-}
-
 export interface FinalizeResponse {
   id: string;
   is_finalized: boolean;

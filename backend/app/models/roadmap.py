@@ -57,7 +57,6 @@ class Roadmap(Base, TimestampMixin):
         cascade="all, delete-orphan",
         order_by="MonthlyGoal.month_number"
     )
-    conversations = relationship("RoadmapConversation", back_populates="roadmap", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Roadmap {self.title}>"

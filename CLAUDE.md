@@ -1,15 +1,94 @@
-* Always read entire files. Otherwise, you don’t know what you don’t know, and will end up making mistakes, duplicating code that already exists, or misunderstanding the architecture.  
-* Commit early and often. When working on large tasks, your task could be broken down into multiple logical milestones. After a certain milestone is completed and confirmed to be ok by the user, you should commit it. If you do not, if something goes wrong in further steps, we would need to end up throwing away all the code, which is expensive and time consuming.  
-* Your internal knowledgebase of libraries might not be up to date. When working with any external library, unless you are 100% sure that the library has a super stable interface, you will look up the latest syntax and usage via either Perplexity (first preference) or web search (less preferred, only use if Perplexity is not available)  
-* Do not say things like: “x library isn’t working so I will skip it”. Generally, it isn’t working because you are using the incorrect syntax or patterns. This applies doubly when the user has explicitly asked you to use a specific library, if the user wanted to use another library they wouldn’t have asked you to use a specific one in the first place.  
-* Always run linting after making major changes. Otherwise, you won’t know if you’ve corrupted a file or made syntax errors, or are using the wrong methods, or using methods in the wrong way.   
-* Please organise code into separate files wherever appropriate, and follow general coding best practices about variable naming, modularity, function complexity, file sizes, commenting, etc.  
-* Code is read more often than it is written, make sure your code is always optimised for readability  
-* Unless explicitly asked otherwise, the user never wants you to do a “dummy” implementation of any given task. Never do an implementation where you tell the user: “This is how it *would* look like”. Just implement the thing.  
-* Whenever you are starting a new task, it is of utmost importance that you have clarity about the task. You should ask the user follow up questions if you do not, rather than making incorrect assumptions.  
-* Do not carry out large refactors unless explicitly instructed to do so.  
-* When starting on a new task, you should first understand the current architecture, identify the files you will need to modify, and come up with a Plan. In the Plan, you will think through architectural aspects related to the changes you will be making, consider edge cases, and identify the best approach for the given task. Get your Plan approved by the user before writing a single line of code.   
-* If you are running into repeated issues with a given task, figure out the root cause instead of throwing random things at the wall and seeing what sticks, or throwing in the towel by saying “I’ll just use another library / do a dummy implementation”.   
-* You are an incredibly talented and experienced polyglot with decades of experience in diverse areas such as software architecture, system design, development, UI & UX, copywriting, and more.  
-* When doing UI & UX work, make sure your designs are both aesthetically pleasing, easy to use, and follow UI / UX best practices. You pay attention to interaction patterns, micro-interactions, and are proactive about creating smooth, engaging user interfaces that delight users.   
-* When you receive a task that is very large in scope or too vague, you will first try to break it down into smaller subtasks. If that feels difficult or still leaves you with too many open questions, push back to the user and ask them to consider breaking down the task for you, or guide them through that process. This is important because the larger the task, the more likely it is that things go wrong, wasting time and energy for everyone involved.
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+LoadmapAI is an AI-powered learning roadmap management platform. Users input learning goals and the AI generates personalized month/week/day learning plans using Claude AI via LangGraph.
+
+## Development Commands
+
+### Docker (Recommended)
+```bash
+docker-compose up --build       # Build and start all services
+docker-compose up -d            # Start in background
+docker-compose logs -f          # View logs
+docker-compose down             # Stop all services
+```
+
+### Backend (Python/FastAPI)
+```bash
+cd backend
+pip install -r requirements.txt
+alembic upgrade head            # Run database migrations
+uvicorn app.main:app --reload --port 8000   # Start dev server
+pytest                          # Run all tests
+pytest tests/api/test_auth.py   # Run single test file
+pytest -k "test_login"          # Run tests matching pattern
+```
+
+### Frontend (React/TypeScript)
+```bash
+cd frontend
+npm install
+npm run dev                     # Start dev server (port 3000)
+npm run build                   # Build for production (includes tsc)
+npm run lint                    # ESLint check
+npm test                        # Run vitest
+npm run test:coverage           # Run with coverage
+```
+
+## Architecture
+
+### Backend (FastAPI + LangGraph)
+- **Entry point**: `app/main.py` - FastAPI app with CORS, session middleware, exception handlers
+- **API routes**: `app/api/v1/` - Versioned API with auth, oauth, roadmaps, roadmap_chat endpoints
+- **AI workflow**: `app/ai/roadmap_graph.py` - LangGraph pipeline with 4 sequential LLM calls:
+  - `goal_analyzer` → `monthly_generator` → `weekly_generator` → `daily_generator` → `saver`
+- **State management**: `app/ai/state.py` - TypedDict `RoadmapGenerationState` passed through LangGraph
+- **Models**: SQLAlchemy models in `app/models/` - User, Roadmap, MonthlyGoal, WeeklyTask, DailyTask
+- **Config**: `app/config.py` - Pydantic Settings with env vars
+
+### Frontend (React + TypeScript)
+- **State**: Zustand stores in `src/stores/` (authStore, toastStore, themeStore)
+- **Data fetching**: TanStack Query hooks in `src/hooks/` (useAuth, useRoadmaps, useRoadmapEdit)
+- **Components**:
+  - `src/components/common/` - Reusable UI (Button, Card, Modal, Input, Toast)
+  - `src/components/tasks/` - Drilldown views (MonthlyGoalView → WeeklyTaskView → DailyTaskView)
+  - `src/components/edit/` - Chat panel and task editing modals
+- **Pages**: `src/pages/` - Route components (Dashboard, RoadmapList, RoadmapDetail, RoadmapCreate)
+- **Types**: `src/types/index.ts` - Shared TypeScript interfaces mirroring backend schemas
+
+### Data Model Hierarchy
+```
+Roadmap (1-6 months)
+  └── MonthlyGoal
+        └── WeeklyTask
+              └── DailyTask
+```
+
+### Key Patterns
+- Backend tests use real PostgreSQL (via docker), not SQLite - see `tests/conftest.py`
+- LangGraph runs synchronously in a ThreadPoolExecutor to avoid blocking FastAPI's event loop
+- Frontend uses MSW for API mocking in tests (`src/mocks/`)
+- DEV_MODE env var switches between Claude Haiku (cost-saving) and Sonnet (quality)
+
+## Environment Variables
+
+Required in `.env`:
+- `ANTHROPIC_API_KEY` - For Claude AI
+- `DATABASE_URL` - PostgreSQL connection
+- `SECRET_KEY` - JWT signing
+- `DEV_MODE` - `true` for Haiku, `false` for Sonnet
+
+Optional for OAuth: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`
+
+## Working Guidelines
+
+* Always read entire files before making changes
+* Commit early and often at logical milestones
+* Look up external library syntax via Perplexity or web search if unsure
+* Run linting after major changes
+* Get Plan approved before writing code for new features
+* Do not carry out large refactors unless explicitly instructed
+* Break down large tasks and ask for clarification when needed

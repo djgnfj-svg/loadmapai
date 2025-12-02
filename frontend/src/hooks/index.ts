@@ -32,10 +32,4 @@ export {
   useUpdateDailyTask,
   useDeleteDailyTask,
   useReorderDailyTasks,
-  // Chat
-  useChatHistory,
-  useQuickActions,
-  useSendChatMessage,
-  useSendQuickAction,
-  useApplyChanges,
 } from './useRoadmapEdit';

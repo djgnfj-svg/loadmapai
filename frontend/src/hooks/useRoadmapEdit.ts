@@ -1,12 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { roadmapApi, chatApi } from '@/lib/api';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { roadmapApi } from '@/lib/api';
 import type {
   DailyTaskUpdate,
   WeeklyTaskUpdate,
   MonthlyGoalUpdate,
   RoadmapScheduleUpdate,
-  ConversationMessage,
-  ChatChangeItem,
 } from '@/types';
 
 // ============ Finalization Hooks ============
@@ -175,67 +173,6 @@ export function useReorderDailyTasks(roadmapId: string) {
       roadmapApi.reorderDailyTasks({ tasks }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['roadmap', roadmapId, 'full'] });
-    },
-  });
-}
-
-// ============ Chat Hooks ============
-
-export function useChatHistory(roadmapId: string, limit = 50) {
-  return useQuery({
-    queryKey: ['chatHistory', roadmapId],
-    queryFn: async () => {
-      const response = await chatApi.getHistory(roadmapId, limit);
-      return response.data as ConversationMessage[];
-    },
-    enabled: !!roadmapId,
-  });
-}
-
-export function useQuickActions(roadmapId: string) {
-  return useQuery({
-    queryKey: ['quickActions', roadmapId],
-    queryFn: async () => {
-      const response = await chatApi.getQuickActions(roadmapId);
-      return response.data.actions as string[];
-    },
-    enabled: !!roadmapId,
-  });
-}
-
-export function useSendChatMessage(roadmapId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: { message: string; context?: { target_type?: string; target_id?: string } }) =>
-      chatApi.sendMessage(roadmapId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['chatHistory', roadmapId] });
-    },
-  });
-}
-
-export function useSendQuickAction(roadmapId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (actionName: string) =>
-      chatApi.sendQuickAction(roadmapId, actionName),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['chatHistory', roadmapId] });
-    },
-  });
-}
-
-export function useApplyChanges(roadmapId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: { change_ids: string[]; changes: ChatChangeItem[] }) =>
-      chatApi.applyChanges(roadmapId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['roadmap', roadmapId, 'full'] });
-      queryClient.invalidateQueries({ queryKey: ['chatHistory', roadmapId] });
     },
   });
 }

@@ -181,27 +181,4 @@ export const roadmapApi = {
     api.post('/roadmaps/daily-tasks/reorder', data),
 };
 
-// Roadmap Chat API
-export const chatApi = {
-  // Send chat message for AI editing
-  sendMessage: (roadmapId: string, data: { message: string; context?: { target_type?: string; target_id?: string } }) =>
-    api.post(`/roadmaps/${roadmapId}/chat`, data),
-
-  // Send quick action
-  sendQuickAction: (roadmapId: string, actionName: string) =>
-    api.post(`/roadmaps/${roadmapId}/chat/quick-action`, null, { params: { action_name: actionName } }),
-
-  // Apply AI-suggested changes
-  applyChanges: (roadmapId: string, data: { change_ids: string[]; changes: unknown[] }) =>
-    api.post(`/roadmaps/${roadmapId}/chat/apply`, data),
-
-  // Get chat history
-  getHistory: (roadmapId: string, limit?: number) =>
-    api.get(`/roadmaps/${roadmapId}/chat/history`, { params: { limit } }),
-
-  // Get available quick actions
-  getQuickActions: (roadmapId: string) =>
-    api.get(`/roadmaps/${roadmapId}/chat/quick-actions`),
-};
-
 export default api;
