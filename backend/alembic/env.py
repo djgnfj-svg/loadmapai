@@ -19,7 +19,8 @@ from app.models import User, Roadmap, MonthlyGoal, WeeklyTask, DailyTask  # noqa
 config = context.config
 
 # Set sqlalchemy.url from settings
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# Escape % for configparser interpolation
+config.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
