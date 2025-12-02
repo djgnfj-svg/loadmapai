@@ -126,7 +126,7 @@ const RoadmapCard = memo(function RoadmapCard({
       </CardContent>
     </Card>
   );
-}
+});
 
 export function RoadmapList() {
   const [searchQuery, setSearchQuery] = useState('');

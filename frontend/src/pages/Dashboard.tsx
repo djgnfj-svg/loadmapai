@@ -113,7 +113,7 @@ const RoadmapCard = memo(function RoadmapCard({ roadmap }: { roadmap: Roadmap })
       </Card>
     </Link>
   );
-}
+});
 
 function RecentRoadmaps({ roadmaps, isLoading }: { roadmaps: Roadmap[]; isLoading: boolean }) {
   if (isLoading) {
