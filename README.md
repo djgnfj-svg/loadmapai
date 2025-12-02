@@ -4,15 +4,14 @@ AI 기반 학습 로드맵 관리 플랫폼
 
 ## 소개
 
-LoadmapAI는 AI를 활용하여 개인화된 학습 로드맵을 생성하고 관리하는 플랫폼입니다. 학습 목표를 입력하면 AI가 월별, 주별, 일별 학습 계획을 자동으로 생성해주며, 퀴즈 기능을 통해 학습 내용을 점검할 수 있습니다.
+LoadmapAI는 AI를 활용하여 개인화된 학습 로드맵을 생성하고 관리하는 플랫폼입니다. 학습 목표를 입력하면 AI가 월별, 주별, 일별 학습 계획을 자동으로 생성해줍니다.
 
 ### 주요 기능
 
 - **AI 로드맵 생성**: Claude AI를 활용한 맞춤형 학습 계획 자동 생성
 - **계층적 태스크 관리**: 월별 목표 → 주별 태스크 → 일별 태스크의 체계적 관리
 - **진행률 추적**: 실시간 학습 진행률 확인 및 시각화
-- **퀴즈 시스템**: AI가 생성한 퀴즈로 학습 내용 점검 (객관식, 단답형, 서술형)
-- **AI 피드백**: 퀴즈 답변에 대한 상세한 AI 피드백 제공
+- **AI 채팅**: 로드맵 수정을 위한 AI 대화 기능
 
 ## 기술 스택
 
@@ -80,6 +79,9 @@ GITHUB_CLIENT_SECRET=your_github_client_secret
 # Frontend
 FRONTEND_URL=http://localhost:5173
 VITE_API_URL=http://localhost:8000
+
+# Dev Mode (true=Haiku for cost saving, false=Sonnet for quality)
+DEV_MODE=true
 ```
 
 ### Docker로 실행
@@ -143,9 +145,7 @@ LoadmapAI/
 │   │   ├── ai/                 # AI/LangGraph 관련
 │   │   │   ├── nodes/          # LangGraph 노드
 │   │   │   ├── prompts/        # AI 프롬프트 템플릿
-│   │   │   ├── roadmap_graph.py
-│   │   │   ├── question_graph.py
-│   │   │   └── grading_graph.py
+│   │   │   └── roadmap_graph.py
 │   │   ├── api/v1/             # API 엔드포인트
 │   │   ├── core/               # 핵심 설정 (보안, OAuth 등)
 │   │   ├── db/                 # 데이터베이스 설정
@@ -160,8 +160,7 @@ LoadmapAI/
 │   │   ├── components/         # React 컴포넌트
 │   │   │   ├── common/         # 공통 컴포넌트
 │   │   │   ├── layout/         # 레이아웃 컴포넌트
-│   │   │   ├── tasks/          # 태스크 관련 컴포넌트
-│   │   │   └── quiz/           # 퀴즈 관련 컴포넌트
+│   │   │   └── tasks/          # 태스크 관련 컴포넌트
 │   │   ├── hooks/              # 커스텀 훅
 │   │   ├── lib/                # 유틸리티
 │   │   ├── pages/              # 페이지 컴포넌트
@@ -193,15 +192,11 @@ LoadmapAI/
 | POST | `/api/v1/roadmaps/generate` | AI 로드맵 생성 |
 | GET | `/api/v1/roadmaps/{id}/full` | 로드맵 전체 조회 |
 | PATCH | `/api/v1/roadmaps/daily-tasks/{id}/toggle` | 일별 태스크 완료 토글 |
-| POST | `/api/v1/quizzes/daily-task/{id}/generate` | 퀴즈 생성 |
-| POST | `/api/v1/quizzes/{id}/submit` | 퀴즈 제출 |
-| POST | `/api/v1/quizzes/{id}/grade` | 퀴즈 채점 |
+| POST | `/api/v1/roadmaps/{id}/chat` | AI 채팅으로 로드맵 수정 |
 
 ## 제약 사항
 
 - **로드맵 기간**: 1-6개월
-- **퀴즈 문제 유형**: 객관식, 단답형, 서술형 (코딩 문제 제외)
-- **퀴즈당 문제 수**: 5-10문제
 
 ## 라이선스
 

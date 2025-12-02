@@ -1,3 +1,4 @@
+"""Saver node - saves generated roadmap to database."""
 from datetime import timedelta
 from uuid import UUID
 
@@ -8,11 +9,17 @@ from app.ai.state import RoadmapGenerationState
 
 
 def save_roadmap(state: RoadmapGenerationState, db: Session) -> RoadmapGenerationState:
-    """Save the generated roadmap to the database."""
+    """Save the generated roadmap to the database.
+
+    Data structure:
+    - monthly_goals: [{month_number, title, description}, ...]
+    - weekly_tasks: [{month_number, weeks: [{week_number, title, description}, ...]}, ...]
+    - daily_tasks: [{month_number, week_number, days: [{day_number, title, description}, ...]}, ...]
+    """
     # Calculate end date
     end_date = state["start_date"] + timedelta(days=state["duration_months"] * 30)
 
-    # Create roadmap with schedule info
+    # Create roadmap
     roadmap = Roadmap(
         user_id=UUID(state["user_id"]),
         title=state["title"],
@@ -22,13 +29,9 @@ def save_roadmap(state: RoadmapGenerationState, db: Session) -> RoadmapGeneratio
         start_date=state["start_date"],
         end_date=end_date,
         mode=state["mode"],
-        # Schedule fields
-        daily_available_minutes=state.get("daily_available_minutes", 60),
-        rest_days=state.get("rest_days", []),
-        intensity=state.get("intensity", "moderate"),
     )
     db.add(roadmap)
-    db.flush()  # Get the roadmap ID
+    db.flush()
 
     # Create monthly goals
     for monthly_data in state["monthly_goals"]:
@@ -42,40 +45,40 @@ def save_roadmap(state: RoadmapGenerationState, db: Session) -> RoadmapGeneratio
         db.flush()
 
         # Find weekly tasks for this month
-        weekly_data = next(
+        weekly_month = next(
             (w for w in state["weekly_tasks"] if w["month_number"] == monthly_data["month_number"]),
             None
         )
-        if weekly_data:
-            for weekly_task_data in weekly_data["weekly_tasks"]:
+
+        if weekly_month and "weeks" in weekly_month:
+            for week_data in weekly_month["weeks"]:
                 weekly_task = WeeklyTask(
                     monthly_goal_id=monthly_goal.id,
-                    week_number=weekly_task_data["week_number"],
-                    title=weekly_task_data["title"],
-                    description=weekly_task_data["description"],
+                    week_number=week_data["week_number"],
+                    title=week_data["title"],
+                    description=week_data["description"],
                 )
                 db.add(weekly_task)
                 db.flush()
 
                 # Find daily tasks for this week
-                daily_month_data = next(
-                    (d for d in state["daily_tasks"] if d["month_number"] == monthly_data["month_number"]),
+                daily_week = next(
+                    (d for d in state["daily_tasks"]
+                     if d["month_number"] == monthly_data["month_number"]
+                     and d["week_number"] == week_data["week_number"]),
                     None
                 )
-                if daily_month_data:
-                    daily_week_data = next(
-                        (w for w in daily_month_data["weeks"] if w["week_number"] == weekly_task_data["week_number"]),
-                        None
-                    )
-                    if daily_week_data:
-                        for daily_task_data in daily_week_data["daily_tasks"]:
-                            daily_task = DailyTask(
-                                weekly_task_id=weekly_task.id,
-                                day_number=daily_task_data["day_number"],
-                                title=daily_task_data["title"],
-                                description=daily_task_data["description"],
-                            )
-                            db.add(daily_task)
+
+                if daily_week and "days" in daily_week:
+                    for order, day_data in enumerate(daily_week["days"]):
+                        daily_task = DailyTask(
+                            weekly_task_id=weekly_task.id,
+                            day_number=day_data["day_number"],
+                            order=order,
+                            title=day_data["title"],
+                            description=day_data["description"],
+                        )
+                        db.add(daily_task)
 
     db.commit()
     state["roadmap_id"] = str(roadmap.id)

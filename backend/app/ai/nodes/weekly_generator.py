@@ -1,44 +1,42 @@
-from langchain_core.messages import HumanMessage
-
-from app.ai.llm import create_llm, parse_json_response
+"""Weekly generator node - generates ALL weekly tasks in 1 LLM call."""
+from app.ai.llm import invoke_llm_json
 from app.ai.state import RoadmapGenerationState
 from app.ai.prompts.templates import WEEKLY_TASKS_PROMPT
 
 
 def weekly_generator(state: RoadmapGenerationState) -> RoadmapGenerationState:
-    """Generate weekly tasks for each monthly goal."""
-    llm = create_llm()
+    """Generate all weekly tasks for all months in a single LLM call."""
+    # Build monthly goals summary
+    monthly_summary = "\n".join([
+        f"- {g['month_number']}개월차: {g['title']} - {g['description']}"
+        for g in state["monthly_goals"]
+    ])
 
-    all_weekly_tasks = []
+    prompt = WEEKLY_TASKS_PROMPT.format(
+        topic=state["topic"],
+        duration_months=state["duration_months"],
+        monthly_goals_summary=monthly_summary,
+    )
 
-    for monthly_goal in state["monthly_goals"]:
-        prompt = WEEKLY_TASKS_PROMPT.format(
-            topic=state["topic"],
-            monthly_goal_title=monthly_goal["title"],
-            monthly_goal_description=monthly_goal["description"],
-            month_number=monthly_goal["month_number"],
-        )
+    try:
+        result = invoke_llm_json(prompt, temperature=0.7)
+        state["weekly_tasks"] = result["weekly_tasks"]
+    except Exception as e:
+        # Fallback: generate basic weekly tasks
+        state["weekly_tasks"] = [
+            {
+                "month_number": month["month_number"],
+                "weeks": [
+                    {
+                        "week_number": w + 1,
+                        "title": f"{w + 1}주차 학습",
+                        "description": f"{month['title']}의 {w + 1}주차 과제"
+                    }
+                    for w in range(4)
+                ]
+            }
+            for month in state["monthly_goals"]
+        ]
+        state["error_message"] = str(e)
 
-        response = llm.invoke([HumanMessage(content=prompt)])
-
-        try:
-            result = parse_json_response(response.content)
-            weekly_tasks = result["weekly_tasks"]
-        except (ValueError, KeyError):
-            # Generate fallback weekly tasks
-            weekly_tasks = [
-                {
-                    "week_number": i + 1,
-                    "title": f"{i + 1}주차 학습",
-                    "description": f"{monthly_goal['title']}의 {i + 1}주차 학습 과제입니다."
-                }
-                for i in range(4)
-            ]
-
-        all_weekly_tasks.append({
-            "month_number": monthly_goal["month_number"],
-            "weekly_tasks": weekly_tasks
-        })
-
-    state["weekly_tasks"] = all_weekly_tasks
     return state

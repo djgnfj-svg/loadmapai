@@ -1,54 +1,47 @@
-from langchain_core.messages import HumanMessage
-
-from app.ai.llm import create_llm, parse_json_response
+"""Daily generator node - generates ALL daily tasks in 1 LLM call."""
+from app.ai.llm import invoke_llm_json
 from app.ai.state import RoadmapGenerationState
 from app.ai.prompts.templates import DAILY_TASKS_PROMPT
 
 
 def daily_generator(state: RoadmapGenerationState) -> RoadmapGenerationState:
-    """Generate daily tasks for each weekly task."""
-    llm = create_llm()
-
-    all_daily_tasks = []
-
-    for monthly_data in state["weekly_tasks"]:
-        month_number = monthly_data["month_number"]
-        monthly_daily_tasks = []
-
-        for weekly_task in monthly_data["weekly_tasks"]:
-            prompt = DAILY_TASKS_PROMPT.format(
-                topic=state["topic"],
-                weekly_task_title=weekly_task["title"],
-                weekly_task_description=weekly_task["description"],
-                month_number=month_number,
-                week_number=weekly_task["week_number"],
+    """Generate all daily tasks for all weeks in a single LLM call."""
+    # Build weekly tasks summary
+    weekly_summary_parts = []
+    for monthly in state["weekly_tasks"]:
+        month_num = monthly["month_number"]
+        for week in monthly["weeks"]:
+            weekly_summary_parts.append(
+                f"- {month_num}개월차 {week['week_number']}주차: {week['title']} - {week['description']}"
             )
+    weekly_summary = "\n".join(weekly_summary_parts)
 
-            response = llm.invoke([HumanMessage(content=prompt)])
+    prompt = DAILY_TASKS_PROMPT.format(
+        topic=state["topic"],
+        duration_months=state["duration_months"],
+        weekly_tasks_summary=weekly_summary,
+    )
 
-            try:
-                result = parse_json_response(response.content)
-                daily_tasks = result["daily_tasks"]
-            except (ValueError, KeyError):
-                # Generate fallback daily tasks
-                daily_tasks = [
-                    {
-                        "day_number": i + 1,
-                        "title": f"{i + 1}일차 학습" if i < 5 else f"{i + 1}일차 복습",
-                        "description": f"{weekly_task['title']}의 {i + 1}일차 {'학습' if i < 5 else '복습'} 내용입니다."
-                    }
-                    for i in range(7)
-                ]
+    try:
+        result = invoke_llm_json(prompt, temperature=0.7)
+        state["daily_tasks"] = result["daily_tasks"]
+    except Exception as e:
+        # Fallback: generate basic daily tasks
+        state["daily_tasks"] = []
+        for monthly in state["weekly_tasks"]:
+            for week in monthly["weeks"]:
+                state["daily_tasks"].append({
+                    "month_number": monthly["month_number"],
+                    "week_number": week["week_number"],
+                    "days": [
+                        {
+                            "day_number": d + 1,
+                            "title": f"{d + 1}일차 학습" if d < 5 else f"{d + 1}일차 복습",
+                            "description": f"{week['title']}의 {d + 1}일차 내용"
+                        }
+                        for d in range(7)
+                    ]
+                })
+        state["error_message"] = str(e)
 
-            monthly_daily_tasks.append({
-                "week_number": weekly_task["week_number"],
-                "daily_tasks": daily_tasks
-            })
-
-        all_daily_tasks.append({
-            "month_number": month_number,
-            "weeks": monthly_daily_tasks
-        })
-
-    state["daily_tasks"] = all_daily_tasks
     return state
