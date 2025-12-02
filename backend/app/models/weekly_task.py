@@ -17,7 +17,7 @@ class WeeklyTask(Base, TimestampMixin):
     title = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
 
-    status = Column(SQLEnum(TaskStatus), default=TaskStatus.PENDING, nullable=False)
+    status = Column(SQLEnum(TaskStatus, values_callable=lambda x: [e.value for e in x]), default=TaskStatus.PENDING, nullable=False)
     progress = Column(Integer, default=0, nullable=False)  # 0-100
 
     # Relationships

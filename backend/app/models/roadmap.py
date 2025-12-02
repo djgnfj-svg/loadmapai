@@ -33,8 +33,8 @@ class Roadmap(Base, TimestampMixin):
     end_date = Column(Date, nullable=False)
 
     # Mode and status
-    mode = Column(SQLEnum(RoadmapMode), default=RoadmapMode.PLANNING, nullable=False)
-    status = Column(SQLEnum(RoadmapStatus), default=RoadmapStatus.ACTIVE, nullable=False)
+    mode = Column(SQLEnum(RoadmapMode, values_callable=lambda x: [e.value for e in x]), default=RoadmapMode.PLANNING, nullable=False)
+    status = Column(SQLEnum(RoadmapStatus, values_callable=lambda x: [e.value for e in x]), default=RoadmapStatus.ACTIVE, nullable=False)
 
     # Progress (0-100)
     progress = Column(Integer, default=0, nullable=False)
