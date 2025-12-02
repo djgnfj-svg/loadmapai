@@ -4,6 +4,12 @@
 .env.*.local
 .env.railway
 
+# Images (screenshots)
+*.png
+*.jpg
+*.jpeg
+*.gif
+
 # Python
 __pycache__/
 *.py[cod]
