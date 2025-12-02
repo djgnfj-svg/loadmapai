@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.models.user import User
-from app.models.roadmap import Roadmap, RoadmapStatus
+from app.models.roadmap import Roadmap, RoadmapStatus, RoadmapMode
 
 
 @pytest.fixture
@@ -20,7 +20,7 @@ def test_roadmap(db: Session, test_user: User) -> Roadmap:
         duration_months=3,
         start_date=start,
         end_date=start + timedelta(days=90),  # ~3 months
-        mode="planning",
+        mode=RoadmapMode.PLANNING,
         status=RoadmapStatus.ACTIVE,
     )
     db.add(roadmap)
@@ -65,14 +65,14 @@ class TestCreateRoadmap:
                 "topic": "React 학습",
                 "duration_months": 2,
                 "start_date": str(date.today()),
-                "mode": "planning",
+                "mode": "PLANNING",
             },
         )
         assert response.status_code == 201
         data = response.json()
         assert data["topic"] == "React 학습"
         assert data["duration_months"] == 2
-        assert data["mode"] == "planning"
+        assert data["mode"] == "PLANNING"
 
     def test_create_roadmap_invalid_duration(self, authorized_client: TestClient):
         """Test creating roadmap with invalid duration."""
@@ -82,7 +82,7 @@ class TestCreateRoadmap:
                 "topic": "Test",
                 "duration_months": 12,  # Max is 6
                 "start_date": str(date.today()),
-                "mode": "planning",
+                "mode": "PLANNING",
             },
         )
         assert response.status_code == 422
@@ -95,7 +95,7 @@ class TestCreateRoadmap:
                 "topic": "Test",
                 "duration_months": 1,
                 "start_date": str(date.today()),
-                "mode": "planning",
+                "mode": "PLANNING",
             },
         )
         assert response.status_code in [401, 403]
@@ -147,11 +147,11 @@ class TestUpdateRoadmap:
         """Test updating roadmap status."""
         response = authorized_client.patch(
             f"/api/v1/roadmaps/{test_roadmap.id}",
-            json={"status": "completed"},
+            json={"status": "COMPLETED"},
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] == "completed"
+        assert data["status"] == "COMPLETED"
 
 
 class TestDeleteRoadmap:

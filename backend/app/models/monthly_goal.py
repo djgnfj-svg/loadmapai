@@ -8,9 +8,9 @@ from app.db.base import Base, TimestampMixin
 
 
 class TaskStatus(str, enum.Enum):
-    PENDING = "pending"
-    IN_PROGRESS = "in_progress"
-    COMPLETED = "completed"
+    PENDING = "PENDING"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
 
 
 class MonthlyGoal(Base, TimestampMixin):

@@ -19,10 +19,10 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    print(f"Starting {settings.app_name}...")
+    logger.info(f"Starting {settings.app_name}...")
     yield
     # Shutdown
-    print(f"Shutting down {settings.app_name}...")
+    logger.info(f"Shutting down {settings.app_name}...")
 
 
 app = FastAPI(
@@ -32,13 +32,19 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS 설정
+# CORS 설정 - 보안을 위해 명시적 헤더만 허용
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", settings.frontend_url],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "Accept",
+        "Origin",
+        "X-Requested-With",
+    ],
 )
 
 

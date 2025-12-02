@@ -1,7 +1,7 @@
 """Saver node - saves generated roadmap to database."""
-from datetime import timedelta
 from uuid import UUID
 
+from dateutil.relativedelta import relativedelta
 from sqlalchemy.orm import Session
 
 from app.models import Roadmap, MonthlyGoal, WeeklyTask, DailyTask
@@ -16,8 +16,8 @@ def save_roadmap(state: RoadmapGenerationState, db: Session) -> RoadmapGeneratio
     - weekly_tasks: [{month_number, weeks: [{week_number, title, description}, ...]}, ...]
     - daily_tasks: [{month_number, week_number, days: [{day_number, title, description}, ...]}, ...]
     """
-    # Calculate end date
-    end_date = state["start_date"] + timedelta(days=state["duration_months"] * 30)
+    # Calculate end date using relativedelta for accuracy
+    end_date = state["start_date"] + relativedelta(months=state["duration_months"])
 
     # Create roadmap
     roadmap = Roadmap(

@@ -8,13 +8,13 @@ from app.db.base import Base, TimestampMixin
 
 
 class RoadmapMode(str, enum.Enum):
-    PLANNING = "planning"  # 플래닝 모드 - 체크리스트 중심
+    PLANNING = "PLANNING"  # 플래닝 모드 - 체크리스트 중심
 
 
 class RoadmapStatus(str, enum.Enum):
-    ACTIVE = "active"
-    COMPLETED = "completed"
-    PAUSED = "paused"
+    ACTIVE = "ACTIVE"
+    COMPLETED = "COMPLETED"
+    PAUSED = "PAUSED"
 
 
 class Roadmap(Base, TimestampMixin):

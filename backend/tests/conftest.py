@@ -10,12 +10,12 @@ from sqlalchemy.orm import sessionmaker, Session
 
 # Set test environment before importing app
 os.environ["TESTING"] = "true"
-os.environ["SECRET_KEY"] = "test-secret-key-for-testing-only"
+os.environ["SECRET_KEY"] = "test-secret-key-for-testing-only-32chars-minimum-required"
 os.environ["ANTHROPIC_API_KEY"] = "test-api-key"
 
 from app.main import app
 from app.db import Base, get_db, engine as app_engine
-from app.models.user import User
+from app.models.user import User, AuthProvider
 from app.core.security import get_password_hash, create_access_token
 
 # Use the actual database engine (PostgreSQL) for tests
@@ -64,6 +64,7 @@ def test_user(db: Session) -> User:
         email="test@example.com",
         name="Test User",
         hashed_password=get_password_hash("testpassword123"),
+        auth_provider=AuthProvider.EMAIL,
         is_active=True,
     )
     db.add(user)

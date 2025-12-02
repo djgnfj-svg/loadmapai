@@ -1,5 +1,6 @@
 """Unified LLM utilities for AI nodes."""
 import json
+import logging
 import os
 
 from langchain_anthropic import ChatAnthropic
@@ -7,12 +8,13 @@ from langchain_core.messages import HumanMessage
 
 from app.config import settings
 
+logger = logging.getLogger(__name__)
 
 # DEV_MODE에 따라 모델 선택 (비용 절약)
 DEV_MODE = os.getenv("DEV_MODE", "true").lower() == "true"
 CLAUDE_MODEL = "claude-3-5-haiku-20241022" if DEV_MODE else "claude-sonnet-4-5-20250929"
 
-print(f"[AI] Claude model: {CLAUDE_MODEL} (DEV_MODE={DEV_MODE})")
+logger.info(f"[AI] Claude model: {CLAUDE_MODEL} (DEV_MODE={DEV_MODE})")
 
 
 def create_llm(temperature: float = 0.7) -> ChatAnthropic:

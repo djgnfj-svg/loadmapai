@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 from functools import lru_cache
 
 
@@ -10,8 +11,21 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "postgresql://loadmap:loadmap123@db:5432/loadmap_db"
 
-    # Security
-    secret_key: str = "your-secret-key-change-in-production"
+    # Security - SECRET_KEY는 반드시 환경변수로 설정해야 함
+    secret_key: str
+
+    @field_validator("secret_key")
+    @classmethod
+    def validate_secret_key(cls, v: str) -> str:
+        if not v or v == "your-secret-key-change-in-production":
+            raise ValueError(
+                "SECRET_KEY must be set via environment variable. "
+                "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+            )
+        if len(v) < 32:
+            raise ValueError("SECRET_KEY must be at least 32 characters long")
+        return v
+
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7

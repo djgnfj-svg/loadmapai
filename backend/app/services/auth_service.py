@@ -3,7 +3,7 @@ from fastapi import HTTPException, status
 from typing import Optional
 from uuid import UUID
 
-from app.models.user import User
+from app.models.user import User, AuthProvider
 from app.schemas.user import UserCreate
 from app.core.security import get_password_hash, verify_password
 
