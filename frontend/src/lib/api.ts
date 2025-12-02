@@ -1,12 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/stores/authStore';
 
-// Use nullish coalescing to allow empty string (for Vite proxy)
-// Empty string means relative URLs, going through Vite proxy
 const API_URL = import.meta.env.VITE_API_URL ?? '';
-
-// OAuth needs absolute URLs for browser redirects - use backend directly
-const OAUTH_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export const api = axios.create({
   baseURL: `${API_URL}/api/v1`,
@@ -96,10 +91,6 @@ export const authApi = {
     api.patch('/auth/me', data),
 
   refresh: () => api.post('/auth/refresh'),
-
-  googleLogin: () => `${OAUTH_URL}/api/v1/auth/google`,
-
-  githubLogin: () => `${OAUTH_URL}/api/v1/auth/github`,
 };
 
 // Roadmap API

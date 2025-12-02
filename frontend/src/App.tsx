@@ -7,7 +7,6 @@ import {
   Home,
   Login,
   Register,
-  AuthCallback,
   Dashboard,
   RoadmapCreate,
   RoadmapList,
@@ -67,7 +66,6 @@ function App() {
               <Route path="/" element={<PublicRoute><Home /></PublicRoute>} />
               <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
               <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
-              <Route path="/auth/callback" element={<AuthCallback />} />
               <Route
                 path="/dashboard"
                 element={
