@@ -17,7 +17,7 @@ const themeOptions: { value: Theme; label: string; icon: typeof Sun }[] = [
 export function Settings() {
   const { user, setUser } = useAuthStore();
   const { theme, setTheme } = useThemeStore();
-  const { addToast } = useToastStore();
+  const { success, error: showError } = useToastStore();
 
   const [name, setName] = useState(user?.name || '');
   const [isLoading, setIsLoading] = useState(false);
@@ -31,10 +31,10 @@ export function Settings() {
       const response = await authApi.updateProfile({ name: name.trim() });
       setUser(response.data);
       setIsSaved(true);
-      addToast('이름이 변경되었습니다.', 'success');
+      success('이름이 변경되었습니다.');
       setTimeout(() => setIsSaved(false), 2000);
     } catch (error) {
-      addToast(getErrorMessage(error), 'error');
+      showError(getErrorMessage(error));
     } finally {
       setIsLoading(false);
     }
