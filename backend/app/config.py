@@ -10,9 +10,6 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "postgresql://loadmap:loadmap123@db:5432/loadmap_db"
 
-    # Redis
-    redis_url: str = "redis://redis:6379"
-
     # Security
     secret_key: str = "your-secret-key-change-in-production"
     algorithm: str = "HS256"
@@ -21,9 +18,6 @@ class Settings(BaseSettings):
 
     # Anthropic
     anthropic_api_key: str = ""
-
-    # Tavily (Web Search)
-    tavily_api_key: str = ""
 
     # OAuth - Google
     google_client_id: str = ""
