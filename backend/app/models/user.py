@@ -24,7 +24,7 @@ class User(Base, TimestampMixin):
 
     # Auth provider info
     auth_provider = Column(
-        SQLEnum(AuthProvider),
+        SQLEnum(AuthProvider, values_callable=lambda x: [e.value for e in x]),
         default=AuthProvider.EMAIL,
         nullable=False
     )
