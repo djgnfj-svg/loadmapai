@@ -14,6 +14,9 @@ class RoadmapGenerationState(TypedDict):
     mode: RoadmapMode
     user_id: str
 
+    # Interview context (from SMART interview)
+    interview_context: Optional[dict]
+
     # Generated content
     title: Optional[str]
     description: Optional[str]

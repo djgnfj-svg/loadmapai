@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 from pydantic import BaseModel, Field
 from datetime import date
@@ -44,6 +44,7 @@ class RoadmapGenerateRequest(BaseModel):
     duration_months: int = Field(..., ge=1, le=6)
     start_date: date
     mode: RoadmapMode = RoadmapMode.PLANNING
+    interview_context: Optional[dict] = None
 
 
 class RoadmapGenerateResponse(BaseModel):
@@ -178,6 +179,7 @@ async def generate_roadmap_endpoint(
             mode=data.mode,
             user_id=str(current_user.id),
             db=db,
+            interview_context=data.interview_context,
         )
 
         return RoadmapGenerateResponse(

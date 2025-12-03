@@ -1,14 +1,17 @@
 """Goal analyzer node - generates title and description."""
 from app.ai.llm import invoke_llm_json
 from app.ai.state import RoadmapGenerationState
-from app.ai.prompts.templates import ROADMAP_TITLE_PROMPT
+from app.ai.prompts.templates import ROADMAP_TITLE_PROMPT, build_interview_section
 
 
 def goal_analyzer(state: RoadmapGenerationState) -> RoadmapGenerationState:
     """Generate roadmap title and description."""
+    interview_section = build_interview_section(state.get("interview_context"))
+
     prompt = ROADMAP_TITLE_PROMPT.format(
         topic=state["topic"],
         duration_months=state["duration_months"],
+        interview_section=interview_section,
     )
 
     try:

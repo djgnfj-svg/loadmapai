@@ -1,11 +1,13 @@
 """Daily generator node - generates ALL daily tasks in 1 LLM call."""
 from app.ai.llm import invoke_llm_json
 from app.ai.state import RoadmapGenerationState
-from app.ai.prompts.templates import DAILY_TASKS_PROMPT
+from app.ai.prompts.templates import DAILY_TASKS_PROMPT, build_interview_section
 
 
 def daily_generator(state: RoadmapGenerationState) -> RoadmapGenerationState:
     """Generate all daily tasks for all weeks in a single LLM call."""
+    interview_section = build_interview_section(state.get("interview_context"))
+
     # Build weekly tasks summary
     weekly_summary_parts = []
     for monthly in state["weekly_tasks"]:
@@ -20,6 +22,7 @@ def daily_generator(state: RoadmapGenerationState) -> RoadmapGenerationState:
         topic=state["topic"],
         duration_months=state["duration_months"],
         weekly_tasks_summary=weekly_summary,
+        interview_section=interview_section,
     )
 
     try:

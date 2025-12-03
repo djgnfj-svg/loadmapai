@@ -1,15 +1,18 @@
 """Monthly generator node - generates all monthly goals in 1 LLM call."""
 from app.ai.llm import invoke_llm_json
 from app.ai.state import RoadmapGenerationState
-from app.ai.prompts.templates import MONTHLY_GOALS_PROMPT
+from app.ai.prompts.templates import MONTHLY_GOALS_PROMPT, build_interview_section
 
 
 def monthly_generator(state: RoadmapGenerationState) -> RoadmapGenerationState:
     """Generate all monthly goals in a single LLM call."""
+    interview_section = build_interview_section(state.get("interview_context"))
+
     prompt = MONTHLY_GOALS_PROMPT.format(
         topic=state["topic"],
         duration_months=state["duration_months"],
         title=state["title"],
+        interview_section=interview_section,
     )
 
     try:

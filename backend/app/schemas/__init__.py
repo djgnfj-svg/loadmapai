@@ -39,6 +39,15 @@ from app.schemas.roadmap import (
     RoadmapScheduleUpdate,
     RoadmapFinalizeResponse,
 )
+from app.schemas.interview import (
+    InterviewQuestion,
+    InterviewAnswer,
+    InterviewContext,
+    InterviewStartRequest,
+    InterviewStartResponse,
+    InterviewSubmitRequest,
+    InterviewSubmitResponse,
+)
 
 __all__ = [
     # User
@@ -79,4 +88,12 @@ __all__ = [
     "RoadmapFull",
     "RoadmapScheduleUpdate",
     "RoadmapFinalizeResponse",
+    # Interview
+    "InterviewQuestion",
+    "InterviewAnswer",
+    "InterviewContext",
+    "InterviewStartRequest",
+    "InterviewStartResponse",
+    "InterviewSubmitRequest",
+    "InterviewSubmitResponse",
 ]

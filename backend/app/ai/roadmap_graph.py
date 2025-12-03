@@ -47,6 +47,7 @@ async def generate_roadmap(
     mode,
     user_id: str,
     db: Session,
+    interview_context: dict = None,
 ) -> dict:
     """Generate a complete roadmap using LangGraph.
 
@@ -57,6 +58,7 @@ async def generate_roadmap(
         mode: Roadmap mode (planning)
         user_id: User ID
         db: Database session
+        interview_context: SMART interview context (optional)
 
     Returns:
         Dict with roadmap_id, title, and status
@@ -68,6 +70,7 @@ async def generate_roadmap(
         "start_date": start_date,
         "mode": mode,
         "user_id": user_id,
+        "interview_context": interview_context,
         "title": None,
         "description": None,
         "monthly_goals": [],
