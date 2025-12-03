@@ -33,6 +33,7 @@ from app.services.roadmap_service import (
     MonthlyGoalService,
     WeeklyTaskService,
 )
+from app.services.daily_generation_service import DailyGenerationService
 from app.api.deps import get_current_user
 from app.ai.roadmap_graph import generate_roadmap
 
@@ -51,6 +52,16 @@ class RoadmapGenerateResponse(BaseModel):
     roadmap_id: str
     title: str
     message: str
+
+
+class DailyTasksGenerateRequest(BaseModel):
+    force: bool = Field(default=False, description="이전 주 완료 체크 건너뛰기")
+
+
+class DailyTasksGenerateResponse(BaseModel):
+    weekly_task_id: str
+    message: str
+    daily_tasks_count: int
 
 
 router = APIRouter()
@@ -153,15 +164,60 @@ async def delete_roadmap(
     service.delete_roadmap(roadmap_id, current_user.id)
 
 
-@router.patch("/daily-tasks/{task_id}/toggle", response_model=DailyTaskResponse)
+class DailyTaskToggleResponse(DailyTaskResponse):
+    """Daily task toggle response with next week generation info."""
+    next_week_generated: bool = False
+    next_week_id: Optional[str] = None
+
+
+@router.patch("/daily-tasks/{task_id}/toggle", response_model=DailyTaskToggleResponse)
 async def toggle_daily_task(
     task_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Toggle daily task check status."""
+    """Toggle daily task check status.
+
+    If the weekly task reaches 100% completion, automatically generates
+    daily tasks for the next week.
+    """
     service = DailyTaskService(db)
-    return service.toggle_daily_task(task_id, current_user.id)
+    task = service.toggle_daily_task(task_id, current_user.id)
+
+    # Check if we should generate next week's daily tasks
+    next_week_generated = False
+    next_week_id = None
+
+    # Get weekly task to check progress
+    weekly_task = task.weekly_task
+    if weekly_task.progress == 100:
+        try:
+            gen_service = DailyGenerationService(db)
+            next_week = await gen_service.try_generate_next_week(
+                weekly_task.id, current_user.id
+            )
+            if next_week:
+                next_week_generated = True
+                next_week_id = str(next_week.id)
+        except Exception:
+            # Silently fail - next week can be generated manually
+            pass
+
+    # Build response
+    response_data = {
+        "id": task.id,
+        "weekly_task_id": task.weekly_task_id,
+        "day_number": task.day_number,
+        "order": task.order,
+        "title": task.title,
+        "description": task.description,
+        "status": task.status,
+        "is_checked": task.is_checked,
+        "created_at": task.created_at,
+        "next_week_generated": next_week_generated,
+        "next_week_id": next_week_id,
+    }
+    return DailyTaskToggleResponse(**response_data)
 
 
 @router.post("/generate", response_model=RoadmapGenerateResponse)
@@ -314,6 +370,84 @@ async def delete_weekly_task(
     """주간 태스크 삭제"""
     service = WeeklyTaskService(db)
     service.delete_weekly_task(task_id, current_user.id)
+
+
+@router.post("/weekly-tasks/{task_id}/generate-daily", response_model=DailyTasksGenerateResponse)
+async def generate_daily_tasks_for_week(
+    task_id: UUID,
+    data: DailyTasksGenerateRequest = DailyTasksGenerateRequest(),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """주간 태스크에 대한 일일 태스크 생성 (지연 생성).
+
+    이전 주차가 완료되어야 생성 가능. force=True면 건너뜀.
+    첫 주차(1개월차 1주차)는 항상 생성 가능.
+    """
+    service = DailyGenerationService(db)
+    weekly_task = await service.generate_daily_tasks_for_week(
+        task_id, current_user.id, force=data.force
+    )
+
+    # Count daily tasks
+    daily_tasks_count = len(weekly_task.daily_tasks) if weekly_task.daily_tasks else 0
+
+    return DailyTasksGenerateResponse(
+        weekly_task_id=str(task_id),
+        message="일일 태스크가 성공적으로 생성되었습니다.",
+        daily_tasks_count=daily_tasks_count,
+    )
+
+
+@router.get("/weekly-tasks/{task_id}/has-daily-tasks")
+async def check_has_daily_tasks(
+    task_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """주간 태스크에 일일 태스크가 있는지 확인."""
+    service = DailyGenerationService(db)
+    # Verify ownership
+    service.get_weekly_task_with_context(task_id, current_user.id)
+    has_tasks = service.has_daily_tasks(task_id)
+    return {"has_daily_tasks": has_tasks, "weekly_task_id": str(task_id)}
+
+
+@router.get("/weekly-tasks/{task_id}/can-generate-daily")
+async def check_can_generate_daily(
+    task_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """주간 태스크의 일일 태스크 생성 가능 여부 확인.
+
+    Returns:
+        - can_generate: 생성 가능 여부
+        - has_daily_tasks: 이미 일일 태스크가 있는지
+        - is_previous_week_completed: 이전 주가 완료되었는지
+        - reason: 생성 불가 시 사유
+    """
+    service = DailyGenerationService(db)
+    weekly_task, _ = service.get_weekly_task_with_context(task_id, current_user.id)
+
+    has_tasks = service.has_daily_tasks(task_id)
+    is_prev_completed = service.is_previous_week_completed(weekly_task)
+
+    can_generate = not has_tasks and is_prev_completed
+
+    reason = None
+    if has_tasks:
+        reason = "이미 일일 태스크가 생성되어 있습니다."
+    elif not is_prev_completed:
+        reason = "이전 주차를 먼저 완료해야 합니다."
+
+    return {
+        "weekly_task_id": str(task_id),
+        "can_generate": can_generate,
+        "has_daily_tasks": has_tasks,
+        "is_previous_week_completed": is_prev_completed,
+        "reason": reason,
+    }
 
 
 # ============ Daily Task CRUD ============
