@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, addMonths } from 'date-fns';
 import { Calendar, Clock, ArrowLeft, ArrowRight, Sparkles, Loader2 } from 'lucide-react';
@@ -88,9 +88,9 @@ function DurationSelection({
   onStartDateChange: (date: string) => void;
 }) {
   const durations = [
-    { months: 1, label: '1개월', description: '집중 실행' },
-    { months: 2, label: '2개월', description: '기초부터 차근차근' },
-    { months: 3, label: '3개월', description: '균형 잡힌 계획' },
+    { months: 1, label: '1개월' },
+    { months: 2, label: '2개월' },
+    { months: 3, label: '3개월' },
   ];
 
   const endDate = addMonths(new Date(startDate), duration);
@@ -197,37 +197,8 @@ export function RoadmapCreate() {
   // Interview hook
   const interview = useInterview();
 
-  // Start interview when entering interview step
-  useEffect(() => {
-    if (step === 'interview' && !interview.sessionId && !interview.isLoading) {
-      interview.startInterview(formData.topic, formData.duration_months);
-    }
-  }, [step, interview.sessionId, interview.isLoading, formData.topic, formData.duration_months, interview]);
-
-  // Move to generating when interview is complete
-  useEffect(() => {
-    if (interview.interviewContext && step === 'interview' && !isGenerating && !generationAttemptedRef.current) {
-      generationAttemptedRef.current = true;
-      setFormData((prev) => ({
-        ...prev,
-        interview_context: interview.interviewContext!,
-      }));
-      handleGenerate(interview.interviewContext);
-    }
-  }, [interview.interviewContext, step, isGenerating]);
-
-  const canProceed = () => {
-    switch (step) {
-      case 'topic':
-        return formData.topic.length >= 2;
-      case 'duration':
-        return formData.duration_months > 0 && !!formData.start_date;
-      default:
-        return false;
-    }
-  };
-
-  const handleGenerate = async (interviewContext?: InterviewContext) => {
+  // Handlers
+  const handleGenerate = useCallback(async (interviewContext?: InterviewContext) => {
     setStep('generating');
     setIsGenerating(true);
     setError(null);
@@ -247,7 +218,39 @@ export function RoadmapCreate() {
       setStep('interview');
       setIsGenerating(false);
     }
+  }, [formData.topic, formData.duration_months, formData.start_date, navigate]);
+
+  const canProceed = () => {
+    switch (step) {
+      case 'topic':
+        return formData.topic.length >= 2;
+      case 'duration':
+        return formData.duration_months > 0 && !!formData.start_date;
+      default:
+        return false;
+    }
   };
+
+  // Effects
+  // Start interview when entering interview step
+  useEffect(() => {
+    if (step === 'interview' && !interview.sessionId && !interview.isLoading) {
+      interview.startInterview(formData.topic, formData.duration_months);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, interview.sessionId, interview.isLoading, formData.topic, formData.duration_months]);
+
+  // Move to generating when interview is complete
+  useEffect(() => {
+    if (interview.interviewContext && step === 'interview' && !isGenerating && !generationAttemptedRef.current) {
+      generationAttemptedRef.current = true;
+      setFormData((prev) => ({
+        ...prev,
+        interview_context: interview.interviewContext!,
+      }));
+      handleGenerate(interview.interviewContext);
+    }
+  }, [interview.interviewContext, step, isGenerating, handleGenerate]);
 
   const handleInterviewSubmit = async (answers: InterviewAnswer[]) => {
     await interview.submitAnswers(answers);
