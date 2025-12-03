@@ -1,13 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List, Optional
 from uuid import UUID
 from pydantic import BaseModel, Field
 from datetime import date
 
 from app.db import get_db
+from app.config import settings
 from app.models.user import User
-from app.models.roadmap import RoadmapMode
+from app.models.roadmap import Roadmap, RoadmapMode
 from app.schemas import (
     RoadmapCreate,
     RoadmapUpdate,
@@ -220,6 +222,33 @@ async def toggle_daily_task(
     return DailyTaskToggleResponse(**response_data)
 
 
+@router.get("/generate/can-generate")
+async def check_can_generate_roadmap(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """오늘 로드맵 생성 가능 여부 확인 (베타 일일 제한)."""
+    limit = settings.beta_daily_roadmap_limit
+
+    if limit <= 0:
+        return {"can_generate": True, "today_count": 0, "limit": 0, "reason": None}
+
+    today_count = db.query(Roadmap).filter(
+        Roadmap.user_id == current_user.id,
+        func.date(Roadmap.created_at) == date.today()
+    ).count()
+
+    can_generate = today_count < limit
+    reason = None if can_generate else f"오늘 이미 {today_count}개의 로드맵을 생성했습니다. (일일 제한: {limit}개)"
+
+    return {
+        "can_generate": can_generate,
+        "today_count": today_count,
+        "limit": limit,
+        "reason": reason,
+    }
+
+
 @router.post("/generate", response_model=RoadmapGenerateResponse)
 async def generate_roadmap_endpoint(
     data: RoadmapGenerateRequest,
@@ -227,6 +256,20 @@ async def generate_roadmap_endpoint(
     current_user: User = Depends(get_current_user),
 ):
     """Generate a complete roadmap using AI (LangGraph + Claude)."""
+    # 베타 일일 제한 체크
+    limit = settings.beta_daily_roadmap_limit
+    if limit > 0:
+        today_count = db.query(Roadmap).filter(
+            Roadmap.user_id == current_user.id,
+            func.date(Roadmap.created_at) == date.today()
+        ).count()
+
+        if today_count >= limit:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"일일 로드맵 생성 한도를 초과했습니다. (오늘 {today_count}개 생성, 제한: {limit}개)",
+            )
+
     try:
         result = await generate_roadmap(
             topic=data.topic,

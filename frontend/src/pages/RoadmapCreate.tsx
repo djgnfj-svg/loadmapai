@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, addMonths } from 'date-fns';
-import { Calendar, Clock, ArrowLeft, ArrowRight, Sparkles, Loader2 } from 'lucide-react';
+import { Calendar, Clock, ArrowLeft, ArrowRight, Sparkles, Loader2, AlertTriangle } from 'lucide-react';
 import { Card, CardContent } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { InterviewForm } from '@/components/interview';
 import { useInterview } from '@/hooks/useInterview';
-import { roadmapApi } from '@/lib/api';
+import { roadmapApi, getErrorMessage } from '@/lib/api';
 import type { InterviewAnswer, InterviewContext } from '@/types/interview';
 
 type Step = 'topic' | 'duration' | 'interview' | 'generating';
@@ -194,8 +194,37 @@ export function RoadmapCreate() {
   const [error, setError] = useState<string | null>(null);
   const generationAttemptedRef = useRef(false);
 
+  // Beta limit state
+  const [limitInfo, setLimitInfo] = useState<{
+    canGenerate: boolean;
+    todayCount: number;
+    limit: number;
+    reason: string | null;
+  } | null>(null);
+  const [isCheckingLimit, setIsCheckingLimit] = useState(true);
+
   // Interview hook
   const interview = useInterview();
+
+  // Check daily limit on mount
+  useEffect(() => {
+    const checkLimit = async () => {
+      try {
+        const response = await roadmapApi.canGenerate();
+        setLimitInfo({
+          canGenerate: response.data.can_generate,
+          todayCount: response.data.today_count,
+          limit: response.data.limit,
+          reason: response.data.reason,
+        });
+      } catch (err) {
+        setError(getErrorMessage(err));
+      } finally {
+        setIsCheckingLimit(false);
+      }
+    };
+    checkLimit();
+  }, []);
 
   // Handlers
   const handleGenerate = useCallback(async (interviewContext?: InterviewContext) => {
@@ -277,6 +306,57 @@ export function RoadmapCreate() {
   const steps = ['topic', 'duration', 'interview'];
   const currentStepIndex = steps.indexOf(step);
   const showProgress = step !== 'generating';
+
+  // Loading state
+  if (isCheckingLimit) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <Card variant="bordered">
+          <CardContent>
+            <div className="py-12 text-center">
+              <Loader2 className="h-8 w-8 text-primary-500 animate-spin mx-auto mb-4" />
+              <p className="text-gray-500 dark:text-gray-400">로딩 중...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Daily limit exceeded
+  if (limitInfo && !limitInfo.canGenerate) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <Card variant="bordered">
+          <CardContent>
+            <div className="py-12 space-y-6">
+              <div className="text-center">
+                <div className="inline-flex p-4 rounded-full bg-amber-100 dark:bg-amber-500/20 mb-6">
+                  <AlertTriangle className="h-10 w-10 text-amber-600 dark:text-amber-400" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                  일일 생성 한도 초과
+                </h2>
+                <p className="text-gray-500 dark:text-gray-400 mb-4">
+                  {limitInfo.reason}
+                </p>
+                <p className="text-sm text-gray-400 dark:text-gray-500">
+                  베타 기간 동안 하루에 {limitInfo.limit}개의 로드맵만 생성할 수 있습니다.
+                  <br />
+                  내일 다시 시도해주세요!
+                </p>
+              </div>
+              <div className="flex justify-center">
+                <Button variant="primary" onClick={() => navigate('/roadmaps')}>
+                  내 로드맵 보기
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   // Generating step
   if (step === 'generating') {

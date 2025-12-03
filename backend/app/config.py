@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     # URLs
     frontend_url: str = "http://localhost:3000"
 
+    # Beta limits (베타 기간 제한)
+    beta_daily_roadmap_limit: int = 1  # 하루 로드맵 생성 제한 (0=무제한)
+
     # Email (SMTP)
     smtp_host: str = "smtp.gmail.com"
     smtp_port: int = 587

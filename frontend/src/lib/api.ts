@@ -102,6 +102,14 @@ export const roadmapApi = {
   list: (params?: { skip?: number; limit?: number }) =>
     api.get('/roadmaps', { params }),
 
+  canGenerate: () =>
+    api.get<{
+      can_generate: boolean;
+      today_count: number;
+      limit: number;
+      reason: string | null;
+    }>('/roadmaps/generate/can-generate'),
+
   get: (id: string) => api.get(`/roadmaps/${id}`),
 
   getWithMonthly: (id: string) => api.get(`/roadmaps/${id}/monthly`),
