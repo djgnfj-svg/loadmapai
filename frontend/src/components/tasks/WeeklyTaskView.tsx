@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { ChevronDown, Calendar, CheckCircle2, Pencil } from 'lucide-react';
+import { ChevronDown, Calendar, CheckCircle2, Pencil, Sparkles, Loader2, Lock } from 'lucide-react';
 import { Progress } from '@/components/common/Progress';
 import { DayGroupView } from './DayGroupView';
 import { cn } from '@/lib/utils';
@@ -12,6 +12,10 @@ interface WeeklyTaskViewProps {
   isEditable?: boolean;
   onEditDailyTask?: (task: DailyTask, weeklyTaskId: string) => void;
   onEditWeeklyTask?: (task: WeeklyTask) => void;
+  onGenerateDailyTasks?: (weeklyTaskId: string) => void;
+  isGenerating?: boolean;
+  canGenerate?: boolean;
+  cannotGenerateReason?: string | null;
 }
 
 export function WeeklyTaskView({
@@ -21,6 +25,10 @@ export function WeeklyTaskView({
   isEditable = false,
   onEditDailyTask,
   onEditWeeklyTask,
+  onGenerateDailyTasks,
+  isGenerating = false,
+  canGenerate = true,
+  cannotGenerateReason = null,
 }: WeeklyTaskViewProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
@@ -157,7 +165,7 @@ export function WeeklyTaskView({
           isExpanded ? 'max-h-[10000px] opacity-100' : 'max-h-0 opacity-0'
         )}
       >
-        {tasksByDay.length > 0 && (
+        {tasksByDay.length > 0 ? (
           <div className="px-4 pb-4 pt-2 bg-primary-50 dark:bg-primary-500/10">
             {/* Section Divider */}
             <div className="flex items-center gap-2 mb-3">
@@ -183,6 +191,63 @@ export function WeeklyTaskView({
                   onEditTask={(t) => onEditDailyTask?.(t, week.id)}
                 />
               ))}
+            </div>
+          </div>
+        ) : (
+          <div className="px-4 pb-4 pt-2 bg-primary-50 dark:bg-primary-500/10">
+            {/* No Daily Tasks - Generate Button or Locked State */}
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              {canGenerate ? (
+                <>
+                  <div className="w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-500/20 flex items-center justify-center mb-3">
+                    <Calendar className="h-6 w-6 text-primary-500 dark:text-primary-400" />
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    이 주차의 일일 태스크가 아직 생성되지 않았습니다.
+                  </p>
+                  {onGenerateDailyTasks && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onGenerateDailyTasks(week.id);
+                      }}
+                      disabled={isGenerating}
+                      className={cn(
+                        'flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all',
+                        'bg-primary-500 hover:bg-primary-600 text-white',
+                        'disabled:opacity-50 disabled:cursor-not-allowed'
+                      )}
+                    >
+                      {isGenerating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          생성 중...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4" />
+                          일일 태스크 생성하기
+                        </>
+                      )}
+                    </button>
+                  )}
+                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
+                    이전 주차를 완료하면 자동으로 생성됩니다.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-dark-600 flex items-center justify-center mb-3">
+                    <Lock className="h-6 w-6 text-gray-400 dark:text-gray-500" />
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                    {cannotGenerateReason || '이전 주차를 먼저 완료해주세요.'}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500">
+                    이전 주차의 모든 태스크를 완료하면 잠금이 해제됩니다.
+                  </p>
+                </>
+              )}
             </div>
           </div>
         )}

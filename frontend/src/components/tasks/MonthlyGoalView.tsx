@@ -16,6 +16,9 @@ interface MonthlyGoalViewProps {
   onEditDailyTask?: (task: DailyTask, weeklyTaskId: string) => void;
   onEditWeeklyTask?: (task: WeeklyTask, monthlyGoalId: string) => void;
   onEditMonthlyGoal?: (goal: MonthlyGoal) => void;
+  onGenerateDailyTasks?: (weeklyTaskId: string) => void;
+  generatingWeekId?: string | null;
+  previousMonthLastWeekProgress?: number | null;
 }
 
 export function MonthlyGoalView({
@@ -27,6 +30,9 @@ export function MonthlyGoalView({
   onEditDailyTask,
   onEditWeeklyTask,
   onEditMonthlyGoal,
+  onGenerateDailyTasks,
+  generatingWeekId,
+  previousMonthLastWeekProgress = null,
 }: MonthlyGoalViewProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
@@ -162,17 +168,49 @@ export function MonthlyGoalView({
               <div className="h-0.5 flex-1 bg-gradient-to-l from-primary-500 to-indigo-600 opacity-30" />
             </div>
 
-            {month.weekly_tasks.map((week) => (
-              <WeeklyTaskView
-                key={week.id}
-                week={week}
-                defaultExpanded={false}
-                onToggleDailyTask={onToggleDailyTask}
-                isEditable={isEditable}
-                onEditDailyTask={onEditDailyTask}
-                onEditWeeklyTask={(task) => onEditWeeklyTask?.(task, month.id)}
-              />
-            ))}
+            {month.weekly_tasks.map((week, index) => {
+              // Calculate if this week can generate daily tasks
+              // First week of first month is always allowed
+              const isFirstWeekOfFirstMonth = month.month_number === 1 && week.week_number === 1;
+              const hasDailyTasks = (week.daily_tasks?.length || 0) > 0;
+
+              let canGenerate = true;
+              let cannotGenerateReason: string | null = null;
+
+              if (!isFirstWeekOfFirstMonth && !hasDailyTasks) {
+                // Find previous week's progress
+                let prevProgress: number | null = null;
+
+                if (index > 0) {
+                  // Previous week in same month
+                  prevProgress = month.weekly_tasks[index - 1]?.progress || 0;
+                } else if (week.week_number === 1 && month.month_number > 1) {
+                  // First week of this month - check previous month's last week
+                  prevProgress = previousMonthLastWeekProgress;
+                }
+
+                if (prevProgress !== null && prevProgress < 100) {
+                  canGenerate = false;
+                  cannotGenerateReason = `이전 주차를 먼저 완료해주세요. (현재 ${prevProgress}%)`;
+                }
+              }
+
+              return (
+                <WeeklyTaskView
+                  key={week.id}
+                  week={week}
+                  defaultExpanded={false}
+                  onToggleDailyTask={onToggleDailyTask}
+                  isEditable={isEditable}
+                  onEditDailyTask={onEditDailyTask}
+                  onEditWeeklyTask={(task) => onEditWeeklyTask?.(task, month.id)}
+                  onGenerateDailyTasks={onGenerateDailyTasks}
+                  isGenerating={generatingWeekId === week.id}
+                  canGenerate={canGenerate}
+                  cannotGenerateReason={cannotGenerateReason}
+                />
+              );
+            })}
           </div>
         )}
       </div>

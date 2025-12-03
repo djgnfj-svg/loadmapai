@@ -10,6 +10,8 @@ interface DrilldownContainerProps {
   onEditDailyTask?: (task: DailyTask, weeklyTaskId: string) => void;
   onEditWeeklyTask?: (task: WeeklyTask, monthlyGoalId: string) => void;
   onEditMonthlyGoal?: (goal: MonthlyGoal) => void;
+  onGenerateDailyTasks?: (weeklyTaskId: string) => void;
+  generatingWeekId?: string | null;
 }
 
 export function DrilldownContainer({
@@ -20,6 +22,8 @@ export function DrilldownContainer({
   onEditDailyTask,
   onEditWeeklyTask,
   onEditMonthlyGoal,
+  onGenerateDailyTasks,
+  generatingWeekId,
 }: DrilldownContainerProps) {
   if (isLoading) {
     return (
@@ -50,19 +54,32 @@ export function DrilldownContainer({
 
   return (
     <div className="space-y-4">
-      {roadmap.monthly_goals.map((month) => (
-        <MonthlyGoalView
-          key={month.id}
-          month={month}
-          startDate={roadmap.start_date}
-          defaultExpanded={false}
-          onToggleDailyTask={onToggleDailyTask}
-          isEditable={isEditable}
-          onEditDailyTask={onEditDailyTask}
-          onEditWeeklyTask={onEditWeeklyTask}
-          onEditMonthlyGoal={onEditMonthlyGoal}
-        />
-      ))}
+      {roadmap.monthly_goals.map((month, index) => {
+        // Calculate previous month's last week progress
+        let previousMonthLastWeekProgress: number | null = null;
+        if (index > 0) {
+          const prevMonth = roadmap.monthly_goals[index - 1];
+          const lastWeek = prevMonth.weekly_tasks?.[prevMonth.weekly_tasks.length - 1];
+          previousMonthLastWeekProgress = lastWeek?.progress ?? null;
+        }
+
+        return (
+          <MonthlyGoalView
+            key={month.id}
+            month={month}
+            startDate={roadmap.start_date}
+            defaultExpanded={false}
+            onToggleDailyTask={onToggleDailyTask}
+            isEditable={isEditable}
+            onEditDailyTask={onEditDailyTask}
+            onEditWeeklyTask={onEditWeeklyTask}
+            onEditMonthlyGoal={onEditMonthlyGoal}
+            onGenerateDailyTasks={onGenerateDailyTasks}
+            generatingWeekId={generatingWeekId}
+            previousMonthLastWeekProgress={previousMonthLastWeekProgress}
+          />
+        );
+      })}
     </div>
   );
 }

@@ -12,6 +12,8 @@ export {
   useDailyTasks,
   useToggleDailyTask,
   useGenerateRoadmap,
+  useGenerateDailyTasks,
+  useHasDailyTasks,
 } from './useRoadmaps';
 export {
   // Finalization

@@ -29,6 +29,7 @@ import {
   useDeleteDailyTask,
   useDeleteWeeklyTask,
   useDeleteMonthlyGoal,
+  useGenerateDailyTasks,
 } from '@/hooks';
 import { roadmapApi } from '@/lib/api';
 import { Card, CardContent } from '@/components/common/Card';
@@ -62,10 +63,12 @@ export function RoadmapDetail() {
   const [editingDaily, setEditingDaily] = useState<EditingDaily | null>(null);
   const [editingWeekly, setEditingWeekly] = useState<EditingWeekly | null>(null);
   const [editingMonthly, setEditingMonthly] = useState<MonthlyGoal | null>(null);
+  const [generatingWeekId, setGeneratingWeekId] = useState<string | null>(null);
 
   const { data: roadmap, isLoading, error } = useRoadmapFull(id || '');
   const toggleDailyTask = useToggleDailyTask();
   const deleteRoadmap = useDeleteRoadmap();
+  const generateDailyTasks = useGenerateDailyTasks(id);
   const queryClient = useQueryClient();
 
   // Edit mutations
@@ -212,6 +215,21 @@ export function RoadmapDetail() {
     } else {
       finalizeRoadmap.mutate();
     }
+  };
+
+  const handleGenerateDailyTasks = (weeklyTaskId: string) => {
+    setGeneratingWeekId(weeklyTaskId);
+    generateDailyTasks.mutate(
+      { weeklyTaskId, force: false },
+      {
+        onSuccess: () => {
+          setGeneratingWeekId(null);
+        },
+        onError: () => {
+          setGeneratingWeekId(null);
+        },
+      }
+    );
   };
 
   if (isLoading) {
@@ -462,6 +480,8 @@ export function RoadmapDetail() {
           onEditDailyTask={handleEditDailyTask}
           onEditWeeklyTask={handleEditWeeklyTask}
           onEditMonthlyGoal={handleEditMonthlyGoal}
+          onGenerateDailyTasks={handleGenerateDailyTasks}
+          generatingWeekId={generatingWeekId}
         />
       </div>
 

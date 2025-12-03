@@ -137,3 +137,30 @@ export function useGenerateRoadmap() {
     },
   });
 }
+
+export function useGenerateDailyTasks(roadmapId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ weeklyTaskId, force = false }: { weeklyTaskId: string; force?: boolean }) =>
+      roadmapApi.generateDailyTasks(weeklyTaskId, force),
+    onSuccess: () => {
+      // Invalidate roadmap full data to refresh daily tasks
+      if (roadmapId) {
+        queryClient.invalidateQueries({ queryKey: ['roadmap', roadmapId, 'full'] });
+      }
+      queryClient.invalidateQueries({ queryKey: ['roadmaps'] });
+    },
+  });
+}
+
+export function useHasDailyTasks(weeklyTaskId: string) {
+  return useQuery({
+    queryKey: ['hasDailyTasks', weeklyTaskId],
+    queryFn: async () => {
+      const response = await roadmapApi.hasDailyTasks(weeklyTaskId);
+      return response.data as { has_daily_tasks: boolean; weekly_task_id: string };
+    },
+    enabled: !!weeklyTaskId,
+  });
+}

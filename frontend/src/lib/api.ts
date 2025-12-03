@@ -138,6 +138,22 @@ export const roadmapApi = {
   toggleDailyTask: (dailyTaskId: string) =>
     api.patch(`/roadmaps/daily-tasks/${dailyTaskId}/toggle`),
 
+  // Daily tasks lazy generation
+  generateDailyTasks: (weeklyTaskId: string, force: boolean = false) =>
+    api.post(`/roadmaps/weekly-tasks/${weeklyTaskId}/generate-daily`, { force }),
+
+  hasDailyTasks: (weeklyTaskId: string) =>
+    api.get(`/roadmaps/weekly-tasks/${weeklyTaskId}/has-daily-tasks`),
+
+  canGenerateDailyTasks: (weeklyTaskId: string) =>
+    api.get<{
+      weekly_task_id: string;
+      can_generate: boolean;
+      has_daily_tasks: boolean;
+      is_previous_week_completed: boolean;
+      reason: string | null;
+    }>(`/roadmaps/weekly-tasks/${weeklyTaskId}/can-generate-daily`),
+
   // ============ Finalization ============
   finalize: (id: string) =>
     api.post(`/roadmaps/${id}/finalize`),
