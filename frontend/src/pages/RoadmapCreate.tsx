@@ -1,18 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, addMonths } from 'date-fns';
 import { Calendar, Clock, ArrowLeft, ArrowRight, Sparkles, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
+import { InterviewForm } from '@/components/interview';
+import { useInterview } from '@/hooks/useInterview';
 import { roadmapApi } from '@/lib/api';
+import type { InterviewAnswer, InterviewContext } from '@/types/interview';
 
-type Step = 'topic' | 'duration' | 'generating';
+type Step = 'topic' | 'duration' | 'interview' | 'generating';
 
 interface FormData {
   topic: string;
   duration_months: number;
   start_date: string;
+  interview_context?: InterviewContext;
 }
 
 const TOPIC_SUGGESTIONS = [
@@ -188,6 +192,29 @@ export function RoadmapCreate() {
   });
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const generationAttemptedRef = useRef(false);
+
+  // Interview hook
+  const interview = useInterview();
+
+  // Start interview when entering interview step
+  useEffect(() => {
+    if (step === 'interview' && !interview.sessionId && !interview.isLoading) {
+      interview.startInterview(formData.topic, formData.duration_months);
+    }
+  }, [step, interview.sessionId, interview.isLoading, formData.topic, formData.duration_months, interview]);
+
+  // Move to generating when interview is complete
+  useEffect(() => {
+    if (interview.interviewContext && step === 'interview' && !isGenerating && !generationAttemptedRef.current) {
+      generationAttemptedRef.current = true;
+      setFormData((prev) => ({
+        ...prev,
+        interview_context: interview.interviewContext!,
+      }));
+      handleGenerate(interview.interviewContext);
+    }
+  }, [interview.interviewContext, step, isGenerating]);
 
   const canProceed = () => {
     switch (step) {
@@ -200,7 +227,7 @@ export function RoadmapCreate() {
     }
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (interviewContext?: InterviewContext) => {
     setStep('generating');
     setIsGenerating(true);
     setError(null);
@@ -208,34 +235,43 @@ export function RoadmapCreate() {
     try {
       const response = await roadmapApi.generate({
         topic: formData.topic,
-        mode: 'planning',
+        mode: 'PLANNING',
         duration_months: formData.duration_months,
         start_date: formData.start_date,
+        interview_context: interviewContext as unknown as Record<string, unknown>,
       });
 
       navigate(`/roadmaps/${response.data.roadmap_id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
-      setStep('duration');
+      setStep('interview');
       setIsGenerating(false);
     }
+  };
+
+  const handleInterviewSubmit = async (answers: InterviewAnswer[]) => {
+    await interview.submitAnswers(answers);
   };
 
   const handleNext = () => {
     if (step === 'topic') {
       setStep('duration');
     } else if (step === 'duration') {
-      handleGenerate();
+      setStep('interview');
     }
   };
 
   const handleBack = () => {
     if (step === 'duration') {
       setStep('topic');
+    } else if (step === 'interview') {
+      interview.reset();
+      generationAttemptedRef.current = false;
+      setStep('duration');
     }
   };
 
-  const steps = ['topic', 'duration'];
+  const steps = ['topic', 'duration', 'interview'];
   const currentStepIndex = steps.indexOf(step);
   const showProgress = step !== 'generating';
 
@@ -274,9 +310,9 @@ export function RoadmapCreate() {
       )}
 
       {/* Error message */}
-      {error && (
+      {(error || interview.error) && (
         <div className="mb-4 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl">
-          <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+          <p className="text-red-600 dark:text-red-400 text-sm">{error || interview.error}</p>
         </div>
       )}
 
@@ -300,36 +336,53 @@ export function RoadmapCreate() {
               }
             />
           )}
+          {step === 'interview' && interview.questions.length > 0 && (
+            <InterviewForm
+              questions={interview.questions}
+              round={interview.round}
+              maxRounds={interview.maxRounds}
+              onSubmit={handleInterviewSubmit}
+              isLoading={interview.isLoading}
+            />
+          )}
+          {step === 'interview' && interview.questions.length === 0 && interview.isLoading && (
+            <div className="py-12 text-center">
+              <Loader2 className="h-8 w-8 text-primary-500 animate-spin mx-auto mb-4" />
+              <p className="text-gray-500 dark:text-gray-400">질문을 준비하고 있습니다...</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Navigation */}
-      <div className="flex justify-between mt-6">
-        <Button
-          variant="ghost"
-          onClick={step === 'topic' ? () => navigate(-1) : handleBack}
-        >
-          <ArrowLeft className="h-4 w-4 mr-1" />
-          {step === 'topic' ? '취소' : '이전'}
-        </Button>
-        <Button
-          variant="primary"
-          onClick={handleNext}
-          disabled={!canProceed() || isGenerating}
-        >
-          {step === 'duration' ? (
-            <>
-              <Sparkles className="h-4 w-4 mr-1" />
-              로드맵 생성
-            </>
-          ) : (
-            <>
-              다음
-              <ArrowRight className="h-4 w-4 ml-1" />
-            </>
-          )}
-        </Button>
-      </div>
+      {step !== 'interview' && (
+        <div className="flex justify-between mt-6">
+          <Button
+            variant="ghost"
+            onClick={step === 'topic' ? () => navigate(-1) : handleBack}
+          >
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            {step === 'topic' ? '취소' : '이전'}
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleNext}
+            disabled={!canProceed() || isGenerating}
+          >
+            다음
+            <ArrowRight className="h-4 w-4 ml-1" />
+          </Button>
+        </div>
+      )}
+
+      {step === 'interview' && interview.questions.length > 0 && (
+        <div className="flex justify-start mt-6">
+          <Button variant="ghost" onClick={handleBack}>
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            이전
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

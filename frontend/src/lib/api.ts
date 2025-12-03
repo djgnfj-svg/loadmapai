@@ -25,15 +25,21 @@ api.interceptors.request.use(
 // Response interceptor - handle errors
 api.interceptors.response.use(
   (response) => response,
-  async (error: AxiosError<{ error?: { message?: string } }>) => {
+  async (error: AxiosError<{ detail?: string; error?: { message?: string } }>) => {
     const status = error.response?.status;
-    const errorMessage = error.response?.data?.error?.message;
+    const requestUrl = error.config?.url || '';
 
-    if (status === 401) {
-      // Token expired or invalid
+    // Don't redirect on 401 for auth endpoints (login/register)
+    const isAuthEndpoint = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register');
+
+    if (status === 401 && !isAuthEndpoint) {
+      // Token expired or invalid - only for authenticated requests
       useAuthStore.getState().logout();
       window.location.href = '/login';
     }
+
+    // Extract error message - FastAPI returns { detail: string }
+    const errorMessage = error.response?.data?.detail || error.response?.data?.error?.message;
 
     // Enhance error with user-friendly message
     const enhancedError = error as AxiosError & { userMessage?: string };
@@ -67,8 +73,10 @@ function getDefaultErrorMessage(status?: number): string {
 // Helper to extract user-friendly error message
 export function getErrorMessage(error: unknown): string {
   if (error instanceof AxiosError) {
-    return (error as AxiosError & { userMessage?: string }).userMessage ||
-           error.response?.data?.error?.message ||
+    const axiosError = error as AxiosError<{ detail?: string; error?: { message?: string } }> & { userMessage?: string };
+    return axiosError.userMessage ||
+           axiosError.response?.data?.detail ||
+           axiosError.response?.data?.error?.message ||
            getDefaultErrorMessage(error.response?.status);
   }
   if (error instanceof Error) {
@@ -107,7 +115,7 @@ export const roadmapApi = {
   create: (data: { topic: string; duration_months: number; start_date: string; mode: string }) =>
     api.post('/roadmaps', data),
 
-  generate: (data: { topic: string; duration_months: number; start_date: string; mode: string }) =>
+  generate: (data: { topic: string; duration_months: number; start_date: string; mode: string; interview_context?: Record<string, unknown> }) =>
     api.post('/roadmaps/generate', data),
 
   update: (id: string, data: Partial<{ title: string; status: string }>) =>
@@ -173,6 +181,15 @@ export const roadmapApi = {
 
   reorderDailyTasks: (data: { tasks: { id: string; order: number }[] }) =>
     api.post('/roadmaps/daily-tasks/reorder', data),
+};
+
+// Interview API
+export const interviewApi = {
+  start: (data: { topic: string; duration_months: number }) =>
+    api.post('/interview/start', data),
+
+  submit: (data: { session_id: string; answers: Array<{ question_id: string; answer: string | string[] }> }) =>
+    api.post('/interview/submit', data),
 };
 
 export default api;
