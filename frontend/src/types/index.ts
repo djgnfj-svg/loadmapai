@@ -1,4 +1,3 @@
-// User types
 export interface User {
   id: string;
   email: string;
@@ -7,7 +6,6 @@ export interface User {
   created_at: string;
 }
 
-// Auth types
 export interface AuthState {
   user: User | null;
   token: string | null;
@@ -15,7 +13,6 @@ export interface AuthState {
   isLoading: boolean;
 }
 
-// Roadmap types
 export type RoadmapMode = 'planning';
 
 export type LearningIntensity = 'light' | 'moderate' | 'intense';
@@ -34,11 +31,9 @@ export interface Roadmap {
   status: 'active' | 'completed' | 'paused';
   created_at: string;
   updated_at: string;
-  // Schedule fields
   daily_available_minutes?: number;
   rest_days?: number[];
   intensity?: LearningIntensity;
-  // Finalization fields
   is_finalized?: boolean;
   finalized_at?: string;
   edit_count_after_finalize?: number;
@@ -101,13 +96,10 @@ export interface RoadmapWithMonthly extends Roadmap {
   monthly_goals: MonthlyGoal[];
 }
 
-// API Response types
 export interface ApiResponse<T> {
   data: T;
   message?: string;
 }
-
-// ============ Roadmap Editing Types ============
 
 export interface DailyTaskUpdate {
   title?: string;

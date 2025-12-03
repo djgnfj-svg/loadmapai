@@ -10,7 +10,6 @@ export const api = axios.create({
   },
 });
 
-// Request interceptor - add auth token
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = useAuthStore.getState().token;
@@ -22,26 +21,20 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor - handle errors
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<{ detail?: string; error?: { message?: string } }>) => {
     const status = error.response?.status;
     const requestUrl = error.config?.url || '';
 
-    // Don't redirect on 401 for auth endpoints (login/register)
     const isAuthEndpoint = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register');
 
     if (status === 401 && !isAuthEndpoint) {
-      // Token expired or invalid - only for authenticated requests
       useAuthStore.getState().logout();
       window.location.href = '/login';
     }
 
-    // Extract error message - FastAPI returns { detail: string }
     const errorMessage = error.response?.data?.detail || error.response?.data?.error?.message;
-
-    // Enhance error with user-friendly message
     const enhancedError = error as AxiosError & { userMessage?: string };
     enhancedError.userMessage = errorMessage || getDefaultErrorMessage(status);
 
@@ -70,7 +63,6 @@ function getDefaultErrorMessage(status?: number): string {
   }
 }
 
-// Helper to extract user-friendly error message
 export function getErrorMessage(error: unknown): string {
   if (error instanceof AxiosError) {
     const axiosError = error as AxiosError<{ detail?: string; error?: { message?: string } }> & { userMessage?: string };
@@ -85,7 +77,6 @@ export function getErrorMessage(error: unknown): string {
   return '알 수 없는 오류가 발생했습니다.';
 }
 
-// Auth API
 export const authApi = {
   login: (data: { email: string; password: string }) =>
     api.post('/auth/login', data),
@@ -101,7 +92,6 @@ export const authApi = {
   refresh: () => api.post('/auth/refresh'),
 };
 
-// Roadmap API
 export const roadmapApi = {
   list: (params?: { skip?: number; limit?: number }) =>
     api.get('/roadmaps', { params }),
@@ -123,22 +113,18 @@ export const roadmapApi = {
 
   delete: (id: string) => api.delete(`/roadmaps/${id}`),
 
-  // Monthly goals
   getMonthlyGoals: (roadmapId: string) =>
     api.get(`/roadmaps/${roadmapId}/monthly`),
 
-  // Weekly tasks
   getWeeklyTasks: (monthlyGoalId: string) =>
     api.get(`/monthly-goals/${monthlyGoalId}/weekly-tasks`),
 
-  // Daily tasks
   getDailyTasks: (weeklyTaskId: string) =>
     api.get(`/weekly-tasks/${weeklyTaskId}/daily-tasks`),
 
   toggleDailyTask: (dailyTaskId: string) =>
     api.patch(`/roadmaps/daily-tasks/${dailyTaskId}/toggle`),
 
-  // Daily tasks lazy generation
   generateDailyTasks: (weeklyTaskId: string, force: boolean = false) =>
     api.post(`/roadmaps/weekly-tasks/${weeklyTaskId}/generate-daily`, { force }),
 
@@ -154,18 +140,15 @@ export const roadmapApi = {
       reason: string | null;
     }>(`/roadmaps/weekly-tasks/${weeklyTaskId}/can-generate-daily`),
 
-  // ============ Finalization ============
   finalize: (id: string) =>
     api.post(`/roadmaps/${id}/finalize`),
 
   unfinalize: (id: string) =>
     api.post(`/roadmaps/${id}/unfinalize`),
 
-  // ============ Schedule ============
   updateSchedule: (id: string, data: { daily_available_minutes?: number; rest_days?: number[]; intensity?: string }) =>
     api.patch(`/roadmaps/${id}/schedule`, data),
 
-  // ============ CRUD - Monthly Goals ============
   createMonthlyGoal: (roadmapId: string, data: { month_number: number; title: string; description?: string }) =>
     api.post(`/roadmaps/${roadmapId}/monthly-goals`, data),
 
@@ -175,7 +158,6 @@ export const roadmapApi = {
   deleteMonthlyGoal: (roadmapId: string, goalId: string) =>
     api.delete(`/roadmaps/${roadmapId}/monthly-goals/${goalId}`),
 
-  // ============ CRUD - Weekly Tasks ============
   createWeeklyTask: (goalId: string, data: { week_number: number; title: string; description?: string }) =>
     api.post(`/roadmaps/monthly-goals/${goalId}/weekly-tasks`, data),
 
@@ -185,7 +167,6 @@ export const roadmapApi = {
   deleteWeeklyTask: (goalId: string, taskId: string) =>
     api.delete(`/roadmaps/monthly-goals/${goalId}/weekly-tasks/${taskId}`),
 
-  // ============ CRUD - Daily Tasks ============
   createDailyTask: (weeklyId: string, data: { day_number: number; title: string; description?: string; order?: number }) =>
     api.post(`/roadmaps/weekly-tasks/${weeklyId}/daily-tasks`, data),
 
@@ -199,7 +180,6 @@ export const roadmapApi = {
     api.post('/roadmaps/daily-tasks/reorder', data),
 };
 
-// Interview API
 export const interviewApi = {
   start: (data: { topic: string; duration_months: number }) =>
     api.post('/interview/start', data),

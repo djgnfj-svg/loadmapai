@@ -10,7 +10,6 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# DEV_MODE에 따라 모델 선택 (비용 절약)
 DEV_MODE = os.getenv("DEV_MODE", "true").lower() == "true"
 CLAUDE_MODEL = "claude-3-5-haiku-20241022" if DEV_MODE else "claude-sonnet-4-5-20250929"
 
@@ -23,7 +22,7 @@ def create_llm(temperature: float = 0.7) -> ChatAnthropic:
         model=CLAUDE_MODEL,
         anthropic_api_key=settings.anthropic_api_key,
         temperature=temperature,
-        max_tokens=8192,  # 더 긴 응답 허용
+        max_tokens=8192,
     )
 
 

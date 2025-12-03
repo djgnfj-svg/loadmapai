@@ -1,10 +1,8 @@
-"""Simplified LangGraph workflow for roadmap generation.
+"""LangGraph workflow for roadmap generation.
 
 Flow: goal_analyzer → monthly_generator → weekly_generator → saver
-Total: 3 LLM calls (one per stage)
 
-Daily tasks are generated lazily (on-demand) when user completes previous week.
-First week's daily tasks are generated automatically after roadmap creation.
+Daily tasks are generated lazily via DailyGenerationService.
 """
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
@@ -19,19 +17,13 @@ from app.ai.nodes.saver import save_roadmap
 
 
 def create_roadmap_graph():
-    """Create simplified LangGraph workflow.
-
-    Note: daily_generator is removed from the main flow.
-    First week's daily tasks are generated after saving via DailyGenerationService.
-    """
+    """Create LangGraph workflow for roadmap generation."""
     workflow = StateGraph(RoadmapGenerationState)
 
-    # Add nodes (3 LLM calls total - daily tasks generated lazily)
     workflow.add_node("goal_analyzer", goal_analyzer)
     workflow.add_node("monthly_generator", monthly_generator)
     workflow.add_node("weekly_generator", weekly_generator)
 
-    # Linear flow (no daily_generator - generated lazily per week)
     workflow.set_entry_point("goal_analyzer")
     workflow.add_edge("goal_analyzer", "monthly_generator")
     workflow.add_edge("monthly_generator", "weekly_generator")
@@ -59,20 +51,14 @@ async def generate_roadmap(
         topic: Learning topic
         duration_months: Number of months (1-6)
         start_date: Start date
-        mode: Roadmap mode (planning)
+        mode: Roadmap mode
         user_id: User ID
         db: Database session
         interview_context: SMART interview context (optional)
 
     Returns:
-        Dict with roadmap_id, title, and status
-
-    Note:
-        Daily tasks are NOT generated in the main flow.
-        First week's daily tasks are generated automatically after saving.
-        Subsequent weeks are generated lazily when user completes previous week.
+        Dict with roadmap_id, title, and error_message (if any)
     """
-    # Initialize state (no daily_tasks - generated lazily)
     initial_state: RoadmapGenerationState = {
         "topic": topic,
         "duration_months": duration_months,
@@ -84,15 +70,12 @@ async def generate_roadmap(
         "description": None,
         "monthly_goals": [],
         "weekly_tasks": [],
-        "daily_tasks": [],  # Empty - first week generated after save
+        "daily_tasks": [],
         "error_message": None,
         "roadmap_id": None,
     }
 
-    # Create graph
     graph = create_roadmap_graph()
-
-    # Run graph in thread pool to avoid blocking event loop
     loop = asyncio.get_event_loop()
     final_state = await loop.run_in_executor(
         _executor,
@@ -100,10 +83,8 @@ async def generate_roadmap(
         initial_state
     )
 
-    # Save to database (without daily tasks)
     final_state = save_roadmap(final_state, db)
 
-    # Generate first week's daily tasks
     try:
         await _generate_first_week_daily_tasks(
             final_state["roadmap_id"],
@@ -112,7 +93,6 @@ async def generate_roadmap(
             interview_context,
         )
     except Exception as e:
-        # Log but don't fail - first week can be generated manually
         final_state["error_message"] = f"첫 주 일일 태스크 생성 실패: {str(e)}"
 
     return {
@@ -133,7 +113,6 @@ async def _generate_first_week_daily_tasks(
     from app.models import MonthlyGoal, WeeklyTask
     from app.services.daily_generation_service import DailyGenerationService
 
-    # Find first week (month 1, week 1)
     first_week = (
         db.query(WeeklyTask)
         .join(MonthlyGoal)
@@ -150,6 +129,6 @@ async def _generate_first_week_daily_tasks(
         await service.generate_daily_tasks_for_week(
             first_week.id,
             UUID(user_id),
-            force=True,  # First week always allowed
+            force=True,
             interview_context=interview_context,
         )

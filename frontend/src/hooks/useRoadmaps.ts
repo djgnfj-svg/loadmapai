@@ -145,7 +145,6 @@ export function useGenerateDailyTasks(roadmapId?: string) {
     mutationFn: ({ weeklyTaskId, force = false }: { weeklyTaskId: string; force?: boolean }) =>
       roadmapApi.generateDailyTasks(weeklyTaskId, force),
     onSuccess: () => {
-      // Invalidate roadmap full data to refresh daily tasks
       if (roadmapId) {
         queryClient.invalidateQueries({ queryKey: ['roadmap', roadmapId, 'full'] });
       }

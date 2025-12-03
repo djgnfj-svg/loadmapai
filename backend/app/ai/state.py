@@ -1,4 +1,4 @@
-"""Roadmap generation state - Simplified."""
+"""Roadmap generation state."""
 from typing import TypedDict, List, Optional
 from datetime import date
 

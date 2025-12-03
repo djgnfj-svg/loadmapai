@@ -7,8 +7,6 @@ import type {
   RoadmapScheduleUpdate,
 } from '@/types';
 
-// ============ Finalization Hooks ============
-
 export function useFinalizeRoadmap(roadmapId: string) {
   const queryClient = useQueryClient();
 
@@ -33,8 +31,6 @@ export function useUnfinalizeRoadmap(roadmapId: string) {
   });
 }
 
-// ============ Schedule Hooks ============
-
 export function useUpdateSchedule(roadmapId: string) {
   const queryClient = useQueryClient();
 
@@ -47,8 +43,6 @@ export function useUpdateSchedule(roadmapId: string) {
     },
   });
 }
-
-// ============ Monthly Goal CRUD Hooks ============
 
 export function useCreateMonthlyGoal(roadmapId: string) {
   const queryClient = useQueryClient();
@@ -89,8 +83,6 @@ export function useDeleteMonthlyGoal(roadmapId: string) {
   });
 }
 
-// ============ Weekly Task CRUD Hooks ============
-
 export function useCreateWeeklyTask(roadmapId: string) {
   const queryClient = useQueryClient();
 
@@ -126,8 +118,6 @@ export function useDeleteWeeklyTask(roadmapId: string) {
     },
   });
 }
-
-// ============ Daily Task CRUD Hooks ============
 
 export function useCreateDailyTask(roadmapId: string) {
   const queryClient = useQueryClient();

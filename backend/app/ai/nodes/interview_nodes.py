@@ -26,7 +26,6 @@ def question_generator(state: InterviewState) -> InterviewState:
         logger.info(f"[Interview] Generated {len(state['questions'])} questions")
     except Exception as e:
         logger.error(f"[Interview] Failed to generate questions: {e}")
-        # Fallback: 기본 질문 세트
         state["questions"] = _get_default_questions(state["topic"])
         state["round"] = 1
         state["needs_followup"] = False
@@ -37,7 +36,6 @@ def question_generator(state: InterviewState) -> InterviewState:
 
 def answer_analyzer(state: InterviewState) -> InterviewState:
     """Analyze answers and determine if follow-up is needed."""
-    # Q&A 쌍을 문자열로 포맷
     qa_pairs = _format_qa_pairs(state["questions"], state["answers"])
 
     prompt = ANSWER_ANALYSIS_PROMPT.format(
@@ -50,19 +48,16 @@ def answer_analyzer(state: InterviewState) -> InterviewState:
     try:
         result = invoke_llm_json(prompt, temperature=0.5)
 
-        # 라운드 3이면 무조건 완료
         if state["round"] >= 3:
             state["needs_followup"] = False
         else:
             state["needs_followup"] = result.get("needs_followup", False)
 
-        # 후속 질문이 필요한 경우
         if state["needs_followup"]:
             state["questions"] = result.get("followup_questions", [])
             state["round"] += 1
             logger.info(f"[Interview] Follow-up needed, round {state['round']}")
 
-        # interview_context 저장
         state["interview_context"] = result.get("interview_context", {})
         logger.info(f"[Interview] Analysis complete, needs_followup={state['needs_followup']}")
 

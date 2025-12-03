@@ -9,17 +9,9 @@ from app.ai.state import RoadmapGenerationState
 
 
 def save_roadmap(state: RoadmapGenerationState, db: Session) -> RoadmapGenerationState:
-    """Save the generated roadmap to the database.
-
-    Data structure:
-    - monthly_goals: [{month_number, title, description}, ...]
-    - weekly_tasks: [{month_number, weeks: [{week_number, title, description}, ...]}, ...]
-    - daily_tasks: [{month_number, week_number, days: [{day_number, title, description}, ...]}, ...]
-    """
-    # Calculate end date using relativedelta for accuracy
+    """Save the generated roadmap to the database."""
     end_date = state["start_date"] + relativedelta(months=state["duration_months"])
 
-    # Create roadmap
     roadmap = Roadmap(
         user_id=UUID(state["user_id"]),
         title=state["title"],
@@ -33,7 +25,6 @@ def save_roadmap(state: RoadmapGenerationState, db: Session) -> RoadmapGeneratio
     db.add(roadmap)
     db.flush()
 
-    # Create monthly goals
     for monthly_data in state["monthly_goals"]:
         monthly_goal = MonthlyGoal(
             roadmap_id=roadmap.id,
@@ -44,7 +35,6 @@ def save_roadmap(state: RoadmapGenerationState, db: Session) -> RoadmapGeneratio
         db.add(monthly_goal)
         db.flush()
 
-        # Find weekly tasks for this month
         weekly_month = next(
             (w for w in state["weekly_tasks"] if w["month_number"] == monthly_data["month_number"]),
             None
@@ -61,7 +51,6 @@ def save_roadmap(state: RoadmapGenerationState, db: Session) -> RoadmapGeneratio
                 db.add(weekly_task)
                 db.flush()
 
-                # Find daily tasks for this week
                 daily_week = next(
                     (d for d in state["daily_tasks"]
                      if d["month_number"] == monthly_data["month_number"]
@@ -71,7 +60,6 @@ def save_roadmap(state: RoadmapGenerationState, db: Session) -> RoadmapGeneratio
 
                 if daily_week and "days" in daily_week:
                     for day_data in daily_week["days"]:
-                        # Save daily goal if present
                         goal_data = day_data.get("goal")
                         if goal_data:
                             daily_goal = DailyGoal(
@@ -82,9 +70,7 @@ def save_roadmap(state: RoadmapGenerationState, db: Session) -> RoadmapGeneratio
                             )
                             db.add(daily_goal)
 
-                        # Save daily tasks
                         tasks = day_data.get("tasks", [])
-                        # 기존 형식 호환 (tasks 배열 없이 title/description만 있는 경우)
                         if not tasks and "title" in day_data:
                             tasks = [{"title": day_data["title"], "description": day_data.get("description", "")}]
                         for order, task in enumerate(tasks):
