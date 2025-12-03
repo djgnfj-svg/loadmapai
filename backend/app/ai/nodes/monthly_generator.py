@@ -7,17 +7,30 @@ from app.ai.prompts.templates import MONTHLY_GOALS_PROMPT, build_interview_secti
 def monthly_generator(state: RoadmapGenerationState) -> RoadmapGenerationState:
     """Generate all monthly goals in a single LLM call."""
     interview_section = build_interview_section(state.get("interview_context"))
+    duration_months = state["duration_months"]
 
     prompt = MONTHLY_GOALS_PROMPT.format(
         topic=state["topic"],
-        duration_months=state["duration_months"],
+        duration_months=duration_months,
         title=state["title"],
         interview_section=interview_section,
     )
 
     try:
         result = invoke_llm_json(prompt, temperature=0.7)
-        state["monthly_goals"] = result["monthly_goals"]
+        monthly_goals = result["monthly_goals"]
+
+        # Validate: filter to only include requested months
+        monthly_goals = [
+            g for g in monthly_goals
+            if g.get("month_number", 0) <= duration_months
+        ]
+
+        # Ensure we have exactly the requested number of months
+        if len(monthly_goals) > duration_months:
+            monthly_goals = monthly_goals[:duration_months]
+
+        state["monthly_goals"] = monthly_goals
     except Exception as e:
         # Fallback: generate basic monthly goals
         state["monthly_goals"] = [

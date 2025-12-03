@@ -18,7 +18,13 @@ MONTHLY_GOALS_PROMPT = """주제: {topic}
 기간: {duration_months}개월
 로드맵 제목: {title}
 {interview_section}
-위 주제에 대해 {duration_months}개월 동안의 월별 학습 목표를 생성해주세요.
+
+[중요] 정확히 {duration_months}개월치의 월별 학습 목표만 생성하세요.
+- 1개월 로드맵이면 month_number: 1만 생성
+- 2개월 로드맵이면 month_number: 1, 2만 생성
+- 3개월 로드맵이면 month_number: 1, 2, 3만 생성
+(이하 동일)
+
 각 월의 목표는 이전 월의 학습을 기반으로 점진적으로 심화되어야 합니다.
 인터뷰 정보가 있다면 사용자의 현재 수준과 목표에 맞게 난이도를 조절해주세요.
 
@@ -30,6 +36,7 @@ MONTHLY_GOALS_PROMPT = """주제: {topic}
             "title": "1개월차 목표 제목",
             "description": "구체적인 학습 목표 설명"
         }}
+        // {duration_months}개월이면 정확히 {duration_months}개의 객체만 포함
     ]
 }}
 
@@ -38,11 +45,14 @@ JSON만 응답하세요."""
 WEEKLY_TASKS_PROMPT = """주제: {topic}
 기간: {duration_months}개월
 {interview_section}
+
 월별 목표:
 {monthly_goals_summary}
 
-위의 모든 월({duration_months}개월)에 대해 각각 4주간의 주별 학습 과제를 생성해주세요.
-반드시 1개월차부터 {duration_months}개월차까지 모두 포함해야 합니다.
+[중요] 위에 나열된 월별 목표에 해당하는 주간 과제만 생성하세요.
+- 정확히 {duration_months}개월치만 생성 (더 많이 생성하지 마세요)
+- 각 월은 정확히 4주로 구성
+
 각 주의 과제는 점진적으로 심화되어야 합니다.
 인터뷰 정보가 있다면 사용자의 현재 수준에 맞게 난이도를 조절해주세요.
 
@@ -57,16 +67,14 @@ WEEKLY_TASKS_PROMPT = """주제: {topic}
                 {{"week_number": 3, "title": "3주차 과제", "description": "설명"}},
                 {{"week_number": 4, "title": "4주차 과제", "description": "설명"}}
             ]
-        }},
-        {{
-            "month_number": 2,
-            "weeks": [...]
         }}
+        // {duration_months}개월이면 정확히 {duration_months}개의 월 객체만 포함
     ]
 }}
 
 JSON만 응답하세요."""
 
+# Legacy prompt - kept for reference but not used in lazy generation
 DAILY_TASKS_PROMPT = """주제: {topic}
 기간: {duration_months}개월
 {interview_section}
@@ -106,12 +114,73 @@ DAILY_TASKS_PROMPT = """주제: {topic}
                 {{"day_number": 6, "goal": {{...}}, "tasks": [...]}},
                 {{"day_number": 7, "goal": {{...}}, "tasks": [...]}}
             ]
+        }}
+    ]
+}}
+
+JSON만 응답하세요."""
+
+# Single week daily tasks generation prompt (for lazy generation)
+SINGLE_WEEK_DAILY_TASKS_PROMPT = """주제: {topic}
+{interview_section}
+
+현재 주간 정보:
+- 주간 목표: {week_title}
+- 주간 설명: {week_description}
+- 위치: {month_number}개월차 {week_number}주차
+
+위 주간 과제에 대해 정확히 7일(1~7일)의 일별 학습 계획을 생성해주세요.
+
+요구사항:
+1. 각 일자에 goal(목표)과 tasks(태스크 2-4개)를 포함
+2. 평일(1-5일차): 핵심 학습 내용
+3. 주말(6-7일차): 복습 또는 가벼운 과제
+4. 정확히 7일치만 생성 (더 많거나 적게 생성하지 마세요)
+
+응답 형식 (JSON):
+{{
+    "days": [
+        {{
+            "day_number": 1,
+            "goal": {{"title": "1일차 목표", "description": "오늘 달성할 핵심 목표"}},
+            "tasks": [
+                {{"title": "태스크1", "description": "설명"}},
+                {{"title": "태스크2", "description": "설명"}}
+            ]
         }},
-        {{"month_number": 1, "week_number": 2, "days": [...]}},
-        {{"month_number": 1, "week_number": 3, "days": [...]}},
-        {{"month_number": 1, "week_number": 4, "days": [...]}},
-        {{"month_number": 2, "week_number": 1, "days": [...]}},
-        ...
+        {{
+            "day_number": 2,
+            "goal": {{"title": "2일차 목표", "description": "오늘 달성할 핵심 목표"}},
+            "tasks": [
+                {{"title": "태스크1", "description": "설명"}},
+                {{"title": "태스크2", "description": "설명"}}
+            ]
+        }},
+        {{
+            "day_number": 3,
+            "goal": {{"title": "3일차 목표", "description": "설명"}},
+            "tasks": [{{"title": "태스크1", "description": "설명"}}]
+        }},
+        {{
+            "day_number": 4,
+            "goal": {{"title": "4일차 목표", "description": "설명"}},
+            "tasks": [{{"title": "태스크1", "description": "설명"}}]
+        }},
+        {{
+            "day_number": 5,
+            "goal": {{"title": "5일차 목표", "description": "설명"}},
+            "tasks": [{{"title": "태스크1", "description": "설명"}}]
+        }},
+        {{
+            "day_number": 6,
+            "goal": {{"title": "6일차 (복습)", "description": "이번 주 학습 복습"}},
+            "tasks": [{{"title": "복습", "description": "설명"}}]
+        }},
+        {{
+            "day_number": 7,
+            "goal": {{"title": "7일차 (정리)", "description": "주간 마무리"}},
+            "tasks": [{{"title": "정리", "description": "설명"}}]
+        }}
     ]
 }}
 
