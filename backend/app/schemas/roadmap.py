@@ -7,6 +7,22 @@ from app.models.roadmap import RoadmapMode, RoadmapStatus
 from app.models.monthly_goal import TaskStatus
 
 
+# Daily Goal schemas
+class DailyGoalBase(BaseModel):
+    title: str = Field(..., min_length=1, max_length=200)
+    description: Optional[str] = None
+
+
+class DailyGoalResponse(DailyGoalBase):
+    id: UUID
+    weekly_task_id: UUID
+    day_number: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 # Daily Task schemas
 class DailyTaskBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
@@ -77,6 +93,7 @@ class WeeklyTaskResponse(WeeklyTaskBase):
 
 
 class WeeklyTaskWithDaily(WeeklyTaskResponse):
+    daily_goals: List[DailyGoalResponse] = []
     daily_tasks: List[DailyTaskResponse] = []
 
 

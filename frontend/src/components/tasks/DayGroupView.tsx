@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { ChevronDown, CheckCircle2, Circle, Pencil } from 'lucide-react';
+import { ChevronDown, CheckCircle2, Circle, Pencil, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { DailyTask } from '@/types';
+import type { DailyTask, DailyGoal } from '@/types';
 
 interface DayGroupViewProps {
   dayNumber: number;
+  goal?: DailyGoal;
   tasks: DailyTask[];
   defaultExpanded?: boolean;
   onToggleTask: (taskId: string) => void;
@@ -14,6 +15,7 @@ interface DayGroupViewProps {
 
 export function DayGroupView({
   dayNumber,
+  goal,
   tasks,
   defaultExpanded = false,
   onToggleTask,
@@ -66,6 +68,15 @@ export function DayGroupView({
                 <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
               )}
             </div>
+            {/* Daily Goal - shown when collapsed */}
+            {goal && (
+              <div className="flex items-center gap-1 mt-0.5">
+                <Target className="h-3 w-3 text-primary-500 dark:text-primary-400 flex-shrink-0" />
+                <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                  {goal.title}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Task Count & Chevron */}

@@ -64,6 +64,15 @@ export interface WeeklyTask {
   status: 'pending' | 'in_progress' | 'completed';
 }
 
+export interface DailyGoal {
+  id: string;
+  weekly_task_id: string;
+  day_number: number;
+  title: string;
+  description: string;
+  created_at: string;
+}
+
 export interface DailyTask {
   id: string;
   weekly_task_id: string;
@@ -76,6 +85,7 @@ export interface DailyTask {
 
 // Full hierarchical types
 export interface WeeklyTaskWithDaily extends WeeklyTask {
+  daily_goals: DailyGoal[];
   daily_tasks: DailyTask[];
 }
 

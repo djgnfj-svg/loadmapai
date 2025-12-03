@@ -3,7 +3,7 @@ import { ChevronDown, Calendar, CheckCircle2, Pencil } from 'lucide-react';
 import { Progress } from '@/components/common/Progress';
 import { DayGroupView } from './DayGroupView';
 import { cn } from '@/lib/utils';
-import type { WeeklyTaskWithDaily, DailyTask, WeeklyTask } from '@/types';
+import type { WeeklyTaskWithDaily, DailyTask, DailyGoal, WeeklyTask } from '@/types';
 
 interface WeeklyTaskViewProps {
   week: WeeklyTaskWithDaily;
@@ -29,6 +29,15 @@ export function WeeklyTaskView({
   const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
   const isComplete = progress === 100;
 
+  // Create a map of daily goals by day_number
+  const goalsByDay = useMemo(() => {
+    if (!week.daily_goals) return {} as Record<number, DailyGoal>;
+    return week.daily_goals.reduce((acc, goal) => {
+      acc[goal.day_number] = goal;
+      return acc;
+    }, {} as Record<number, DailyGoal>);
+  }, [week.daily_goals]);
+
   // Group daily tasks by day_number
   const tasksByDay = useMemo(() => {
     if (!week.daily_tasks) return [];
@@ -47,9 +56,10 @@ export function WeeklyTaskView({
       .sort(([a], [b]) => Number(a) - Number(b))
       .map(([dayNumber, tasks]) => ({
         dayNumber: Number(dayNumber),
+        goal: goalsByDay[Number(dayNumber)],
         tasks: tasks.sort((a, b) => a.order - b.order),
       }));
-  }, [week.daily_tasks]);
+  }, [week.daily_tasks, goalsByDay]);
 
   return (
     <div
@@ -161,10 +171,11 @@ export function WeeklyTaskView({
 
             {/* Daily Tasks by Day */}
             <div className="grid gap-2">
-              {tasksByDay.map(({ dayNumber, tasks }) => (
+              {tasksByDay.map(({ dayNumber, goal, tasks }) => (
                 <DayGroupView
                   key={dayNumber}
                   dayNumber={dayNumber}
+                  goal={goal}
                   tasks={tasks}
                   defaultExpanded={false}
                   onToggleTask={onToggleDailyTask}

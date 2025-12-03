@@ -22,6 +22,12 @@ class WeeklyTask(Base, TimestampMixin):
 
     # Relationships
     monthly_goal = relationship("MonthlyGoal", back_populates="weekly_tasks")
+    daily_goals = relationship(
+        "DailyGoal",
+        back_populates="weekly_task",
+        cascade="all, delete-orphan",
+        order_by="DailyGoal.day_number"
+    )
     daily_tasks = relationship(
         "DailyTask",
         back_populates="weekly_task",

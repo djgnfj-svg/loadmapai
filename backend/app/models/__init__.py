@@ -2,6 +2,7 @@ from app.models.user import User, AuthProvider
 from app.models.roadmap import Roadmap, RoadmapMode, RoadmapStatus
 from app.models.monthly_goal import MonthlyGoal, TaskStatus
 from app.models.weekly_task import WeeklyTask
+from app.models.daily_goal import DailyGoal
 from app.models.daily_task import DailyTask
 
 __all__ = [
@@ -12,6 +13,7 @@ __all__ = [
     "RoadmapStatus",
     "MonthlyGoal",
     "WeeklyTask",
+    "DailyGoal",
     "DailyTask",
     "TaskStatus",
 ]

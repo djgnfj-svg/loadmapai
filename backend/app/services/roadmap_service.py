@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 
 from dateutil.relativedelta import relativedelta
 
-from app.models import Roadmap, MonthlyGoal, WeeklyTask, DailyTask
+from app.models import Roadmap, MonthlyGoal, WeeklyTask, DailyGoal, DailyTask
 from app.schemas import RoadmapCreate, RoadmapUpdate, RoadmapScheduleUpdate
 
 
@@ -53,6 +53,9 @@ class RoadmapService:
         return (
             self.db.query(Roadmap)
             .options(
+                joinedload(Roadmap.monthly_goals)
+                .joinedload(MonthlyGoal.weekly_tasks)
+                .joinedload(WeeklyTask.daily_goals),
                 joinedload(Roadmap.monthly_goals)
                 .joinedload(MonthlyGoal.weekly_tasks)
                 .joinedload(WeeklyTask.daily_tasks)

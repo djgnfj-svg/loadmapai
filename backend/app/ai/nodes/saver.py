@@ -4,7 +4,7 @@ from uuid import UUID
 from dateutil.relativedelta import relativedelta
 from sqlalchemy.orm import Session
 
-from app.models import Roadmap, MonthlyGoal, WeeklyTask, DailyTask
+from app.models import Roadmap, MonthlyGoal, WeeklyTask, DailyGoal, DailyTask
 from app.ai.state import RoadmapGenerationState
 
 
@@ -71,6 +71,18 @@ def save_roadmap(state: RoadmapGenerationState, db: Session) -> RoadmapGeneratio
 
                 if daily_week and "days" in daily_week:
                     for day_data in daily_week["days"]:
+                        # Save daily goal if present
+                        goal_data = day_data.get("goal")
+                        if goal_data:
+                            daily_goal = DailyGoal(
+                                weekly_task_id=weekly_task.id,
+                                day_number=day_data["day_number"],
+                                title=goal_data.get("title", f"{day_data['day_number']}일차"),
+                                description=goal_data.get("description", ""),
+                            )
+                            db.add(daily_goal)
+
+                        # Save daily tasks
                         tasks = day_data.get("tasks", [])
                         # 기존 형식 호환 (tasks 배열 없이 title/description만 있는 경우)
                         if not tasks and "title" in day_data:
