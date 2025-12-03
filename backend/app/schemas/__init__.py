@@ -11,6 +11,11 @@ from app.schemas.auth import (
     TokenPayload,
     AuthResponse,
     RefreshTokenRequest,
+    RegisterResponse,
+    EmailVerificationRequest,
+    EmailVerificationResponse,
+    ResendVerificationRequest,
+    ResendVerificationResponse,
 )
 from app.schemas.roadmap import (
     DailyTaskBase,
@@ -62,6 +67,11 @@ __all__ = [
     "TokenPayload",
     "AuthResponse",
     "RefreshTokenRequest",
+    "RegisterResponse",
+    "EmailVerificationRequest",
+    "EmailVerificationResponse",
+    "ResendVerificationRequest",
+    "ResendVerificationResponse",
     # Roadmap
     "DailyTaskBase",
     "DailyTaskCreate",

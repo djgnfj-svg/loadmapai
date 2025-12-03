@@ -36,6 +36,14 @@ class Settings(BaseSettings):
     # URLs
     frontend_url: str = "http://localhost:3000"
 
+    # Email (SMTP)
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_user: str = ""  # Gmail 주소
+    smtp_password: str = ""  # Gmail 앱 비밀번호
+    smtp_from_name: str = "LoadmapAI"
+    email_verification_expire_hours: int = 24
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

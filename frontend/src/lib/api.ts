@@ -82,7 +82,7 @@ export const authApi = {
     api.post('/auth/login', data),
 
   register: (data: { name: string; email: string; password: string }) =>
-    api.post('/auth/register', data),
+    api.post<{ message: string; email: string }>('/auth/register', data),
 
   me: () => api.get('/auth/me'),
 
@@ -90,6 +90,12 @@ export const authApi = {
     api.patch('/auth/me', data),
 
   refresh: () => api.post('/auth/refresh'),
+
+  verifyEmail: (token: string) =>
+    api.post<{ success: boolean; message: string }>('/auth/verify-email', { token }),
+
+  resendVerification: (email: string) =>
+    api.post<{ success: boolean; message: string }>('/auth/resend-verification', { email }),
 };
 
 export const roadmapApi = {

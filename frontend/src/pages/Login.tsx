@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { authApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { Mail, Lock, AlertCircle } from 'lucide-react';
+import { Mail, Lock, AlertCircle, RefreshCw } from 'lucide-react';
 import type { AxiosError } from 'axios';
 
 export function Login() {
@@ -13,11 +13,16 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showResendOption, setShowResendOption] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [resendMessage, setResendMessage] = useState('');
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    setShowResendOption(false);
+    setResendMessage('');
 
     try {
       const response = await authApi.login({ email, password });
@@ -27,9 +32,33 @@ export function Login() {
       navigate('/roadmaps');
     } catch (err) {
       const axiosError = err as AxiosError<{ detail: string }>;
-      setError(axiosError.response?.data?.detail || '로그인에 실패했습니다.');
+      const detail = axiosError.response?.data?.detail || '';
+
+      // 이메일 미인증 에러 처리
+      if (axiosError.response?.status === 403 && detail.includes('not verified')) {
+        setError('이메일 인증이 필요합니다. 이메일을 확인해주세요.');
+        setShowResendOption(true);
+      } else {
+        setError(detail || '로그인에 실패했습니다.');
+      }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (isResending || !email) return;
+
+    setIsResending(true);
+    setResendMessage('');
+
+    try {
+      const response = await authApi.resendVerification(email);
+      setResendMessage(response.data.message);
+    } catch {
+      setResendMessage('이메일 발송에 실패했습니다.');
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -53,13 +82,34 @@ export function Login() {
 
           {error && (
             <div className={cn(
-              'mb-6 p-4 rounded-xl flex items-start gap-3',
+              'mb-6 p-4 rounded-xl',
               'bg-red-50 dark:bg-red-500/10',
               'border border-red-200 dark:border-red-500/30',
               'text-red-600 dark:text-red-400 text-sm'
             )}>
-              <AlertCircle className="w-5 h-5 flex-shrink-0" />
-              {error}
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p>{error}</p>
+                  {showResendOption && (
+                    <button
+                      type="button"
+                      onClick={handleResendVerification}
+                      disabled={isResending}
+                      className={cn(
+                        'mt-2 flex items-center gap-1.5 text-primary-600 dark:text-primary-400',
+                        'hover:underline disabled:opacity-50'
+                      )}
+                    >
+                      <RefreshCw className={cn('w-4 h-4', isResending && 'animate-spin')} />
+                      {isResending ? '발송 중...' : '인증 이메일 재발송'}
+                    </button>
+                  )}
+                  {resendMessage && (
+                    <p className="mt-2 text-green-600 dark:text-green-400">{resendMessage}</p>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 

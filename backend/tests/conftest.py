@@ -59,13 +59,31 @@ def client(db: Session) -> Generator[TestClient, None, None]:
 
 @pytest.fixture
 def test_user(db: Session) -> User:
-    """Create a test user."""
+    """Create a verified test user."""
     user = User(
         email="test@example.com",
         name="Test User",
         hashed_password=get_password_hash("testpassword123"),
         auth_provider=AuthProvider.EMAIL,
         is_active=True,
+        is_verified=True,  # 이메일 인증 완료된 사용자
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@pytest.fixture
+def unverified_user(db: Session) -> User:
+    """Create an unverified test user."""
+    user = User(
+        email="unverified@example.com",
+        name="Unverified User",
+        hashed_password=get_password_hash("testpassword123"),
+        auth_provider=AuthProvider.EMAIL,
+        is_active=True,
+        is_verified=False,  # 이메일 미인증 사용자
     )
     db.add(user)
     db.commit()

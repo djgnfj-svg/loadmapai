@@ -7,6 +7,8 @@ import {
   Home,
   Login,
   Register,
+  RegisterSuccess,
+  VerifyEmail,
   Dashboard,
   RoadmapCreate,
   RoadmapList,
@@ -66,6 +68,8 @@ function App() {
               <Route path="/" element={<PublicRoute><Home /></PublicRoute>} />
               <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
               <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+              <Route path="/register-success" element={<RegisterSuccess />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
               <Route
                 path="/dashboard"
                 element={

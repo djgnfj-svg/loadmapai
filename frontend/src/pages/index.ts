@@ -1,6 +1,8 @@
 export { Home } from './Home';
 export { Login } from './Login';
 export { Register } from './Register';
+export { RegisterSuccess } from './RegisterSuccess';
+export { VerifyEmail } from './VerifyEmail';
 export { Dashboard } from './Dashboard';
 export { RoadmapCreate } from './RoadmapCreate';
 export { RoadmapList } from './RoadmapList';
