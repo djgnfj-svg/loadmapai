@@ -1,4 +1,13 @@
-"""Unified LLM utilities for AI nodes."""
+"""Unified LLM utilities for AI nodes.
+
+Temperature Settings:
+- 0.7 (DEFAULT_CREATIVE_TEMP): 창의적 콘텐츠 생성 (로드맵, 질문 생성)
+- 0.5 (DEFAULT_ANALYTICAL_TEMP): 분석적 작업 (답변 분석, 분류)
+
+사용 지침:
+- 콘텐츠 생성: 0.7 사용 (다양성 필요)
+- 분석/분류: 0.5 사용 (일관성 필요)
+"""
 import json
 import logging
 import os
@@ -9,6 +18,10 @@ from langchain_core.messages import HumanMessage
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+# Temperature constants
+DEFAULT_CREATIVE_TEMP = 0.7   # 로드맵 생성, 질문 생성 등
+DEFAULT_ANALYTICAL_TEMP = 0.5  # 답변 분석, 분류 작업 등
 
 DEV_MODE = os.getenv("DEV_MODE", "true").lower() == "true"
 CLAUDE_MODEL = "claude-3-5-haiku-20241022" if DEV_MODE else "claude-sonnet-4-5-20250929"

@@ -71,51 +71,6 @@
 }
 
 @layer components {
-  /* Glass morphism effect */
-  .glass {
-    @apply bg-white/70 dark:bg-dark-800/70 backdrop-blur-xl border border-white/20 dark:border-dark-700/50;
-  }
-
-  .glass-card {
-    @apply bg-white/80 dark:bg-dark-800/80 backdrop-blur-lg rounded-2xl border border-gray-200/50 dark:border-dark-700/50 shadow-xl shadow-gray-200/20 dark:shadow-dark-900/50;
-  }
-
-  /* Gradient text */
-  .gradient-text {
-    @apply bg-gradient-to-r from-primary-500 via-accent-500 to-primary-600 bg-clip-text text-transparent;
-  }
-
-  /* Animated gradient background */
-  .gradient-bg {
-    @apply bg-gradient-to-br from-primary-500/10 via-accent-500/5 to-secondary-500/10 dark:from-primary-500/20 dark:via-accent-500/10 dark:to-secondary-500/20;
-  }
-
-  /* Card hover effect */
-  .card-hover {
-    @apply transition-all duration-300 hover:shadow-xl hover:shadow-primary-500/10 dark:hover:shadow-primary-500/20 hover:-translate-y-1;
-  }
-
-  /* Button glow effect */
-  .btn-glow {
-    @apply relative overflow-hidden;
-  }
-
-  .btn-glow::before {
-    content: '';
-    @apply absolute inset-0 bg-gradient-to-r from-primary-400/0 via-primary-400/30 to-primary-400/0 -translate-x-full animate-shimmer;
-    background-size: 200% 100%;
-  }
-
-  /* Skeleton loading */
-  .skeleton {
-    @apply bg-gray-200 dark:bg-dark-700 animate-pulse rounded;
-  }
-
-  /* Focus ring */
-  .focus-ring {
-    @apply focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-dark-900;
-  }
-
   /* Scrollbar styling */
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;

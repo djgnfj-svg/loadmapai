@@ -97,6 +97,7 @@ ANSWER_ANALYSIS_PROMPT = """당신은 학습 목표 설정을 돕는 전문 코�
             "prior_knowledge": ["사전 지식"]
         }},
         "motivation": "동기",
+        "learning_style": "선호 학습 스타일 (기초부터/실전위주/균형 등)",
         "challenges": ["예상 어려움1", "예상 어려움2"]
     }}
 }}

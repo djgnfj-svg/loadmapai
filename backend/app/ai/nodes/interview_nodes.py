@@ -35,7 +35,10 @@ def question_generator(state: InterviewState) -> InterviewState:
 
 
 def answer_analyzer(state: InterviewState) -> InterviewState:
-    """Analyze answers and determine if follow-up is needed."""
+    """Analyze answers and determine if follow-up is needed.
+
+    Uses lower temperature (0.5) for consistent, deterministic analysis results.
+    """
     qa_pairs = _format_qa_pairs(state["questions"], state["answers"])
 
     prompt = ANSWER_ANALYSIS_PROMPT.format(
@@ -46,6 +49,7 @@ def answer_analyzer(state: InterviewState) -> InterviewState:
     )
 
     try:
+        # 분석 작업이므로 낮은 온도(0.5) 사용 - 일관성 중요
         result = invoke_llm_json(prompt, temperature=0.5)
 
         if state["round"] >= 3:

@@ -215,16 +215,3 @@ class RoadmapService:
         if roadmap and roadmap.is_finalized:
             roadmap.edit_count_after_finalize += 1
             self.db.commit()
-
-
-# Re-export other services for backward compatibility
-from app.services.daily_task_service import DailyTaskService
-from app.services.weekly_task_service import WeeklyTaskService
-from app.services.monthly_goal_service import MonthlyGoalService
-
-__all__ = [
-    "RoadmapService",
-    "DailyTaskService",
-    "WeeklyTaskService",
-    "MonthlyGoalService",
-]
