@@ -20,13 +20,13 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # Create enums
-    roadmap_mode_enum = postgresql.ENUM('planning', 'learning', name='roadmapmode', create_type=False)
+    roadmap_mode_enum = postgresql.ENUM('PLANNING', 'LEARNING', name='roadmapmode', create_type=False)
     roadmap_mode_enum.create(op.get_bind(), checkfirst=True)
 
-    roadmap_status_enum = postgresql.ENUM('active', 'completed', 'paused', name='roadmapstatus', create_type=False)
+    roadmap_status_enum = postgresql.ENUM('ACTIVE', 'COMPLETED', 'PAUSED', name='roadmapstatus', create_type=False)
     roadmap_status_enum.create(op.get_bind(), checkfirst=True)
 
-    task_status_enum = postgresql.ENUM('pending', 'in_progress', 'completed', name='taskstatus', create_type=False)
+    task_status_enum = postgresql.ENUM('PENDING', 'IN_PROGRESS', 'COMPLETED', name='taskstatus', create_type=False)
     task_status_enum.create(op.get_bind(), checkfirst=True)
 
     # Create roadmaps table
@@ -40,8 +40,8 @@ def upgrade() -> None:
         sa.Column('duration_months', sa.Integer(), nullable=False),
         sa.Column('start_date', sa.Date(), nullable=False),
         sa.Column('end_date', sa.Date(), nullable=False),
-        sa.Column('mode', roadmap_mode_enum, server_default='planning', nullable=False),
-        sa.Column('status', roadmap_status_enum, server_default='active', nullable=False),
+        sa.Column('mode', roadmap_mode_enum, server_default='PLANNING', nullable=False),
+        sa.Column('status', roadmap_status_enum, server_default='ACTIVE', nullable=False),
         sa.Column('progress', sa.Integer(), server_default='0', nullable=False),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False),
@@ -56,7 +56,7 @@ def upgrade() -> None:
         sa.Column('month_number', sa.Integer(), nullable=False),
         sa.Column('title', sa.String(200), nullable=False),
         sa.Column('description', sa.Text(), nullable=True),
-        sa.Column('status', task_status_enum, server_default='pending', nullable=False),
+        sa.Column('status', task_status_enum, server_default='PENDING', nullable=False),
         sa.Column('progress', sa.Integer(), server_default='0', nullable=False),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False),
@@ -71,7 +71,7 @@ def upgrade() -> None:
         sa.Column('week_number', sa.Integer(), nullable=False),
         sa.Column('title', sa.String(200), nullable=False),
         sa.Column('description', sa.Text(), nullable=True),
-        sa.Column('status', task_status_enum, server_default='pending', nullable=False),
+        sa.Column('status', task_status_enum, server_default='PENDING', nullable=False),
         sa.Column('progress', sa.Integer(), server_default='0', nullable=False),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False),
@@ -86,7 +86,7 @@ def upgrade() -> None:
         sa.Column('day_number', sa.Integer(), nullable=False),
         sa.Column('title', sa.String(200), nullable=False),
         sa.Column('description', sa.Text(), nullable=True),
-        sa.Column('status', task_status_enum, server_default='pending', nullable=False),
+        sa.Column('status', task_status_enum, server_default='PENDING', nullable=False),
         sa.Column('is_checked', sa.Boolean(), server_default='false', nullable=False),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False),
@@ -101,11 +101,11 @@ def downgrade() -> None:
     op.drop_table('roadmaps')
 
     # Drop enums
-    task_status_enum = postgresql.ENUM('pending', 'in_progress', 'completed', name='taskstatus')
+    task_status_enum = postgresql.ENUM('PENDING', 'IN_PROGRESS', 'COMPLETED', name='taskstatus')
     task_status_enum.drop(op.get_bind(), checkfirst=True)
 
-    roadmap_status_enum = postgresql.ENUM('active', 'completed', 'paused', name='roadmapstatus')
+    roadmap_status_enum = postgresql.ENUM('ACTIVE', 'COMPLETED', 'PAUSED', name='roadmapstatus')
     roadmap_status_enum.drop(op.get_bind(), checkfirst=True)
 
-    roadmap_mode_enum = postgresql.ENUM('planning', 'learning', name='roadmapmode')
+    roadmap_mode_enum = postgresql.ENUM('PLANNING', 'LEARNING', name='roadmapmode')
     roadmap_mode_enum.drop(op.get_bind(), checkfirst=True)

@@ -20,7 +20,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # Create auth_provider enum
-    auth_provider_enum = postgresql.ENUM('email', 'google', 'github', name='authprovider', create_type=False)
+    auth_provider_enum = postgresql.ENUM('EMAIL', 'GOOGLE', 'GITHUB', name='authprovider', create_type=False)
     auth_provider_enum.create(op.get_bind(), checkfirst=True)
 
     op.create_table(
@@ -30,7 +30,7 @@ def upgrade() -> None:
         sa.Column('name', sa.String(100), nullable=False),
         sa.Column('hashed_password', sa.String(255), nullable=True),
         sa.Column('avatar_url', sa.String(500), nullable=True),
-        sa.Column('auth_provider', auth_provider_enum, server_default='email', nullable=False),
+        sa.Column('auth_provider', auth_provider_enum, server_default='EMAIL', nullable=False),
         sa.Column('provider_id', sa.String(255), nullable=True),
         sa.Column('is_active', sa.Boolean(), server_default='true', nullable=False),
         sa.Column('is_verified', sa.Boolean(), server_default='false', nullable=False),
@@ -43,5 +43,5 @@ def downgrade() -> None:
     op.drop_table('users')
 
     # Drop enum type
-    auth_provider_enum = postgresql.ENUM('email', 'google', 'github', name='authprovider')
+    auth_provider_enum = postgresql.ENUM('EMAIL', 'GOOGLE', 'GITHUB', name='authprovider')
     auth_provider_enum.drop(op.get_bind(), checkfirst=True)
