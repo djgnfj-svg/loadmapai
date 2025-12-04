@@ -2,6 +2,19 @@
 
 AI 기반 학습 로드맵 관리 플랫폼
 
+## 데모
+
+**서비스 URL**: https://reseeall.com
+
+### 테스트 계정
+
+| 항목 | 값 |
+|------|-----|
+| ID (이메일) | `test@reseeall.com` |
+| Password | `Test1234!` |
+
+> 테스트 계정으로 로그인하여 서비스를 체험해보실 수 있습니다.
+
 ## 소개
 
 LoadmapAI는 AI를 활용하여 개인화된 학습 로드맵을 생성하고 관리하는 플랫폼입니다. 학습 목표를 입력하면 AI가 월별, 주별, 일별 학습 계획을 자동으로 생성해줍니다.
@@ -180,7 +193,6 @@ LoadmapAI/
 서버 실행 후 아래 URL에서 API 문서를 확인할 수 있습니다:
 
 - **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
 
 ### 주요 API 엔드포인트
 
@@ -196,9 +208,5 @@ LoadmapAI/
 
 ## 제약 사항
 
-- **로드맵 기간**: 1-6개월
+- **로드맵 기간**: 1-3개월
 - **일일 생성 제한 (베타)**: 하루 1개 로드맵 생성 가능 (환경변수 `BETA_DAILY_ROADMAP_LIMIT`으로 조정, 0=무제한)
-
-## 라이선스
-
-MIT License
