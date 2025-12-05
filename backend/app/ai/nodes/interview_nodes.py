@@ -6,6 +6,7 @@ from app.ai.llm import invoke_llm_json
 from app.ai.prompts.interview_prompts import (
     SMART_QUESTIONS_PROMPT,
     ANSWER_ANALYSIS_PROMPT,
+    format_previous_questions,
 )
 
 logger = logging.getLogger(__name__)
@@ -40,12 +41,16 @@ def answer_analyzer(state: InterviewState) -> InterviewState:
     Uses lower temperature (0.5) for consistent, deterministic analysis results.
     """
     qa_pairs = _format_qa_pairs(state["questions"], state["answers"])
+    previous_question_summary = format_previous_questions(
+        [{"question": q["question"]} for q in state["questions"]]
+    )
 
     prompt = ANSWER_ANALYSIS_PROMPT.format(
         topic=state["topic"],
         duration_months=state["duration_months"],
         round=state["round"],
         qa_pairs=qa_pairs,
+        previous_question_summary=previous_question_summary,
     )
 
     try:

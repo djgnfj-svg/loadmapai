@@ -1,4 +1,6 @@
+import json
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
@@ -29,15 +31,14 @@ from app.schemas import (
     DailyTaskResponse,
     DailyTaskReorderRequest,
 )
-from app.services.roadmap_service import (
-    RoadmapService,
-    DailyTaskService,
-    MonthlyGoalService,
-    WeeklyTaskService,
-)
+from app.services.roadmap_service import RoadmapService
+from app.services.daily_task_service import DailyTaskService
+from app.services.monthly_goal_service import MonthlyGoalService
+from app.services.weekly_task_service import WeeklyTaskService
 from app.services.daily_generation_service import DailyGenerationService
 from app.api.deps import get_current_user
 from app.ai.roadmap_graph import generate_roadmap
+from app.ai.roadmap_stream import generate_roadmap_streaming
 
 
 # ============ Request/Response Models ============
@@ -291,6 +292,76 @@ async def generate_roadmap_endpoint(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"로드맵 생성 중 오류가 발생했습니다: {str(e)}",
         )
+
+
+@router.post("/generate-stream")
+async def generate_roadmap_stream(
+    data: RoadmapGenerateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Generate a complete roadmap using AI with SSE streaming.
+
+    실시간으로 로드맵 생성 과정을 스트리밍합니다.
+    월별 → 해당 월의 주간 순서로 생성하여 각 단계마다 이벤트를 발송합니다.
+
+    SSE Events:
+    - title_ready: 제목/설명 생성 완료
+    - month_ready: 월별 목표 생성 완료
+    - weeks_ready: 해당 월의 주간 과제 생성 완료
+    - progress: 진행률 업데이트
+    - warning: 경고 (부분 실패)
+    - error: 에러 발생
+    - complete: 전체 완료
+
+    Returns:
+        StreamingResponse: SSE 이벤트 스트림
+    """
+    # 베타 일일 제한 체크
+    limit = settings.beta_daily_roadmap_limit
+    if limit > 0:
+        today_count = db.query(Roadmap).filter(
+            Roadmap.user_id == current_user.id,
+            func.date(Roadmap.created_at) == date.today()
+        ).count()
+
+        if today_count >= limit:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"일일 로드맵 생성 한도를 초과했습니다. (오늘 {today_count}개 생성, 제한: {limit}개)",
+            )
+
+    async def event_generator():
+        """SSE 이벤트 생성기."""
+        try:
+            async for event in generate_roadmap_streaming(
+                topic=data.topic,
+                duration_months=data.duration_months,
+                start_date=data.start_date,
+                mode=data.mode,
+                user_id=str(current_user.id),
+                db=db,
+                interview_context=data.interview_context,
+            ):
+                event_type = event["type"]
+                event_data = json.dumps(event["data"], ensure_ascii=False, default=str)
+                yield f"event: {event_type}\ndata: {event_data}\n\n"
+        except Exception as e:
+            error_data = json.dumps({
+                "message": str(e),
+                "recoverable": False
+            }, ensure_ascii=False)
+            yield f"event: error\ndata: {error_data}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # nginx 버퍼링 비활성화
+        }
+    )
 
 
 # ============ Roadmap Finalization & Schedule ============

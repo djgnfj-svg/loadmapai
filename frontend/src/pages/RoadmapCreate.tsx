@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, addMonths } from 'date-fns';
-import { Calendar, Clock, ArrowLeft, ArrowRight, Sparkles, Loader2, AlertTriangle } from 'lucide-react';
+import { Calendar, Clock, ArrowLeft, ArrowRight, Loader2, AlertTriangle, Edit3, Play } from 'lucide-react';
 import { Card, CardContent } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { InterviewForm } from '@/components/interview';
+import { StreamingPreview } from '@/components/roadmap/StreamingPreview';
 import { useInterview } from '@/hooks/useInterview';
+import { useStreamingGeneration } from '@/hooks/useStreamingGeneration';
 import { roadmapApi, getErrorMessage } from '@/lib/api';
 import type { InterviewAnswer, InterviewContext } from '@/types/interview';
 
@@ -146,41 +148,6 @@ function DurationSelection({
   );
 }
 
-function GeneratingState({ topic }: { topic: string }) {
-  return (
-    <div className="py-12 space-y-6">
-      <div className="text-center">
-        <div className="relative inline-flex mb-6">
-          <div className="p-4 rounded-full bg-primary-100 dark:bg-primary-500/20">
-            <Sparkles className="h-10 w-10 text-primary-600 dark:text-primary-400" />
-          </div>
-          <div className="absolute -bottom-1 -right-1">
-            <Loader2 className="h-6 w-6 text-primary-500 animate-spin" />
-          </div>
-        </div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-          AI가 맞춤형 로드맵을 생성 중입니다
-        </h2>
-        <p className="text-gray-500 dark:text-gray-400">
-          "{topic}"에 대한 개인 맞춤형 계획을 만들고 있어요
-        </p>
-      </div>
-
-      <div className="max-w-xs mx-auto">
-        <div className="h-2 bg-gray-200 dark:bg-dark-600 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-primary-500 rounded-full animate-pulse"
-            style={{ width: '60%' }}
-          />
-        </div>
-        <p className="text-center text-sm text-gray-400 dark:text-gray-500 mt-2">
-          잠시만 기다려주세요...
-        </p>
-      </div>
-    </div>
-  );
-}
-
 export function RoadmapCreate() {
   const navigate = useNavigate();
 
@@ -205,6 +172,9 @@ export function RoadmapCreate() {
 
   // Interview hook
   const interview = useInterview();
+
+  // Streaming generation hook
+  const streaming = useStreamingGeneration();
 
   // Check daily limit on mount
   useEffect(() => {
@@ -232,22 +202,15 @@ export function RoadmapCreate() {
     setIsGenerating(true);
     setError(null);
 
-    try {
-      const response = await roadmapApi.generate({
-        topic: formData.topic,
-        mode: 'PLANNING',
-        duration_months: formData.duration_months,
-        start_date: formData.start_date,
-        interview_context: interviewContext as unknown as Record<string, unknown>,
-      });
-
-      navigate(`/roadmaps/${response.data.roadmap_id}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
-      setStep('interview');
-      setIsGenerating(false);
-    }
-  }, [formData.topic, formData.duration_months, formData.start_date, navigate]);
+    // 스트리밍 생성 시작
+    streaming.startGeneration({
+      topic: formData.topic,
+      mode: 'PLANNING',
+      duration_months: formData.duration_months,
+      start_date: formData.start_date,
+      interview_context: interviewContext as unknown as Record<string, unknown>,
+    });
+  }, [formData.topic, formData.duration_months, formData.start_date, streaming]);
 
   const canProceed = () => {
     switch (step) {
@@ -358,13 +321,113 @@ export function RoadmapCreate() {
     );
   }
 
-  // Generating step
+  // Generating step with streaming
   if (step === 'generating') {
+    // 스트리밍 에러 발생 시
+    if (streaming.isError) {
+      return (
+        <div className="max-w-2xl mx-auto">
+          <Card variant="bordered">
+            <CardContent>
+              <div className="py-12 space-y-6">
+                <div className="text-center">
+                  <div className="inline-flex p-4 rounded-full bg-red-100 dark:bg-red-500/20 mb-6">
+                    <AlertTriangle className="h-10 w-10 text-red-600 dark:text-red-400" />
+                  </div>
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                    로드맵 생성 실패
+                  </h2>
+                  <p className="text-gray-500 dark:text-gray-400 mb-4">
+                    {streaming.error || '알 수 없는 오류가 발생했습니다.'}
+                  </p>
+                </div>
+                <div className="flex justify-center gap-3">
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      streaming.reset();
+                      setStep('interview');
+                      setIsGenerating(false);
+                      generationAttemptedRef.current = false;
+                    }}
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-1" />
+                    다시 시도
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    // 스트리밍 완료 시
+    if (streaming.isComplete && streaming.roadmapId) {
+      return (
+        <div className="max-w-3xl mx-auto">
+          <Card variant="bordered">
+            <CardContent>
+              <StreamingPreview
+                title={streaming.title}
+                description={streaming.description}
+                months={streaming.months}
+                progress={streaming.progress}
+                isComplete={true}
+                isStreaming={false}
+              />
+
+              {/* 완료 후 액션 버튼 */}
+              <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => navigate(`/roadmaps/${streaming.roadmapId}?edit=true`)}
+                >
+                  <Edit3 className="h-4 w-4 mr-2" />
+                  수정하기
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={() => navigate(`/roadmaps/${streaming.roadmapId}`)}
+                >
+                  <Play className="h-4 w-4 mr-2" />
+                  로드맵 확인 & 시작
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    // 스트리밍 진행 중
     return (
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-3xl mx-auto">
         <Card variant="bordered">
           <CardContent>
-            <GeneratingState topic={formData.topic} />
+            <StreamingPreview
+              title={streaming.title}
+              description={streaming.description}
+              months={streaming.months}
+              progress={streaming.progress}
+              isComplete={false}
+              isStreaming={streaming.isStreaming || streaming.isConnecting}
+            />
+
+            {/* 취소 버튼 */}
+            <div className="mt-6 flex justify-center">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  streaming.cancel();
+                  setStep('interview');
+                  setIsGenerating(false);
+                  generationAttemptedRef.current = false;
+                }}
+              >
+                취소
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
