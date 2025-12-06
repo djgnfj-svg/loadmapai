@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { roadmapApi } from '@/lib/api';
-import type { Roadmap, MonthlyGoal, WeeklyTask, DailyTask, RoadmapFull, RoadmapWithMonthly } from '@/types';
+import type { Roadmap, MonthlyGoal, WeeklyTask, DailyTask, RoadmapFull, RoadmapWithMonthly, UnifiedViewResponse } from '@/types';
 
 export function useRoadmaps(params?: { skip?: number; limit?: number }) {
   return useQuery({
@@ -161,5 +161,27 @@ export function useHasDailyTasks(weeklyTaskId: string) {
       return response.data as { has_daily_tasks: boolean; weekly_task_id: string };
     },
     enabled: !!weeklyTaskId,
+  });
+}
+
+export function useUnifiedToday(targetDate?: string) {
+  return useQuery({
+    queryKey: ['unified-today', targetDate],
+    queryFn: async () => {
+      const response = await roadmapApi.getUnifiedToday(targetDate);
+      return response.data as UnifiedViewResponse;
+    },
+  });
+}
+
+export function useToggleDailyTaskUnified() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: roadmapApi.toggleDailyTask,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['unified-today'] });
+      queryClient.invalidateQueries({ queryKey: ['roadmaps'] });
+    },
   });
 }

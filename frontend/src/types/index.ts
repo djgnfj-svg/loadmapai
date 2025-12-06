@@ -130,3 +130,63 @@ export interface FinalizeResponse {
   finalized_at?: string;
   message: string;
 }
+
+// Unified View Types
+export interface TodayDailyTask {
+  id: string;
+  title: string;
+  description: string | null;
+  day_number: number;
+  order: number;
+  is_checked: boolean;
+  actual_date: string;
+
+  // Roadmap context
+  roadmap_id: string;
+  roadmap_title: string;
+  roadmap_topic: string;
+
+  // Weekly task context
+  weekly_task_id: string;
+  weekly_task_title: string;
+
+  // Monthly goal context
+  monthly_goal_id: string;
+  monthly_goal_title: string;
+}
+
+export interface WeeklyTaskSummary {
+  id: string;
+  title: string;
+  description: string | null;
+  week_number: number;
+  progress: number;
+
+  // Roadmap context
+  roadmap_id: string;
+  roadmap_title: string;
+  roadmap_topic: string;
+
+  // Monthly goal context
+  monthly_goal_id: string;
+  monthly_goal_title: string;
+
+  // Daily tasks
+  daily_tasks: TodayDailyTask[];
+
+  // Date range
+  week_start: string;
+  week_end: string;
+}
+
+export interface UnifiedViewResponse {
+  target_date: string;
+  today_tasks: TodayDailyTask[];
+  current_week: WeeklyTaskSummary[];
+
+  // Statistics
+  today_total: number;
+  today_completed: number;
+  week_total: number;
+  week_completed: number;
+}

@@ -36,6 +36,8 @@ from app.services.daily_task_service import DailyTaskService
 from app.services.monthly_goal_service import MonthlyGoalService
 from app.services.weekly_task_service import WeeklyTaskService
 from app.services.daily_generation_service import DailyGenerationService
+from app.services.unified_view_service import UnifiedViewService
+from app.schemas.unified_view import TodayDailyTask, WeeklyTaskSummary, UnifiedViewResponse
 from app.api.deps import get_current_user
 from app.ai.roadmap_graph import generate_roadmap
 from app.ai.roadmap_stream import generate_roadmap_streaming
@@ -80,6 +82,111 @@ async def list_roadmaps(
     """Get list of user's roadmaps."""
     service = RoadmapService(db)
     return service.get_roadmaps(current_user.id, skip, limit)
+
+
+@router.get("/unified/today", response_model=UnifiedViewResponse)
+async def get_unified_today_view(
+    target_date: Optional[date] = Query(None, description="조회할 날짜 (기본: 오늘)"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    통합 오늘 뷰 - 모든 활성 로드맵의 오늘 할 일과 이번 주 목표 조회.
+
+    Returns:
+        - today_tasks: 오늘 해야 할 일일 태스크 목록
+        - current_week: 현재 진행 중인 주간 목표들과 해당 주의 일일 태스크
+        - 통계 정보 (완료/전체 개수)
+    """
+    service = UnifiedViewService(db)
+    result = service.get_unified_view(current_user.id, target_date)
+
+    # Convert today tasks
+    today_tasks = []
+    for item in result["today_tasks"]:
+        task = item["task"]
+        roadmap = item["roadmap"]
+        monthly = item["monthly_goal"]
+        weekly = item["weekly_task"]
+
+        today_tasks.append(TodayDailyTask(
+            id=task.id,
+            title=task.title,
+            description=task.description,
+            day_number=task.day_number,
+            order=task.order,
+            is_checked=task.is_checked,
+            actual_date=item["actual_date"],
+            roadmap_id=roadmap.id,
+            roadmap_title=roadmap.title,
+            roadmap_topic=roadmap.topic,
+            weekly_task_id=weekly.id,
+            weekly_task_title=weekly.title,
+            monthly_goal_id=monthly.id,
+            monthly_goal_title=monthly.title,
+        ))
+
+    # Convert current week data
+    current_week = []
+    for item in result["current_week"]:
+        weekly = item["weekly_task"]
+        roadmap = item["roadmap"]
+        monthly = item["monthly_goal"]
+
+        daily_tasks_converted = [
+            TodayDailyTask(
+                id=dt["task"].id,
+                title=dt["task"].title,
+                description=dt["task"].description,
+                day_number=dt["task"].day_number,
+                order=dt["task"].order,
+                is_checked=dt["task"].is_checked,
+                actual_date=dt["actual_date"],
+                roadmap_id=roadmap.id,
+                roadmap_title=roadmap.title,
+                roadmap_topic=roadmap.topic,
+                weekly_task_id=weekly.id,
+                weekly_task_title=weekly.title,
+                monthly_goal_id=monthly.id,
+                monthly_goal_title=monthly.title,
+            )
+            for dt in item["daily_tasks"]
+        ]
+
+        current_week.append(WeeklyTaskSummary(
+            id=weekly.id,
+            title=weekly.title,
+            description=weekly.description,
+            week_number=weekly.week_number,
+            progress=weekly.progress,
+            roadmap_id=roadmap.id,
+            roadmap_title=roadmap.title,
+            roadmap_topic=roadmap.topic,
+            monthly_goal_id=monthly.id,
+            monthly_goal_title=monthly.title,
+            daily_tasks=daily_tasks_converted,
+            week_start=item["week_start"],
+            week_end=item["week_end"],
+        ))
+
+    # Calculate statistics
+    today_total = len(today_tasks)
+    today_completed = sum(1 for t in today_tasks if t.is_checked)
+    week_total = sum(len(w.daily_tasks) for w in current_week)
+    week_completed = sum(
+        sum(1 for dt in w.daily_tasks if dt.is_checked)
+        for w in current_week
+    )
+
+    return UnifiedViewResponse(
+        target_date=result["target_date"],
+        today_tasks=today_tasks,
+        current_week=current_week,
+        today_total=today_total,
+        today_completed=today_completed,
+        week_total=week_total,
+        week_completed=week_completed,
+    )
 
 
 @router.post("", response_model=RoadmapResponse, status_code=status.HTTP_201_CREATED)

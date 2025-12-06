@@ -53,6 +53,11 @@ from app.schemas.interview import (
     InterviewSubmitRequest,
     InterviewSubmitResponse,
 )
+from app.schemas.unified_view import (
+    TodayDailyTask,
+    WeeklyTaskSummary,
+    UnifiedViewResponse,
+)
 
 __all__ = [
     # User
@@ -106,4 +111,8 @@ __all__ = [
     "InterviewStartResponse",
     "InterviewSubmitRequest",
     "InterviewSubmitResponse",
+    # Unified View
+    "TodayDailyTask",
+    "WeeklyTaskSummary",
+    "UnifiedViewResponse",
 ]

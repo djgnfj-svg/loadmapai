@@ -192,6 +192,12 @@ export const roadmapApi = {
 
   reorderDailyTasks: (data: { tasks: { id: string; order: number }[] }) =>
     api.post('/roadmaps/daily-tasks/reorder', data),
+
+  // Unified View
+  getUnifiedToday: (targetDate?: string) =>
+    api.get('/roadmaps/unified/today', {
+      params: targetDate ? { target_date: targetDate } : undefined,
+    }),
 };
 
 export const interviewApi = {
