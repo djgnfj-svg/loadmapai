@@ -136,6 +136,10 @@ async def complete_day(
         if q.user_answer
     ]
 
+    # Check if all days in the week are completed
+    week_info = service.get_week_info(feedback.weekly_task_id, current_user.id)
+    week_completed = week_info["is_completed"]
+
     return CompleteDayResponse(
         feedback=DailyFeedbackResponse(
             id=feedback.id,
@@ -152,7 +156,7 @@ async def complete_day(
             created_at=feedback.created_at,
         ),
         next_day_available=feedback.is_passed,
-        week_completed=False,  # TODO: Check if all days are completed
+        week_completed=week_completed,
     )
 
 
