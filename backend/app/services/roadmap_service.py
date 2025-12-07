@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 from dateutil.relativedelta import relativedelta
 
-from app.models import Roadmap, MonthlyGoal, WeeklyTask, DailyGoal, DailyTask
+from app.models import Roadmap, MonthlyGoal, WeeklyTask
 from app.schemas import RoadmapCreate, RoadmapUpdate, RoadmapScheduleUpdate
 
 

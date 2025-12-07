@@ -13,7 +13,7 @@ N. DB 저장 → complete
 """
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from typing import AsyncGenerator, Any
+from typing import AsyncGenerator
 from uuid import UUID
 
 from dateutil.relativedelta import relativedelta

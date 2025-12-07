@@ -4,7 +4,7 @@ from fastapi import HTTPException, status
 from typing import Optional
 from uuid import UUID
 
-from app.models import Roadmap, MonthlyGoal, TaskStatus
+from app.models import Roadmap, MonthlyGoal
 from app.schemas import MonthlyGoalCreate, MonthlyGoalUpdate
 
 

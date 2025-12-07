@@ -16,7 +16,6 @@ from app.models.user_answer import UserAnswer
 from app.models.daily_feedback import DailyFeedback
 from app.ai.llm import invoke_llm_json, DEFAULT_ANALYTICAL_TEMP, DEFAULT_CREATIVE_TEMP
 from app.ai.prompts.learning_templates import (
-    LEARNING_DAILY_QUESTIONS_PROMPT,
     GRADING_PROMPT,
     DAILY_FEEDBACK_PROMPT,
     REVIEW_QUESTIONS_PROMPT,
@@ -127,7 +126,7 @@ class LearningService:
         self, question_id: UUID, user_id: UUID, answer_text: str
     ) -> UserAnswer:
         """Submit an answer for a question (no grading yet)."""
-        question = self.get_question(question_id, user_id)
+        self.get_question(question_id, user_id)  # Verify ownership
 
         # Check if already answered
         existing = (
@@ -312,7 +311,7 @@ class LearningService:
                 "key_points_matched": result.get("key_points_matched", []),
                 "key_points_missed": result.get("key_points_missed", []),
             }
-        except Exception as e:
+        except Exception:
             # Fallback: simple string matching for non-essay
             is_correct = False
             if question.question_type == QuestionType.MULTIPLE_CHOICE:
@@ -373,7 +372,7 @@ class LearningService:
                 "improvements": result.get("improvements", []),
                 "tomorrow_focus": result.get("tomorrow_focus", ""),
             }
-        except Exception as e:
+        except Exception:
             # Fallback feedback
             if accuracy_rate >= 0.8:
                 return {
@@ -555,7 +554,7 @@ class LearningService:
         try:
             result = invoke_llm_json(prompt, temperature=DEFAULT_CREATIVE_TEMP)
             return result
-        except Exception as e:
+        except Exception:
             # Fallback: create simple review questions from wrong ones
             return {
                 "review_questions": [

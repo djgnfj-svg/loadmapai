@@ -110,4 +110,4 @@ class RoadmapNotFoundException(NotFoundException):
     """Raised when a roadmap is not found."""
 
     def __init__(self, roadmap_id: str = None):
-        super().__init__(resource="로드맵", detail=f"로드맵을 찾을 수 없습니다.")
+        super().__init__(resource="로드맵", detail="로드맵을 찾을 수 없습니다.")

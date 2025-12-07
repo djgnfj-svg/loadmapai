@@ -172,7 +172,7 @@ class DailyGenerationService:
         try:
             result = invoke_llm_json(prompt, temperature=0.7)
             return result.get("days", [])
-        except Exception as e:
+        except Exception:
             # Fallback: generate basic daily tasks
             return [
                 {
@@ -267,7 +267,7 @@ class DailyGenerationService:
                 "tasks": [],  # No traditional tasks in LEARNING mode
                 "questions": questions,  # Questions instead
             }
-        except Exception as e:
+        except Exception:
             # Fallback: generate basic questions
             return {
                 "day_number": day_number,

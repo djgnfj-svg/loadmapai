@@ -1,5 +1,4 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional
 
 from app.schemas.user import UserResponse
 
