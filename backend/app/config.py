@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     smtp_from_name: str = "LoadmapAI"
     email_verification_expire_hours: int = 24
 
+    # Google OAuth
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_redirect_uri: str = "http://localhost:8000/api/v1/oauth/google/callback"
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

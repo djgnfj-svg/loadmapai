@@ -1,0 +1,14 @@
+# LoadmapAI robots.txt
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /oauth/
+Disallow: /verify-email
+Disallow: /reset-password
+
+# Sitemap
+Sitemap: https://loadmapai.com/sitemap.xml
+
+# Crawl-delay (optional, for polite crawlers)
+Crawl-delay: 1
