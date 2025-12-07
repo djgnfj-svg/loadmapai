@@ -1,6 +1,6 @@
 import { MonthlyGoalView } from './MonthlyGoalView';
 import { Skeleton } from '@/components/common';
-import type { RoadmapFull, DailyTask, WeeklyTask, MonthlyGoal } from '@/types';
+import type { RoadmapFull, DailyTask, WeeklyTask, MonthlyGoal, RoadmapMode } from '@/types';
 
 interface DrilldownContainerProps {
   roadmap: RoadmapFull;
@@ -12,6 +12,7 @@ interface DrilldownContainerProps {
   onEditMonthlyGoal?: (goal: MonthlyGoal) => void;
   onGenerateDailyTasks?: (weeklyTaskId: string) => void;
   generatingWeekId?: string | null;
+  mode?: RoadmapMode;
 }
 
 export function DrilldownContainer({
@@ -24,6 +25,7 @@ export function DrilldownContainer({
   onEditMonthlyGoal,
   onGenerateDailyTasks,
   generatingWeekId,
+  mode,
 }: DrilldownContainerProps) {
   if (isLoading) {
     return (
@@ -67,6 +69,7 @@ export function DrilldownContainer({
           <MonthlyGoalView
             key={month.id}
             month={month}
+            roadmapId={roadmap.id}
             startDate={roadmap.start_date}
             defaultExpanded={false}
             onToggleDailyTask={onToggleDailyTask}
@@ -77,6 +80,7 @@ export function DrilldownContainer({
             onGenerateDailyTasks={onGenerateDailyTasks}
             generatingWeekId={generatingWeekId}
             previousMonthLastWeekProgress={previousMonthLastWeekProgress}
+            mode={mode || roadmap.mode}
           />
         );
       })}

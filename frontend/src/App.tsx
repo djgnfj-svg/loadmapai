@@ -13,6 +13,7 @@ import {
   RoadmapCreate,
   RoadmapList,
   RoadmapDetail,
+  LearningPage,
   NotFound,
   Settings,
 } from '@/pages';
@@ -99,6 +100,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <RoadmapDetail />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/roadmaps/:id/learn/:dailyTaskId"
+                element={
+                  <ProtectedRoute>
+                    <LearningPage />
                   </ProtectedRoute>
                 }
               />

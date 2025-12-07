@@ -5,10 +5,11 @@ import { ko } from 'date-fns/locale';
 import { CircularProgress } from '@/components/common/Progress';
 import { WeeklyTaskView } from './WeeklyTaskView';
 import { cn } from '@/lib/utils';
-import type { MonthlyGoalWithWeekly, DailyTask, WeeklyTask, MonthlyGoal } from '@/types';
+import type { MonthlyGoalWithWeekly, DailyTask, WeeklyTask, MonthlyGoal, RoadmapMode } from '@/types';
 
 interface MonthlyGoalViewProps {
   month: MonthlyGoalWithWeekly;
+  roadmapId: string;
   startDate: string;
   defaultExpanded?: boolean;
   onToggleDailyTask: (taskId: string) => void;
@@ -19,10 +20,12 @@ interface MonthlyGoalViewProps {
   onGenerateDailyTasks?: (weeklyTaskId: string) => void;
   generatingWeekId?: string | null;
   previousMonthLastWeekProgress?: number | null;
+  mode?: RoadmapMode;
 }
 
 export function MonthlyGoalView({
   month,
+  roadmapId,
   startDate,
   defaultExpanded = false,
   onToggleDailyTask,
@@ -33,6 +36,7 @@ export function MonthlyGoalView({
   onGenerateDailyTasks,
   generatingWeekId,
   previousMonthLastWeekProgress = null,
+  mode = 'PLANNING',
 }: MonthlyGoalViewProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
@@ -199,6 +203,7 @@ export function MonthlyGoalView({
                 <WeeklyTaskView
                   key={week.id}
                   week={week}
+                  roadmapId={roadmapId}
                   defaultExpanded={false}
                   onToggleDailyTask={onToggleDailyTask}
                   isEditable={isEditable}
@@ -208,6 +213,7 @@ export function MonthlyGoalView({
                   isGenerating={generatingWeekId === week.id}
                   canGenerate={canGenerate}
                   cannotGenerateReason={cannotGenerateReason}
+                  mode={mode}
                 />
               );
             })}

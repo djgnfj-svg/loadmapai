@@ -208,4 +208,35 @@ export const interviewApi = {
     api.post('/interview/submit', data),
 };
 
+// Learning Mode API
+export const learningApi = {
+  // Questions
+  getQuestions: (dailyTaskId: string) =>
+    api.get(`/learning/daily-tasks/${dailyTaskId}/questions`),
+
+  submitAnswer: (questionId: string, answerText: string) =>
+    api.post(`/learning/questions/${questionId}/submit`, { answer_text: answerText }),
+
+  // Day Completion
+  completeDay: (dailyTaskId: string) =>
+    api.post(`/learning/daily-tasks/${dailyTaskId}/complete-day`),
+
+  getDailyFeedback: (weeklyTaskId: string, dayNumber: number) =>
+    api.get(`/learning/weekly-tasks/${weeklyTaskId}/day/${dayNumber}/feedback`),
+
+  // Wrong Questions & Review
+  getWrongQuestions: (weeklyTaskId: string) =>
+    api.get(`/learning/weekly-tasks/${weeklyTaskId}/wrong-questions`),
+
+  generateReview: (weeklyTaskId: string) =>
+    api.post(`/learning/weekly-tasks/${weeklyTaskId}/generate-review`),
+
+  // Learning Info
+  getDayInfo: (dailyTaskId: string) =>
+    api.get(`/learning/daily-tasks/${dailyTaskId}/info`),
+
+  getWeekInfo: (weeklyTaskId: string) =>
+    api.get(`/learning/weekly-tasks/${weeklyTaskId}/info`),
+};
+
 export default api;

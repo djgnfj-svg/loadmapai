@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Integer, ForeignKey, Enum as SQLEnum, Text
+from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, Enum as SQLEnum, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -19,6 +19,9 @@ class WeeklyTask(Base, TimestampMixin):
 
     status = Column(SQLEnum(TaskStatus, values_callable=lambda x: [e.value for e in x]), default=TaskStatus.PENDING, nullable=False)
     progress = Column(Integer, default=0, nullable=False)  # 0-100
+
+    # LEARNING 모드 전용 필드
+    review_generated = Column(Boolean, default=False, nullable=False)  # 복습 세션 생성 여부
 
     # Relationships
     monthly_goal = relationship("MonthlyGoal", back_populates="weekly_tasks")

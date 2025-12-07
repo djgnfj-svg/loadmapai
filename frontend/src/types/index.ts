@@ -13,9 +13,109 @@ export interface AuthState {
   isLoading: boolean;
 }
 
-export type RoadmapMode = 'planning';
+export type RoadmapMode = 'PLANNING' | 'LEARNING';
 
 export type LearningIntensity = 'light' | 'moderate' | 'intense';
+
+// Learning Mode Types
+export type QuestionType = 'ESSAY' | 'MULTIPLE_CHOICE' | 'SHORT_ANSWER';
+
+export interface UserAnswer {
+  id: string;
+  question_id: string;
+  answer_text: string;
+  is_correct?: boolean;
+  score?: number;
+  feedback?: string;
+  submitted_at?: string;
+  graded_at?: string;
+}
+
+export interface Question {
+  id: string;
+  daily_task_id: string;
+  question_type: QuestionType;
+  question_text: string;
+  choices?: string[];
+  hint?: string;
+  order: number;
+  user_answer?: UserAnswer;
+}
+
+export interface QuestionWithAnswer extends Question {
+  correct_answer: string;
+  explanation?: string;
+}
+
+export interface QuestionResult {
+  question_id: string;
+  question_type: QuestionType;
+  question_text: string;
+  your_answer: string;
+  correct_answer: string;
+  is_correct: boolean;
+  score?: number;
+  feedback: string;
+  explanation?: string;
+}
+
+export interface DailyFeedback {
+  id: string;
+  weekly_task_id: string;
+  day_number: number;
+  total_questions: number;
+  correct_count: number;
+  accuracy_rate: number;
+  is_passed: boolean;
+  summary: string;
+  strengths?: string[];
+  improvements?: string[];
+  question_results?: QuestionResult[];
+  created_at: string;
+}
+
+export interface CompleteDayResponse {
+  feedback: DailyFeedback;
+  next_day_available: boolean;
+  week_completed: boolean;
+}
+
+export interface WrongQuestion {
+  question: QuestionWithAnswer;
+  your_answer: string;
+  day_number: number;
+}
+
+export interface ReviewSession {
+  daily_task_id: string;
+  total_questions: number;
+  questions: Question[];
+}
+
+export interface LearningDayInfo {
+  daily_task_id: string;
+  weekly_task_id: string;
+  day_number: number;
+  title: string;
+  description?: string;
+  total_questions: number;
+  answered_count: number;
+  is_completed: boolean;
+  feedback?: DailyFeedback;
+}
+
+export interface LearningWeekInfo {
+  weekly_task_id: string;
+  week_number: number;
+  title: string;
+  description?: string;
+  days: LearningDayInfo[];
+  total_questions: number;
+  correct_count: number;
+  accuracy_rate: number;
+  is_completed: boolean;
+  review_available: boolean;
+}
 
 export interface Roadmap {
   id: string;

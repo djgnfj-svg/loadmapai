@@ -58,6 +58,20 @@ from app.schemas.unified_view import (
     WeeklyTaskSummary,
     UnifiedViewResponse,
 )
+from app.schemas.learning import (
+    QuestionResponse,
+    QuestionWithAnswer,
+    QuestionCreate,
+    SubmitAnswerRequest,
+    UserAnswerResponse,
+    QuestionResultResponse,
+    DailyFeedbackResponse,
+    CompleteDayResponse,
+    WrongQuestionResponse,
+    ReviewSessionResponse,
+    LearningDayInfoResponse,
+    LearningWeekInfoResponse,
+)
 
 __all__ = [
     # User
@@ -115,4 +129,17 @@ __all__ = [
     "TodayDailyTask",
     "WeeklyTaskSummary",
     "UnifiedViewResponse",
+    # Learning
+    "QuestionResponse",
+    "QuestionWithAnswer",
+    "QuestionCreate",
+    "SubmitAnswerRequest",
+    "UserAnswerResponse",
+    "QuestionResultResponse",
+    "DailyFeedbackResponse",
+    "CompleteDayResponse",
+    "WrongQuestionResponse",
+    "ReviewSessionResponse",
+    "LearningDayInfoResponse",
+    "LearningWeekInfoResponse",
 ]

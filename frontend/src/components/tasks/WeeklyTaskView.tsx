@@ -1,12 +1,14 @@
 import { useState, useMemo } from 'react';
-import { ChevronDown, Calendar, CheckCircle2, Pencil, Sparkles, Loader2, Lock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ChevronDown, Calendar, CheckCircle2, Pencil, Sparkles, Loader2, Lock, BookOpen, Play } from 'lucide-react';
 import { Progress } from '@/components/common/Progress';
 import { DayGroupView } from './DayGroupView';
 import { cn } from '@/lib/utils';
-import type { WeeklyTaskWithDaily, DailyTask, DailyGoal, WeeklyTask } from '@/types';
+import type { WeeklyTaskWithDaily, DailyTask, DailyGoal, WeeklyTask, RoadmapMode } from '@/types';
 
 interface WeeklyTaskViewProps {
   week: WeeklyTaskWithDaily;
+  roadmapId: string;
   defaultExpanded?: boolean;
   onToggleDailyTask: (taskId: string) => void;
   isEditable?: boolean;
@@ -16,10 +18,12 @@ interface WeeklyTaskViewProps {
   isGenerating?: boolean;
   canGenerate?: boolean;
   cannotGenerateReason?: string | null;
+  mode?: RoadmapMode;
 }
 
 export function WeeklyTaskView({
   week,
+  roadmapId,
   defaultExpanded = false,
   onToggleDailyTask,
   isEditable = false,
@@ -29,8 +33,11 @@ export function WeeklyTaskView({
   isGenerating = false,
   canGenerate = true,
   cannotGenerateReason = null,
+  mode = 'PLANNING',
 }: WeeklyTaskViewProps) {
+  const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  const isLearningMode = mode === 'LEARNING';
 
   const completedCount = week.daily_tasks?.filter(t => t.is_checked).length || 0;
   const totalCount = week.daily_tasks?.length || 0;
@@ -68,6 +75,11 @@ export function WeeklyTaskView({
         tasks: tasks.sort((a, b) => a.order - b.order),
       }));
   }, [week.daily_tasks, goalsByDay]);
+
+  // Navigate to learning page
+  const handleStartLearning = (dailyTaskId: string) => {
+    navigate(`/roadmaps/${roadmapId}/learn/${dailyTaskId}`);
+  };
 
   return (
     <div
@@ -171,26 +183,84 @@ export function WeeklyTaskView({
             <div className="flex items-center gap-2 mb-3">
               <div className="h-px flex-1 bg-primary-200 dark:bg-primary-500/30" />
               <span className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
-                일별 태스크
+                {isLearningMode ? (
+                  <>
+                    <BookOpen className="h-3 w-3" />
+                    일별 학습
+                  </>
+                ) : (
+                  <>
+                    <Calendar className="h-3 w-3" />
+                    일별 태스크
+                  </>
+                )}
               </span>
               <div className="h-px flex-1 bg-primary-200 dark:bg-primary-500/30" />
             </div>
 
-            {/* Daily Tasks by Day */}
+            {/* Daily Tasks/Learning by Day */}
             <div className="grid gap-2">
-              {tasksByDay.map(({ dayNumber, goal, tasks }) => (
-                <DayGroupView
-                  key={dayNumber}
-                  dayNumber={dayNumber}
-                  goal={goal}
-                  tasks={tasks}
-                  defaultExpanded={false}
-                  onToggleTask={onToggleDailyTask}
-                  isEditable={isEditable}
-                  onEditTask={(t) => onEditDailyTask?.(t, week.id)}
-                />
-              ))}
+              {isLearningMode ? (
+                // LEARNING MODE: Show day cards that navigate to learning page
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3">
+                  {tasksByDay.map(({ dayNumber, goal, tasks }) => {
+                    const dailyTask = tasks[0];
+                    const isCompleted = dailyTask?.is_checked;
+
+                    return (
+                      <button
+                        key={dayNumber}
+                        onClick={() => handleStartLearning(dailyTask.id)}
+                        className={cn(
+                          'flex flex-col items-center justify-center p-4 rounded-xl transition-all',
+                          'border-2 group',
+                          isCompleted
+                            ? 'border-green-500 bg-green-50 dark:bg-green-500/10'
+                            : 'border-gray-200 dark:border-dark-600 hover:border-primary-400 dark:hover:border-primary-500 hover:bg-white dark:hover:bg-dark-700',
+                          'hover:shadow-lg hover:scale-105'
+                        )}
+                      >
+                        <span className="text-xs text-gray-500 dark:text-gray-400 mb-1">Day</span>
+                        <span className={cn(
+                          'text-2xl font-bold mb-2',
+                          isCompleted
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-gray-900 dark:text-white'
+                        )}>
+                          {dayNumber}
+                        </span>
+                        {isCompleted ? (
+                          <CheckCircle2 className="h-5 w-5 text-green-500" />
+                        ) : (
+                          <div className="flex items-center gap-1 text-xs text-primary-600 dark:text-primary-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Play className="h-3 w-3" />
+                            <span>시작</span>
+                          </div>
+                        )}
+                        {goal?.title && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center line-clamp-2">
+                            {goal.title}
+                          </p>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                // PLANNING MODE: Show DayGroupView
+                tasksByDay.map(({ dayNumber, goal, tasks }) => (
+                  <DayGroupView
+                    key={dayNumber}
+                    dayNumber={dayNumber}
+                    goal={goal}
+                    tasks={tasks}
+                    defaultExpanded={false}
+                    onToggleTask={onToggleDailyTask}
+                    isEditable={isEditable}
+                    onEditTask={(t) => onEditDailyTask?.(t, week.id)}
+                  />
+                ))
+              )}
             </div>
           </div>
         ) : (

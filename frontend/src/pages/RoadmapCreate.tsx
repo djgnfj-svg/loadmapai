@@ -7,15 +7,18 @@ import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { InterviewForm } from '@/components/interview';
 import { StreamingPreview } from '@/components/roadmap/StreamingPreview';
+import { ModeSelection } from '@/components/roadmap/ModeSelection';
 import { useInterview } from '@/hooks/useInterview';
 import { useStreamingGeneration } from '@/hooks/useStreamingGeneration';
 import { roadmapApi, getErrorMessage } from '@/lib/api';
 import type { InterviewAnswer, InterviewContext } from '@/types/interview';
+import type { RoadmapMode } from '@/types';
 
-type Step = 'topic' | 'duration' | 'interview' | 'generating';
+type Step = 'topic' | 'mode' | 'duration' | 'interview' | 'generating';
 
 interface FormData {
   topic: string;
+  mode: RoadmapMode;
   duration_months: number;
   start_date: string;
   interview_context?: InterviewContext;
@@ -154,6 +157,7 @@ export function RoadmapCreate() {
   const [step, setStep] = useState<Step>('topic');
   const [formData, setFormData] = useState<FormData>({
     topic: '',
+    mode: 'PLANNING',
     duration_months: 3,
     start_date: format(new Date(), 'yyyy-MM-dd'),
   });
@@ -205,17 +209,19 @@ export function RoadmapCreate() {
     // 스트리밍 생성 시작
     streaming.startGeneration({
       topic: formData.topic,
-      mode: 'PLANNING',
+      mode: formData.mode,
       duration_months: formData.duration_months,
       start_date: formData.start_date,
       interview_context: interviewContext as unknown as Record<string, unknown>,
     });
-  }, [formData.topic, formData.duration_months, formData.start_date, streaming]);
+  }, [formData.topic, formData.mode, formData.duration_months, formData.start_date, streaming]);
 
   const canProceed = () => {
     switch (step) {
       case 'topic':
         return formData.topic.length >= 2;
+      case 'mode':
+        return !!formData.mode;
       case 'duration':
         return formData.duration_months > 0 && !!formData.start_date;
       default:
@@ -250,6 +256,8 @@ export function RoadmapCreate() {
 
   const handleNext = () => {
     if (step === 'topic') {
+      setStep('mode');
+    } else if (step === 'mode') {
       setStep('duration');
     } else if (step === 'duration') {
       setStep('interview');
@@ -257,8 +265,10 @@ export function RoadmapCreate() {
   };
 
   const handleBack = () => {
-    if (step === 'duration') {
+    if (step === 'mode') {
       setStep('topic');
+    } else if (step === 'duration') {
+      setStep('mode');
     } else if (step === 'interview') {
       interview.reset();
       generationAttemptedRef.current = false;
@@ -266,7 +276,7 @@ export function RoadmapCreate() {
     }
   };
 
-  const steps = ['topic', 'duration', 'interview'];
+  const steps = ['topic', 'mode', 'duration', 'interview'];
   const currentStepIndex = steps.indexOf(step);
   const showProgress = step !== 'generating';
 
@@ -468,6 +478,12 @@ export function RoadmapCreate() {
             <TopicInput
               value={formData.topic}
               onChange={(topic) => setFormData({ ...formData, topic })}
+            />
+          )}
+          {step === 'mode' && (
+            <ModeSelection
+              selectedMode={formData.mode}
+              onModeSelect={(mode) => setFormData({ ...formData, mode })}
             />
           )}
           {step === 'duration' && (

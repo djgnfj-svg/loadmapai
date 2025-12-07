@@ -10,6 +10,7 @@ import {
   Pause,
   Play,
   Map,
+  BookOpen,
   Edit3,
   Lock,
   Unlock,
@@ -344,10 +345,17 @@ export function RoadmapDetail() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-3">
                 {/* Mode Badge */}
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold bg-primary-100 dark:bg-primary-500/20 text-primary-700 dark:text-primary-400">
-                  <Map className="h-4 w-4" />
-                  플래닝 모드
-                </span>
+                {roadmap.mode === 'LEARNING' ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400">
+                    <BookOpen className="h-4 w-4" />
+                    학습 모드
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold bg-primary-100 dark:bg-primary-500/20 text-primary-700 dark:text-primary-400">
+                    <Map className="h-4 w-4" />
+                    플래닝 모드
+                  </span>
+                )}
                 {/* Status Badge */}
                 <span className={cn('px-2.5 py-1 text-xs font-medium rounded-full', STATUS_COLORS[statusKey])}>
                   {STATUS_LABELS[statusKey]}

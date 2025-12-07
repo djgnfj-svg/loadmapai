@@ -1,6 +1,6 @@
 import uuid
 from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, Enum as SQLEnum, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base, TimestampMixin
@@ -21,8 +21,18 @@ class DailyTask(Base, TimestampMixin):
     status = Column(SQLEnum(TaskStatus, values_callable=lambda x: [e.value for e in x]), default=TaskStatus.PENDING, nullable=False)
     is_checked = Column(Boolean, default=False, nullable=False)
 
+    # LEARNING 모드 전용 필드
+    is_review_task = Column(Boolean, default=False, nullable=False)  # 틀린 문제 복습용
+    review_source_ids = Column(ARRAY(UUID(as_uuid=True)), nullable=True)  # 복습 대상 원본 문제 IDs
+
     # Relationships
     weekly_task = relationship("WeeklyTask", back_populates="daily_tasks")
+    questions = relationship(
+        "Question",
+        back_populates="daily_task",
+        cascade="all, delete-orphan",
+        order_by="Question.order"
+    )
 
     def __repr__(self):
         return f"<DailyTask Day {self.day_number}: {self.title}>"

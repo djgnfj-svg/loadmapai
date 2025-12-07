@@ -5,6 +5,9 @@ from app.models.weekly_task import WeeklyTask
 from app.models.daily_goal import DailyGoal
 from app.models.daily_task import DailyTask
 from app.models.email_verification import EmailVerificationToken
+from app.models.question import Question, QuestionType
+from app.models.user_answer import UserAnswer
+from app.models.daily_feedback import DailyFeedback
 
 __all__ = [
     "User",
@@ -18,4 +21,9 @@ __all__ = [
     "DailyTask",
     "TaskStatus",
     "EmailVerificationToken",
+    # Learning mode
+    "Question",
+    "QuestionType",
+    "UserAnswer",
+    "DailyFeedback",
 ]
