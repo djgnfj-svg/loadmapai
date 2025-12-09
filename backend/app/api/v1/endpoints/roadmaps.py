@@ -51,6 +51,7 @@ class RoadmapGenerateRequest(BaseModel):
     start_date: date
     mode: RoadmapMode = RoadmapMode.PLANNING
     interview_context: Optional[dict] = None
+    skip_save: bool = False  # True면 DB 저장 없이 preview_ready 이벤트 발송 (피드백 채팅용)
 
 
 class RoadmapGenerateResponse(BaseModel):
@@ -419,7 +420,11 @@ async def generate_roadmap_stream(
     - progress: 진행률 업데이트
     - warning: 경고 (부분 실패)
     - error: 에러 발생
-    - complete: 전체 완료
+    - preview_ready: 생성 완료 (DB 저장 없음, skip_save=True 시)
+    - complete: 전체 완료 (DB 저장 완료)
+
+    Args:
+        skip_save: True면 DB 저장 없이 preview_ready 이벤트 발송 (피드백 채팅용)
 
     Returns:
         StreamingResponse: SSE 이벤트 스트림
@@ -449,6 +454,7 @@ async def generate_roadmap_stream(
                 user_id=str(current_user.id),
                 db=db,
                 interview_context=data.interview_context,
+                skip_save=data.skip_save,
             ):
                 event_type = event["type"]
                 event_data = json.dumps(event["data"], ensure_ascii=False, default=str)

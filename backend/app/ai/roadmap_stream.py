@@ -40,6 +40,7 @@ async def generate_roadmap_streaming(
     user_id: str,
     db: Session,
     interview_context: dict = None,
+    skip_save: bool = False,
 ) -> AsyncGenerator[dict, None]:
     """Generate roadmap with streaming events.
 
@@ -51,6 +52,7 @@ async def generate_roadmap_streaming(
         user_id: 사용자 ID
         db: DB 세션
         interview_context: SMART 인터뷰 컨텍스트 (선택)
+        skip_save: True이면 DB 저장 없이 preview_ready 이벤트 발송
 
     Yields:
         dict: SSE 이벤트 {"type": "event_name", "data": {...}}
@@ -133,40 +135,57 @@ async def generate_roadmap_streaming(
             }
             yield _progress_event(current_step, total_steps, f"{month_num}월 주간 과제 생성 완료")
 
-        # DB 저장
-        roadmap_id = _save_roadmap(
-            topic=topic,
-            title=title,
-            description=description,
-            duration_months=duration_months,
-            start_date=start_date,
-            mode=mode,
-            user_id=user_id,
-            monthly_goals=monthly_goals,
-            weekly_tasks=weekly_tasks,
-            db=db,
-        )
-
-        # 첫 주 일일 태스크 생성
-        try:
-            await _generate_first_week_daily_tasks(
-                roadmap_id, user_id, db, interview_context
-            )
-        except Exception as e:
-            # 일일 태스크 생성 실패는 경고만 (전체 실패 아님)
+        # skip_save가 True면 preview_ready 이벤트만 발송 (피드백 채팅용)
+        if skip_save:
             yield {
-                "type": "warning",
-                "data": {"message": f"첫 주 일일 태스크 생성 실패: {str(e)}"}
+                "type": "preview_ready",
+                "data": {
+                    "title": title,
+                    "description": description,
+                    "topic": topic,
+                    "duration_months": duration_months,
+                    "start_date": start_date.isoformat() if hasattr(start_date, 'isoformat') else str(start_date),
+                    "mode": mode.value if hasattr(mode, 'value') else str(mode),
+                    "monthly_goals": monthly_goals,
+                    "weekly_tasks": weekly_tasks,
+                    "interview_context": interview_context,
+                }
             }
+        else:
+            # DB 저장
+            roadmap_id = _save_roadmap(
+                topic=topic,
+                title=title,
+                description=description,
+                duration_months=duration_months,
+                start_date=start_date,
+                mode=mode,
+                user_id=user_id,
+                monthly_goals=monthly_goals,
+                weekly_tasks=weekly_tasks,
+                db=db,
+            )
 
-        yield {
-            "type": "complete",
-            "data": {
-                "roadmap_id": roadmap_id,
-                "title": title,
-                "is_finalized": False
+            # 첫 주 일일 태스크 생성
+            try:
+                await _generate_first_week_daily_tasks(
+                    roadmap_id, user_id, db, interview_context
+                )
+            except Exception as e:
+                # 일일 태스크 생성 실패는 경고만 (전체 실패 아님)
+                yield {
+                    "type": "warning",
+                    "data": {"message": f"첫 주 일일 태스크 생성 실패: {str(e)}"}
+                }
+
+            yield {
+                "type": "complete",
+                "data": {
+                    "roadmap_id": roadmap_id,
+                    "title": title,
+                    "is_finalized": False
+                }
             }
-        }
 
     except Exception as e:
         yield {
