@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     google_client_secret: str = ""
     google_redirect_uri: str = "http://localhost:8000/api/v1/oauth/google/callback"
 
+    # Sentry (에러 모니터링)
+    sentry_dsn: str = ""  # 프로덕션에서 설정
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

@@ -2,12 +2,15 @@
 Seed mock data for test account
 완전한 로드맵 데이터: 모든 월/주/일 태스크 포함
 """
+import logging
 import uuid
 from datetime import date, timedelta
 from app.db import SessionLocal
 from app.models import User, Roadmap, MonthlyGoal, WeeklyTask, DailyTask
 from app.models.roadmap import RoadmapMode, RoadmapStatus
 from app.models.monthly_goal import TaskStatus
+
+logger = logging.getLogger(__name__)
 
 
 def create_weekly_tasks(db, monthly_goal_id: uuid.UUID, weeks_data: list):
@@ -45,10 +48,10 @@ def seed_mock_data():
         # Find test user
         user = db.query(User).filter(User.email == "test@loadmap.ai").first()
         if not user:
-            print("Test user not found!")
+            logger.warning("Test user not found!")
             return
 
-        print(f"Found test user: {user.email} (ID: {user.id})")
+        logger.info(f"Found test user: {user.email} (ID: {user.id})")
 
         # Delete existing data for fresh start
         # Delete roadmaps (cascades to monthly_goals, weekly_tasks, daily_tasks)
@@ -57,7 +60,7 @@ def seed_mock_data():
             for r in existing:
                 db.delete(r)
             db.commit()
-            print(f"Deleted {len(existing)} existing roadmaps")
+            logger.info(f"Deleted {len(existing)} existing roadmaps")
 
         # ================================================================
         # ROADMAP 1: Planning Mode - React 포트폴리오 프로젝트 (2개월)
@@ -578,17 +581,15 @@ def seed_mock_data():
         create_weekly_tasks(db, month1_r3.id, month1_r3_weeks)
 
         db.commit()
-        print("\n✅ Mock data seeded successfully!")
-        print(f"Created 3 roadmaps for user {user.email}:")
-        print("  1. React 포트폴리오 프로젝트 (Planning, 2개월, 진행중)")
-        print("  2. Python 데이터 분석 마스터 (Planning, 3개월, 진행중)")
-        print("  3. Git & GitHub 마스터 (Planning, 1개월, 완료)")
+        logger.info("Mock data seeded successfully!")
+        logger.info(f"Created 3 roadmaps for user {user.email}:")
+        logger.info("  1. React 포트폴리오 프로젝트 (Planning, 2개월, 진행중)")
+        logger.info("  2. Python 데이터 분석 마스터 (Planning, 3개월, 진행중)")
+        logger.info("  3. Git & GitHub 마스터 (Planning, 1개월, 완료)")
 
     except Exception as e:
         db.rollback()
-        print(f"❌ Error seeding data: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.exception(f"Error seeding data: {e}")
         raise
     finally:
         db.close()

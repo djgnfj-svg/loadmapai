@@ -7,6 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+import sentry_sdk
 
 from app.config import settings
 from app.api.v1.router import api_router
@@ -14,6 +15,16 @@ from app.db import get_db
 from app.core.exceptions import AppException
 
 logger = logging.getLogger(__name__)
+
+# Sentry 초기화 (DSN이 설정된 경우에만)
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        traces_sample_rate=0.1,  # 성능 모니터링 10%
+        profiles_sample_rate=0.1,
+        environment="production" if not settings.debug else "development",
+        send_default_pii=False,  # 개인정보 전송 안함
+    )
 
 
 @asynccontextmanager

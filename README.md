@@ -1,153 +1,127 @@
 # LoadmapAI
 
-AI 기반 학습 로드맵 관리 플랫폼
+AI 기반 개인화 학습 로드맵 생성 플랫폼
 
 ## 데모
 
 **서비스 URL**: https://reseeall.com
 
-### 테스트 계정
-
-| 항목 | 값 |
-|------|-----|
-| ID (이메일) | `test@reseeall.com` |
+| 테스트 계정 | |
+|-------------|------------------|
+| Email | `test@reseeall.com` |
 | Password | `Test1234!` |
 
-> 테스트 계정으로 로그인하여 서비스를 체험해보실 수 있습니다.
+## 프로젝트 소개
 
-## 소개
-
-LoadmapAI는 AI를 활용하여 개인화된 학습 로드맵을 생성하고 관리하는 플랫폼입니다. 학습 목표를 입력하면 AI가 월별, 주별, 일별 학습 계획을 자동으로 생성해줍니다.
+LoadmapAI는 사용자의 학습 목표를 입력받아 AI가 맞춤형 월별/주별/일별 학습 계획을 자동 생성하는 서비스입니다. LangGraph 기반의 멀티 스텝 AI 파이프라인과 SSE 스트리밍을 활용하여 실시간으로 로드맵 생성 과정을 확인할 수 있습니다.
 
 ### 주요 기능
 
-- **AI 로드맵 생성**: Claude AI를 활용한 맞춤형 학습 계획 자동 생성
-- **계층적 태스크 관리**: 월별 목표 → 주별 태스크 → 일별 태스크의 체계적 관리
-- **진행률 추적**: 실시간 학습 진행률 확인 및 시각화
-- **AI 채팅**: 로드맵 수정을 위한 AI 대화 기능
+- **AI 인터뷰 기반 로드맵 생성**: 목표 설정 후 AI와의 대화를 통해 사용자 수준/선호도 파악
+- **실시간 스트리밍 생성**: SSE를 통한 로드맵 생성 과정 실시간 미리보기
+- **계층적 태스크 관리**: 월별 목표 → 주별 태스크 → 일별 태스크 드릴다운
+- **진행률 추적**: 체크박스 기반 완료 처리 및 자동 진행률 계산
+- **AI 채팅 수정**: 생성된 로드맵을 자연어로 수정 요청
 
 ## 기술 스택
 
-### Backend
-- **Framework**: FastAPI
-- **Database**: PostgreSQL 15
-- **ORM**: SQLAlchemy + Alembic
-- **Cache**: Redis 7
-- **AI**: LangGraph + LangChain + Claude API (Anthropic)
-- **Authentication**: JWT + OAuth2 (Google, GitHub)
+| 영역 | 기술 |
+|------|------|
+| **Backend** | FastAPI, Python 3.11, SQLAlchemy, Alembic |
+| **AI/ML** | LangGraph, LangChain, Claude API (Anthropic) |
+| **Frontend** | React 18, TypeScript, Vite, TailwindCSS |
+| **상태관리** | Zustand, TanStack Query |
+| **Database** | PostgreSQL 15, Redis 7 |
+| **Auth** | JWT, OAuth2 (Google, GitHub) |
+| **Infra** | Docker, Docker Compose |
 
-### Frontend
-- **Framework**: React 18 + TypeScript
-- **Build Tool**: Vite
-- **Styling**: TailwindCSS
-- **State Management**: Zustand
-- **Data Fetching**: React Query (TanStack Query)
-- **Routing**: React Router v6
+## 아키텍처
 
-### Infrastructure
-- **Containerization**: Docker + Docker Compose
-
-## 시작하기
-
-### 사전 요구사항
-
-- Docker & Docker Compose
-- Node.js 18+ (로컬 개발 시)
-- Python 3.11+ (로컬 개발 시)
-
-### 환경 변수 설정
-
-1. 루트 디렉토리에 `.env` 파일 생성:
-
-```bash
-cp .env.example .env
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         Frontend (React)                         │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────────┐ │
+│  │  Zustand │  │ TanStack │  │   SSE    │  │  React Router    │ │
+│  │  Stores  │  │  Query   │  │ Handler  │  │     Pages        │ │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────────────┘ │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │ HTTP / SSE
+┌─────────────────────────────▼───────────────────────────────────┐
+│                      Backend (FastAPI)                           │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │                    API Layer (v1)                            ││
+│  │  /auth  /oauth  /roadmaps  /roadmap_chat  /learning         ││
+│  └─────────────────────────────────────────────────────────────┘│
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │                   Service Layer                              ││
+│  │  RoadmapService  LearningService  AuthService               ││
+│  └─────────────────────────────────────────────────────────────┘│
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │                 AI Layer (LangGraph)                         ││
+│  │  ┌──────────────────────────────────────────────────────┐   ││
+│  │  │              Roadmap Generation Pipeline              │   ││
+│  │  │  goal_analyzer → monthly_gen → weekly_gen → daily_gen │   ││
+│  │  └──────────────────────────────────────────────────────┘   ││
+│  │  ┌──────────────────────────────────────────────────────┐   ││
+│  │  │               Interview Pipeline                      │   ││
+│  │  │        question_gen → response_analyzer               │   ││
+│  │  └──────────────────────────────────────────────────────┘   ││
+│  └─────────────────────────────────────────────────────────────┘│
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │                    Data Layer                                ││
+│  │  SQLAlchemy Models  │  Pydantic Schemas  │  Alembic         ││
+│  └─────────────────────────────────────────────────────────────┘│
+└───────────────────────────────┬─────────────────────────────────┘
+                                │
+        ┌───────────────────────┼───────────────────────┐
+        ▼                       ▼                       ▼
+┌──────────────┐       ┌──────────────┐       ┌──────────────┐
+│  PostgreSQL  │       │    Redis     │       │  Claude API  │
+│   Database   │       │    Cache     │       │  (Anthropic) │
+└──────────────┘       └──────────────┘       └──────────────┘
 ```
 
-2. `.env` 파일 수정:
+### 데이터 모델
 
-```env
-# Database
-POSTGRES_USER=loadmap
-POSTGRES_PASSWORD=your_secure_password
-POSTGRES_DB=loadmap_db
-DATABASE_URL=postgresql://loadmap:your_secure_password@db:5432/loadmap_db
-
-# Redis
-REDIS_URL=redis://redis:6379/0
-
-# JWT
-SECRET_KEY=your_secret_key_here
-JWT_ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-
-# Anthropic (Claude AI)
-ANTHROPIC_API_KEY=your_anthropic_api_key
-
-# OAuth (optional)
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-GITHUB_CLIENT_ID=your_github_client_id
-GITHUB_CLIENT_SECRET=your_github_client_secret
-
-# Frontend
-FRONTEND_URL=http://localhost:5173
-VITE_API_URL=http://localhost:8000
-
-# Dev Mode (true=Haiku for cost saving, false=Sonnet for quality)
-DEV_MODE=true
+```
+Roadmap (로드맵)
+  └── MonthlyGoal (월별 목표)
+        └── WeeklyTask (주별 태스크)
+              └── DailyTask (일별 태스크)
+                    └── Question (학습 문제) - Learning Mode
 ```
 
-### Docker로 실행
+### AI 파이프라인 (LangGraph)
 
-```bash
-# 컨테이너 빌드 및 실행
-docker-compose up --build
+로드맵 생성은 4단계의 순차적 LLM 호출로 구성됩니다:
 
-# 백그라운드 실행
-docker-compose up -d
+1. **Goal Analyzer**: 목표 분석 및 인터뷰 컨텍스트 통합
+2. **Monthly Generator**: 월별 학습 목표 생성 + SSE 스트리밍
+3. **Weekly Generator**: 주별 세부 태스크 생성 + SSE 스트리밍
+4. **Daily Generator**: 일별 실행 항목 생성 + DB 저장
 
-# 로그 확인
-docker-compose logs -f
-
-# 중지
-docker-compose down
+```python
+# LangGraph 상태 흐름
+StateGraph(RoadmapGenerationState)
+  .add_node("goal_analyzer", analyze_goal)
+  .add_node("monthly_generator", generate_monthly)
+  .add_node("weekly_generator", generate_weekly)
+  .add_node("daily_generator", generate_daily)
+  .add_edge(START, "goal_analyzer")
+  .add_edge("goal_analyzer", "monthly_generator")
+  .add_edge("monthly_generator", "weekly_generator")
+  .add_edge("weekly_generator", "daily_generator")
+  .add_edge("daily_generator", END)
 ```
 
-### 로컬 개발 환경
+### 주요 기술적 결정
 
-#### Backend
-
-```bash
-cd backend
-
-# 가상환경 생성 및 활성화
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# 의존성 설치
-pip install -r requirements.txt
-
-# 데이터베이스 마이그레이션
-alembic upgrade head
-
-# 서버 실행
-uvicorn app.main:app --reload --port 8000
-```
-
-#### Frontend
-
-```bash
-cd frontend
-
-# 의존성 설치
-npm install
-
-# 개발 서버 실행
-npm run dev
-
-# 빌드
-npm run build
-```
+| 결정 | 이유 |
+|------|------|
+| **LangGraph** | 복잡한 AI 워크플로우의 상태 관리 및 노드 간 데이터 전달 |
+| **SSE (Server-Sent Events)** | 로드맵 생성 중 실시간 프리뷰 제공, POST 요청 지원 필요로 fetch 기반 구현 |
+| **Zustand + TanStack Query** | 클라이언트 상태(auth)와 서버 상태(data fetching) 분리 |
+| **ThreadPoolExecutor** | LangGraph 동기 실행을 FastAPI 비동기 환경에서 non-blocking 처리 |
 
 ## 프로젝트 구조
 
@@ -155,58 +129,67 @@ npm run build
 LoadmapAI/
 ├── backend/
 │   ├── app/
-│   │   ├── ai/                 # AI/LangGraph 관련
-│   │   │   ├── nodes/          # LangGraph 노드
+│   │   ├── ai/                 # LangGraph 파이프라인
+│   │   │   ├── nodes/          # 개별 노드 로직
 │   │   │   ├── prompts/        # AI 프롬프트 템플릿
-│   │   │   └── roadmap_graph.py
+│   │   │   ├── roadmap_graph.py
+│   │   │   └── interview_graph.py
 │   │   ├── api/v1/             # API 엔드포인트
-│   │   ├── core/               # 핵심 설정 (보안, OAuth 등)
-│   │   ├── db/                 # 데이터베이스 설정
+│   │   ├── core/               # 보안, OAuth 설정
 │   │   ├── models/             # SQLAlchemy 모델
 │   │   ├── schemas/            # Pydantic 스키마
 │   │   ├── services/           # 비즈니스 로직
 │   │   └── main.py
-│   ├── alembic/                # 마이그레이션
+│   ├── alembic/                # DB 마이그레이션
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/
 │   │   ├── components/         # React 컴포넌트
-│   │   │   ├── common/         # 공통 컴포넌트
-│   │   │   ├── layout/         # 레이아웃 컴포넌트
-│   │   │   └── tasks/          # 태스크 관련 컴포넌트
-│   │   ├── hooks/              # 커스텀 훅
-│   │   ├── lib/                # 유틸리티
-│   │   ├── pages/              # 페이지 컴포넌트
+│   │   ├── hooks/              # 커스텀 훅 (useInterview, useStreamingGeneration)
+│   │   ├── pages/              # 라우트 페이지
 │   │   ├── stores/             # Zustand 스토어
-│   │   ├── types/              # TypeScript 타입
-│   │   └── App.tsx
+│   │   └── types/              # TypeScript 타입
 │   └── package.json
-├── docs/
-│   ├── PRD.md                  # 제품 요구사항 문서
-│   └── TASKS.md                # 개발 체크리스트
-├── docker-compose.yml
-└── README.md
+└── docker-compose.yml
 ```
+
+## 실행 방법
+
+### Docker (권장)
+
+```bash
+# 환경 변수 설정
+cp .env.example .env
+# .env 파일에서 ANTHROPIC_API_KEY 등 설정
+
+# 실행
+docker-compose up --build
+```
+
+### 로컬 개발
+
+```bash
+# Backend
+cd backend
+pip install -r requirements.txt
+alembic upgrade head
+uvicorn app.main:app --reload --port 8000
+
+# Frontend
+cd frontend
+npm install
+npm run dev
+```
+
+## 환경 변수
+
+| 변수 | 설명 |
+|------|------|
+| `ANTHROPIC_API_KEY` | Claude AI API 키 |
+| `DATABASE_URL` | PostgreSQL 연결 문자열 |
+| `SECRET_KEY` | JWT 서명 키 |
+| `DEV_MODE` | `true`: Haiku (비용 절감), `false`: Sonnet (품질) |
 
 ## API 문서
 
-서버 실행 후 아래 URL에서 API 문서를 확인할 수 있습니다:
-
-- **Swagger UI**: http://localhost:8000/docs
-
-### 주요 API 엔드포인트
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/v1/auth/register` | 회원가입 |
-| POST | `/api/v1/auth/login` | 로그인 |
-| GET | `/api/v1/roadmaps` | 로드맵 목록 |
-| POST | `/api/v1/roadmaps/generate` | AI 로드맵 생성 |
-| GET | `/api/v1/roadmaps/{id}/full` | 로드맵 전체 조회 |
-| PATCH | `/api/v1/roadmaps/daily-tasks/{id}/toggle` | 일별 태스크 완료 토글 |
-| POST | `/api/v1/roadmaps/{id}/chat` | AI 채팅으로 로드맵 수정 |
-
-## 제약 사항
-
-- **로드맵 기간**: 1-3개월
-- **일일 생성 제한 (베타)**: 하루 1개 로드맵 생성 가능 (환경변수 `BETA_DAILY_ROADMAP_LIMIT`으로 조정, 0=무제한)
+서버 실행 후: http://localhost:8000/docs (Swagger UI)
