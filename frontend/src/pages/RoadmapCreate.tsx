@@ -7,14 +7,17 @@ import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { InterviewForm } from '@/components/interview';
 import { StreamingPreview } from '@/components/roadmap/StreamingPreview';
+import { FeedbackChat } from '@/components/roadmap/FeedbackChat';
 import { ModeSelection } from '@/components/roadmap/ModeSelection';
 import { useInterview } from '@/hooks/useInterview';
 import { useStreamingGeneration } from '@/hooks/useStreamingGeneration';
+import { useFeedbackChat } from '@/hooks/useFeedbackChat';
 import { roadmapApi, getErrorMessage } from '@/lib/api';
 import type { InterviewAnswer, InterviewContext } from '@/types/interview';
+import type { RoadmapPreviewData } from '@/types/feedback';
 import type { RoadmapMode } from '@/types';
 
-type Step = 'topic' | 'mode' | 'duration' | 'interview' | 'generating';
+type Step = 'topic' | 'mode' | 'duration' | 'interview' | 'generating' | 'feedback';
 
 interface FormData {
   topic: string;
@@ -180,6 +183,9 @@ export function RoadmapCreate() {
   // Streaming generation hook
   const streaming = useStreamingGeneration();
 
+  // Feedback chat hook
+  const feedbackChat = useFeedbackChat();
+
   // Check daily limit on mount
   useEffect(() => {
     const checkLimit = async () => {
@@ -206,13 +212,14 @@ export function RoadmapCreate() {
     setIsGenerating(true);
     setError(null);
 
-    // 스트리밍 생성 시작
+    // 스트리밍 생성 시작 (DB 저장 없이 preview만 생성)
     streaming.startGeneration({
       topic: formData.topic,
       mode: formData.mode,
       duration_months: formData.duration_months,
       start_date: formData.start_date,
       interview_context: interviewContext as unknown as Record<string, unknown>,
+      skip_save: true, // 피드백 단계를 위해 DB 저장 생략
     });
   }, [formData.topic, formData.mode, formData.duration_months, formData.start_date, streaming]);
 
@@ -250,6 +257,25 @@ export function RoadmapCreate() {
     }
   }, [interview.interviewContext, step, isGenerating, handleGenerate]);
 
+  // Start feedback session when preview is ready
+  useEffect(() => {
+    if (streaming.isPreviewReady && streaming.previewData && step === 'generating') {
+      // 피드백 세션 시작
+      const startFeedback = async () => {
+        try {
+          await feedbackChat.startSession(
+            streaming.previewData as RoadmapPreviewData,
+            formData.interview_context as Record<string, unknown> | undefined
+          );
+          setStep('feedback');
+        } catch (err) {
+          setError(getErrorMessage(err));
+        }
+      };
+      startFeedback();
+    }
+  }, [streaming.isPreviewReady, streaming.previewData, step, feedbackChat, formData.interview_context]);
+
   const handleInterviewSubmit = async (answers: InterviewAnswer[]) => {
     await interview.submitAnswers(answers);
   };
@@ -276,9 +302,31 @@ export function RoadmapCreate() {
     }
   };
 
+  // 피드백 확정 핸들러
+  const handleFeedbackFinalize = async () => {
+    try {
+      const result = await feedbackChat.finalize();
+      if (result) {
+        navigate(`/roadmaps/${result.roadmapId}`);
+      }
+    } catch (err) {
+      setError(getErrorMessage(err));
+    }
+  };
+
+  // 피드백 취소 핸들러
+  const handleFeedbackCancel = () => {
+    feedbackChat.cancel();
+    streaming.reset();
+    interview.reset();
+    generationAttemptedRef.current = false;
+    setIsGenerating(false);
+    setStep('topic');
+  };
+
   const steps = ['topic', 'mode', 'duration', 'interview'];
   const currentStepIndex = steps.indexOf(step);
-  const showProgress = step !== 'generating';
+  const showProgress = step !== 'generating' && step !== 'feedback';
 
   // Loading state
   if (isCheckingLimit) {
@@ -440,6 +488,23 @@ export function RoadmapCreate() {
             </div>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  // Feedback step
+  if (step === 'feedback') {
+    return (
+      <div className="max-w-6xl mx-auto">
+        <FeedbackChat
+          messages={feedbackChat.messages}
+          roadmapData={feedbackChat.roadmapData}
+          onSendMessage={feedbackChat.sendMessage}
+          onFinalize={handleFeedbackFinalize}
+          onCancel={handleFeedbackCancel}
+          isLoading={feedbackChat.isLoading}
+          error={feedbackChat.error}
+        />
       </div>
     );
   }
