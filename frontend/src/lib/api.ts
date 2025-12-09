@@ -208,6 +208,48 @@ export const interviewApi = {
     api.post('/interview/submit', data),
 };
 
+// Feedback Chat API (로드맵 피드백 채팅)
+export const feedbackApi = {
+  start: (data: {
+    roadmap_data: {
+      topic: string;
+      duration_months: number;
+      start_date: string;
+      mode: string;
+      title: string;
+      description: string;
+      monthly_goals: Array<{ month_number: number; title: string; description: string }>;
+      weekly_tasks: Array<{ month_number: number; weeks: Array<{ week_number: number; title: string; description: string }> }>;
+    };
+    interview_context?: Record<string, unknown>;
+  }) => api.post<{ session_id: string; welcome_message: string }>('/feedback/start', data),
+
+  sendMessage: (sessionId: string, message: string) =>
+    api.post<{
+      response: string;
+      modifications?: {
+        monthly_goals?: Array<{ month_number: number; title: string; description: string }>;
+        weekly_tasks?: Array<{ month_number: number; week_number: number; title: string; description: string }>;
+      };
+      updated_roadmap: {
+        topic: string;
+        duration_months: number;
+        start_date: string;
+        mode: string;
+        title: string;
+        description: string;
+        monthly_goals: Array<{ month_number: number; title: string; description: string }>;
+        weekly_tasks: Array<{ month_number: number; weeks: Array<{ week_number: number; title: string; description: string }> }>;
+      };
+    }>(`/feedback/${sessionId}/message`, { message }),
+
+  finalize: (sessionId: string) =>
+    api.post<{ roadmap_id: string; title: string }>(`/feedback/${sessionId}/finalize`),
+
+  cancel: (sessionId: string) =>
+    api.delete(`/feedback/${sessionId}`),
+};
+
 // Learning Mode API
 export const learningApi = {
   // Questions

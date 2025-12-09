@@ -41,6 +41,18 @@ interface CompleteData {
   is_finalized: boolean;
 }
 
+interface PreviewReadyData {
+  title: string;
+  description: string;
+  topic: string;
+  duration_months: number;
+  start_date: string;
+  mode: string;
+  monthly_goals: Array<{ month_number: number; title: string; description: string }>;
+  weekly_tasks: Array<{ month_number: number; weeks: Array<{ week_number: number; title: string; description: string }> }>;
+  interview_context?: Record<string, unknown>;
+}
+
 interface ErrorData {
   message: string;
   recoverable: boolean;
@@ -60,12 +72,13 @@ export interface MonthPreview {
 
 // 전체 생성 상태
 export interface StreamingState {
-  status: 'idle' | 'connecting' | 'streaming' | 'complete' | 'error';
+  status: 'idle' | 'connecting' | 'streaming' | 'complete' | 'preview_ready' | 'error';
   title: string | null;
   description: string | null;
   months: MonthPreview[];
   progress: ProgressData | null;
   roadmapId: string | null;
+  previewData: PreviewReadyData | null;  // preview_ready 시 전체 데이터
   error: string | null;
 }
 
@@ -76,6 +89,7 @@ export interface GenerateParams {
   start_date: string;
   mode: string;
   interview_context?: Record<string, unknown>;
+  skip_save?: boolean;  // true면 DB 저장 없이 preview_ready 이벤트 발송
 }
 
 const initialState: StreamingState = {
@@ -85,6 +99,7 @@ const initialState: StreamingState = {
   months: [],
   progress: null,
   roadmapId: null,
+  previewData: null,
   error: null,
 };
 
@@ -137,8 +152,17 @@ export function useStreamingGeneration() {
       }
 
       case 'warning': {
-        // 경고는 로그만 남김 (UI에 표시하지 않음)
-        console.warn('SSE Warning:', data);
+        // 경고는 무시 (UI에 표시하지 않음)
+        break;
+      }
+
+      case 'preview_ready': {
+        const previewData = data as PreviewReadyData;
+        setState((prev) => ({
+          ...prev,
+          status: 'preview_ready',
+          previewData: previewData,
+        }));
         break;
       }
 
@@ -202,8 +226,8 @@ export function useStreamingGeneration() {
             try {
               const parsedData = JSON.parse(eventData);
               handleEvent(eventType, parsedData);
-            } catch (e) {
-              console.error('SSE 데이터 파싱 실패:', e);
+            } catch {
+              // SSE 데이터 파싱 실패 시 무시
             }
           }
         }
@@ -305,6 +329,7 @@ export function useStreamingGeneration() {
     isIdle: state.status === 'idle',
     isConnecting: state.status === 'connecting',
     isStreaming: state.status === 'streaming',
+    isPreviewReady: state.status === 'preview_ready',
     isComplete: state.status === 'complete',
     isError: state.status === 'error',
   };
