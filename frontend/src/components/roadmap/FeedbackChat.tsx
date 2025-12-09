@@ -14,7 +14,6 @@ import {
   Calendar,
   Edit3,
   ChevronDown,
-  ChevronRight,
   Bot,
   User,
   Lightbulb,
