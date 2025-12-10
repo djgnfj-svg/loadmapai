@@ -10,9 +10,12 @@ from app.models.question import Question, QuestionType
 from app.ai.llm import invoke_llm_json
 from app.ai.prompts.templates import SINGLE_WEEK_DAILY_TASKS_PROMPT, build_interview_section
 from app.ai.prompts.learning_templates import (
+    LEARNING_DAILY_CURRICULUM_PROMPT,
     LEARNING_DAILY_QUESTIONS_PROMPT,
     calculate_intensity,
     get_weekend_intensity,
+    format_daily_focus,
+    get_difficulty_korean,
 )
 
 
@@ -197,21 +200,69 @@ class DailyGenerationService:
         roadmap: Roadmap,
         interview_context: dict | None = None,
     ) -> list[dict]:
-        """Generate LEARNING mode daily tasks with questions."""
+        """Generate LEARNING mode daily tasks with questions.
+
+        2단계 생성 방식:
+        1. 먼저 7일간의 구체적인 학습 커리큘럼 생성
+        2. 각 일자별로 해당 커리큘럼 기반 문제 생성
+        """
         interview_section = build_interview_section(interview_context or {})
 
-        # Generate 7 days, each with questions
+        # Step 1: 7일간의 구체적인 학습 커리큘럼 생성
+        curriculum = self._generate_weekly_curriculum_sync(
+            weekly_task=weekly_task,
+            roadmap=roadmap,
+            interview_section=interview_section,
+        )
+
+        # Step 2: 각 일자별로 커리큘럼 기반 문제 생성
         days = []
         for day_num in range(1, 8):
+            # 커리큘럼에서 해당 일자 정보 가져오기
+            day_curriculum = curriculum[day_num - 1] if day_num <= len(curriculum) else None
+
             day_data = self._generate_day_questions_sync(
                 weekly_task=weekly_task,
                 roadmap=roadmap,
                 day_number=day_num,
                 interview_section=interview_section,
+                day_curriculum=day_curriculum,
             )
             days.append(day_data)
 
         return days
+
+    def _generate_weekly_curriculum_sync(
+        self,
+        weekly_task: WeeklyTask,
+        roadmap: Roadmap,
+        interview_section: str,
+    ) -> list[dict]:
+        """7일간의 구체적인 학습 커리큘럼을 생성합니다.
+
+        주간 학습 목표를 각 일자별로 구체적인 학습 주제로 분해합니다.
+        예: "토익 기초 문법" → Day1: "8품사 개념", Day2: "시제 기초", ...
+        """
+        prompt = LEARNING_DAILY_CURRICULUM_PROMPT.format(
+            topic=roadmap.topic,
+            month_number=weekly_task.monthly_goal.month_number,
+            week_number=weekly_task.week_number,
+            duration_months=roadmap.duration_months,
+            weekly_title=weekly_task.title,
+            weekly_description=weekly_task.description or "",
+            interview_section=interview_section,
+        )
+
+        result = invoke_llm_json(prompt, temperature=0.7)
+        curriculum = result.get("daily_curriculum", [])
+
+        # 검증: 7일치가 있는지 확인
+        if len(curriculum) != 7:
+            raise ValueError(
+                f"커리큘럼 생성 실패: 7일치가 필요하지만 {len(curriculum)}일치만 생성됨"
+            )
+
+        return curriculum
 
     def _generate_day_questions_sync(
         self,
@@ -219,21 +270,39 @@ class DailyGenerationService:
         roadmap: Roadmap,
         day_number: int,
         interview_section: str,
+        day_curriculum: dict | None = None,
     ) -> dict:
-        """Generate questions for a single day in LEARNING mode."""
+        """Generate questions for a single day in LEARNING mode.
+
+        Args:
+            weekly_task: 주간 과제 정보
+            roadmap: 로드맵 정보
+            day_number: 일차 (1-7)
+            interview_section: 인터뷰 정보 섹션
+            day_curriculum: 해당 일자의 구체적인 커리큘럼 (2단계 생성에서 전달)
+        """
         # Calculate intensity based on topic and duration
         base_intensity, base_question_count = calculate_intensity(
             roadmap.topic, roadmap.duration_months
         )
 
-        # Determine daily topic based on day number and week content
-        daily_title = f"{day_number}일차: {weekly_task.title} 학습"
-        daily_description = f"{weekly_task.title}의 {day_number}일차 학습 내용"
+        # 커리큘럼에서 일일 학습 정보 추출 (2단계 생성)
+        if day_curriculum:
+            daily_topic = day_curriculum.get("topic", f"{weekly_task.title} 학습")
+            daily_focus = format_daily_focus(day_curriculum.get("focus", []))
+            daily_difficulty = get_difficulty_korean(day_curriculum.get("difficulty", "기초"))
+        else:
+            # Fallback: 기존 방식으로 generic한 제목 생성
+            daily_topic = f"{weekly_task.title} - {day_number}일차 학습"
+            daily_focus = "핵심 개념 학습"
+            daily_difficulty = "복습" if day_number >= 6 else "중급" if day_number >= 3 else "기초"
+
+        # 일일 제목/설명 (DB 저장용)
+        daily_title = f"{day_number}일차: {daily_topic}"
+        daily_description = f"핵심 학습 포인트: {daily_focus}"
 
         # For weekends (day 6-7), use lighter intensity for review
         if day_number >= 6:
-            daily_title = f"{day_number}일차: 복습 및 정리"
-            daily_description = f"이번 주 {weekly_task.title} 학습 내용 복습"
             intensity, question_count = get_weekend_intensity(base_intensity)
         else:
             intensity = base_intensity
@@ -247,11 +316,13 @@ class DailyGenerationService:
             month_number=weekly_task.monthly_goal.month_number,
             week_number=weekly_task.week_number,
             day_number=day_number,
-            daily_title=daily_title,
-            daily_description=daily_description,
             weekly_title=weekly_task.title,
             weekly_description=weekly_task.description or "",
             interview_section=interview_section,
+            # 새로 추가된 커리큘럼 기반 파라미터
+            daily_topic=daily_topic,
+            daily_focus=daily_focus,
+            daily_difficulty=daily_difficulty,
         )
 
         try:
@@ -266,9 +337,15 @@ class DailyGenerationService:
                 },
                 "tasks": [],  # No traditional tasks in LEARNING mode
                 "questions": questions,  # Questions instead
+                # 커리큘럼 정보도 함께 저장 (디버깅/로깅용)
+                "_curriculum": {
+                    "topic": daily_topic,
+                    "focus": daily_focus,
+                    "difficulty": daily_difficulty,
+                }
             }
         except Exception:
-            # Fallback: generate basic questions
+            # Fallback: generate basic questions based on curriculum
             return {
                 "day_number": day_number,
                 "goal": {
@@ -279,24 +356,24 @@ class DailyGenerationService:
                 "questions": [
                     {
                         "question_type": "MULTIPLE_CHOICE",
-                        "question_text": f"{weekly_task.title}에 대한 기본 개념 문제입니다.",
+                        "question_text": f"[{daily_topic}] 다음 중 올바른 설명은 무엇인가요?",
                         "choices": ["선택지 A", "선택지 B", "선택지 C", "선택지 D"],
                         "correct_answer": "0",
-                        "hint": "기본 개념을 떠올려보세요.",
+                        "hint": f"{daily_topic}의 기본 개념을 떠올려보세요.",
                         "explanation": "정답 해설입니다.",
                     },
                     {
                         "question_type": "SHORT_ANSWER",
-                        "question_text": f"{weekly_task.title}의 핵심 용어를 작성하세요.",
+                        "question_text": f"[{daily_topic}] 오늘 배운 핵심 용어를 작성하세요.",
                         "correct_answer": "핵심 용어",
-                        "hint": "수업에서 배운 중요한 용어입니다.",
+                        "hint": f"{daily_focus}와 관련된 중요한 용어입니다.",
                         "explanation": "해당 용어는 학습 내용의 핵심입니다.",
                     },
                     {
                         "question_type": "ESSAY",
-                        "question_text": f"{weekly_task.title}의 주요 개념을 설명하세요.",
+                        "question_text": f"[{daily_topic}] 오늘 배운 내용의 주요 개념을 설명하세요.",
                         "correct_answer": "주요 개념에 대한 설명으로 핵심 키워드들이 포함되어야 합니다.",
-                        "hint": "배운 내용을 자신의 말로 정리해보세요.",
+                        "hint": f"핵심 포인트: {daily_focus}",
                         "explanation": "개념 이해도를 확인하는 문제입니다.",
                     },
                 ],
