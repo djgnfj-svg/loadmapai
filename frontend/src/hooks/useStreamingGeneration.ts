@@ -7,6 +7,8 @@
 import { useState, useCallback, useRef } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 
+const API_URL = import.meta.env.VITE_API_URL ?? '';
+
 // SSE 이벤트 타입들
 interface TitleReadyData {
   title: string;
@@ -254,7 +256,7 @@ export function useStreamingGeneration() {
       });
 
       try {
-        const response = await fetch('/api/v1/roadmaps/generate-stream', {
+        const response = await fetch(`${API_URL}/api/v1/roadmaps/generate-stream`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
