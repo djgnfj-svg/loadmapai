@@ -3,7 +3,7 @@
  *
  * 로드맵 생성 후 사용자와 대화하며 로드맵을 개선합니다.
  */
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Send,
@@ -32,7 +32,7 @@ interface FeedbackChatProps {
   error: string | null;
 }
 
-export function FeedbackChat({
+export const FeedbackChat = memo(function FeedbackChat({
   messages,
   roadmapData,
   onSendMessage,
@@ -50,12 +50,20 @@ export function FeedbackChat({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
-    onSendMessage(input.trim());
-    setInput('');
-  };
+  const handleSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!input.trim() || isLoading) return;
+      onSendMessage(input.trim());
+      setInput('');
+    },
+    [input, isLoading, onSendMessage]
+  );
+
+  const handleSuggestionClick = useCallback((text: string) => {
+    setInput(text);
+    inputRef.current?.focus();
+  }, []);
 
   // 빠른 피드백 제안
   const quickSuggestions = [
@@ -125,10 +133,7 @@ export function FeedbackChat({
                 {quickSuggestions.map((suggestion) => (
                   <button
                     key={suggestion.text}
-                    onClick={() => {
-                      setInput(suggestion.text);
-                      inputRef.current?.focus();
-                    }}
+                    onClick={() => handleSuggestionClick(suggestion.text)}
                     disabled={isLoading}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full bg-gray-100 dark:bg-dark-700 border border-gray-200 dark:border-dark-600 text-gray-700 dark:text-gray-300 hover:border-indigo-300 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -211,12 +216,12 @@ export function FeedbackChat({
       </div>
     </div>
   );
-}
+});
 
 /**
  * 타이핑 인디케이터
  */
-function TypingIndicator() {
+const TypingIndicator = memo(function TypingIndicator() {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -247,12 +252,12 @@ function TypingIndicator() {
       </div>
     </motion.div>
   );
-}
+});
 
 /**
  * 채팅 메시지 컴포넌트
  */
-function ChatMessage({ message }: { message: FeedbackMessage }) {
+const ChatMessage = memo(function ChatMessage({ message }: { message: FeedbackMessage }) {
   const isUser = message.role === 'user';
 
   return (
@@ -297,12 +302,12 @@ function ChatMessage({ message }: { message: FeedbackMessage }) {
       </div>
     </motion.div>
   );
-}
+});
 
 /**
  * 수정 내역 뱃지
  */
-function ModificationBadge({
+const ModificationBadge = memo(function ModificationBadge({
   modifications,
   isUser
 }: {
@@ -330,15 +335,15 @@ function ModificationBadge({
       </span>
     </div>
   );
-}
+});
 
 /**
  * 로드맵 미리보기 (접기/펼치기 지원)
  */
-function RoadmapPreview({ roadmapData }: { roadmapData: RoadmapPreviewData | null }) {
+const RoadmapPreview = memo(function RoadmapPreview({ roadmapData }: { roadmapData: RoadmapPreviewData | null }) {
   const [expandedMonths, setExpandedMonths] = useState<Set<number>>(new Set([1]));
 
-  const toggleMonth = (monthNumber: number) => {
+  const toggleMonth = useCallback((monthNumber: number) => {
     setExpandedMonths((prev) => {
       const next = new Set(prev);
       if (next.has(monthNumber)) {
@@ -348,7 +353,7 @@ function RoadmapPreview({ roadmapData }: { roadmapData: RoadmapPreviewData | nul
       }
       return next;
     });
-  };
+  }, []);
 
   if (!roadmapData) {
     return (
@@ -480,6 +485,6 @@ function RoadmapPreview({ roadmapData }: { roadmapData: RoadmapPreviewData | nul
       })}
     </div>
   );
-}
+});
 
 export default FeedbackChat;

@@ -167,6 +167,7 @@ export function RoadmapCreate() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const generationAttemptedRef = useRef(false);
+  const feedbackSessionStartedRef = useRef(false);
 
   // Beta limit state
   const [limitInfo, setLimitInfo] = useState<{
@@ -259,22 +260,30 @@ export function RoadmapCreate() {
 
   // Start feedback session when preview is ready
   useEffect(() => {
-    if (streaming.isPreviewReady && streaming.previewData && step === 'generating') {
-      // 피드백 세션 시작
-      const startFeedback = async () => {
-        try {
-          await feedbackChat.startSession(
-            streaming.previewData as RoadmapPreviewData,
-            formData.interview_context as Record<string, unknown> | undefined
-          );
-          setStep('feedback');
-        } catch (err) {
-          setError(getErrorMessage(err));
-        }
-      };
-      startFeedback();
-    }
-  }, [streaming.isPreviewReady, streaming.previewData, step, feedbackChat, formData.interview_context]);
+    // 이미 세션 시작했으면 건너뛰기
+    if (feedbackSessionStartedRef.current) return;
+    if (!streaming.isPreviewReady || !streaming.previewData || step !== 'generating') return;
+
+    // 세션 시작 중복 방지
+    feedbackSessionStartedRef.current = true;
+
+    // 피드백 세션 시작
+    const startFeedback = async () => {
+      try {
+        await feedbackChat.startSession(
+          streaming.previewData as RoadmapPreviewData,
+          formData.interview_context as Record<string, unknown> | undefined
+        );
+        setStep('feedback');
+      } catch (err) {
+        // 실패 시 재시도 허용
+        feedbackSessionStartedRef.current = false;
+        setError(getErrorMessage(err));
+      }
+    };
+    startFeedback();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [streaming.isPreviewReady, streaming.previewData, step, formData.interview_context]);
 
   const handleInterviewSubmit = async (answers: InterviewAnswer[]) => {
     await interview.submitAnswers(answers);
@@ -320,6 +329,7 @@ export function RoadmapCreate() {
     streaming.reset();
     interview.reset();
     generationAttemptedRef.current = false;
+    feedbackSessionStartedRef.current = false;
     setIsGenerating(false);
     setStep('topic');
   };
