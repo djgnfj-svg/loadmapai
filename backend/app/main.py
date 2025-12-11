@@ -7,11 +7,12 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+from sqlalchemy.exc import OperationalError
 import sentry_sdk
 
 from app.config import settings
 from app.api.v1.router import api_router
-from app.db import get_db
+from app.db import get_db, DatabaseConnectionError
 from app.core.exceptions import AppException
 
 logger = logging.getLogger(__name__)
@@ -87,6 +88,38 @@ app.include_router(api_router, prefix="/api/v1")
 
 
 # Global Exception Handlers
+@app.exception_handler(DatabaseConnectionError)
+async def database_connection_error_handler(request: Request, exc: DatabaseConnectionError):
+    """Handle database connection errors."""
+    logger.error(f"Database connection error on {request.url.path}: {exc}")
+    return JSONResponse(
+        status_code=503,
+        content={
+            "success": False,
+            "error": {
+                "code": "DATABASE_UNAVAILABLE",
+                "message": str(exc),
+            },
+        },
+    )
+
+
+@app.exception_handler(OperationalError)
+async def operational_error_handler(request: Request, exc: OperationalError):
+    """Handle SQLAlchemy operational errors (connection issues)."""
+    logger.error(f"Database operational error on {request.url.path}: {exc}")
+    return JSONResponse(
+        status_code=503,
+        content={
+            "success": False,
+            "error": {
+                "code": "DATABASE_UNAVAILABLE",
+                "message": "데이터베이스 연결에 실패했습니다. 잠시 후 다시 시도해주세요.",
+            },
+        },
+    )
+
+
 @app.exception_handler(AppException)
 async def app_exception_handler(request: Request, exc: AppException):
     """Handle custom application exceptions."""
