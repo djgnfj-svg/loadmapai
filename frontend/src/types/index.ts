@@ -149,6 +149,8 @@ export interface MonthlyGoal {
   status: 'pending' | 'in_progress' | 'completed';
 }
 
+export type DailyGenerationStatus = 'none' | 'generating' | 'completed';
+
 export interface WeeklyTask {
   id: string;
   monthly_goal_id: string;
@@ -157,6 +159,7 @@ export interface WeeklyTask {
   description: string;
   progress: number;
   status: 'pending' | 'in_progress' | 'completed';
+  daily_generation_status: DailyGenerationStatus;
 }
 
 export interface DailyGoal {

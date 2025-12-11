@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException, status
 from uuid import UUID
 
-from app.models import Roadmap, MonthlyGoal, WeeklyTask, DailyGoal, DailyTask, RoadmapMode
+from app.models import Roadmap, MonthlyGoal, WeeklyTask, DailyGoal, DailyTask, RoadmapMode, DailyGenerationStatus
 from app.models.question import Question, QuestionType
 from app.ai.llm import invoke_llm_json
 from app.ai.prompts.templates import SINGLE_WEEK_DAILY_TASKS_PROMPT, build_interview_section
@@ -459,7 +459,20 @@ class DailyGenerationService:
         """
         weekly_task, roadmap = self.get_weekly_task_with_context(weekly_task_id, user_id)
 
-        # Check if already has daily tasks
+        # Check generation status (중복 생성 방지)
+        if weekly_task.daily_generation_status == DailyGenerationStatus.GENERATING:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="이미 일일 태스크를 생성 중입니다. 잠시 후 다시 시도해주세요.",
+            )
+
+        if weekly_task.daily_generation_status == DailyGenerationStatus.COMPLETED:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="이 주차는 이미 일일 태스크가 생성되어 있습니다.",
+            )
+
+        # Check if already has daily tasks (기존 체크도 유지)
         if self.has_daily_tasks(weekly_task_id):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -473,18 +486,33 @@ class DailyGenerationService:
                 detail="이전 주차를 먼저 완료해야 합니다.",
             )
 
-        # Generate daily tasks in thread pool
-        loop = asyncio.get_event_loop()
-        days = await loop.run_in_executor(
-            _executor,
-            self._generate_daily_tasks_sync,
-            weekly_task,
-            roadmap,
-            interview_context,
-        )
+        # Set status to GENERATING (중복 요청 방지)
+        weekly_task.daily_generation_status = DailyGenerationStatus.GENERATING
+        self.db.commit()
 
-        # Save to database
-        self._save_daily_tasks(weekly_task_id, days)
+        try:
+            # Generate daily tasks in thread pool
+            loop = asyncio.get_event_loop()
+            days = await loop.run_in_executor(
+                _executor,
+                self._generate_daily_tasks_sync,
+                weekly_task,
+                roadmap,
+                interview_context,
+            )
+
+            # Save to database
+            self._save_daily_tasks(weekly_task_id, days)
+
+            # Set status to COMPLETED
+            weekly_task.daily_generation_status = DailyGenerationStatus.COMPLETED
+            self.db.commit()
+
+        except Exception as e:
+            # 에러 발생 시 상태 롤백
+            weekly_task.daily_generation_status = DailyGenerationStatus.NONE
+            self.db.commit()
+            raise e
 
         # Refresh and return
         self.db.refresh(weekly_task)

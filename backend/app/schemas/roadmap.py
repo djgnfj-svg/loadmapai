@@ -5,6 +5,7 @@ from uuid import UUID
 
 from app.models.roadmap import RoadmapMode, RoadmapStatus
 from app.models.monthly_goal import TaskStatus
+from app.models.weekly_task import DailyGenerationStatus
 
 
 # Daily Goal schemas
@@ -86,6 +87,7 @@ class WeeklyTaskResponse(WeeklyTaskBase):
     week_number: int
     status: TaskStatus
     progress: int
+    daily_generation_status: DailyGenerationStatus
     created_at: datetime
 
     class Config:

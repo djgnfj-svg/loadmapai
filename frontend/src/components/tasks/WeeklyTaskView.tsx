@@ -39,6 +39,10 @@ export function WeeklyTaskView({
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const isLearningMode = mode === 'LEARNING';
 
+  // DB에서 가져온 생성 상태도 확인 (새로고침해도 유지됨)
+  const isGeneratingFromDB = week.daily_generation_status === 'generating';
+  const actualIsGenerating = isGenerating || isGeneratingFromDB;
+
   const completedCount = week.daily_tasks?.filter(t => t.is_checked).length || 0;
   const totalCount = week.daily_tasks?.length || 0;
   const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
@@ -281,14 +285,14 @@ export function WeeklyTaskView({
                         e.stopPropagation();
                         onGenerateDailyTasks(week.id);
                       }}
-                      disabled={isGenerating}
+                      disabled={actualIsGenerating}
                       className={cn(
                         'flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all',
                         'bg-primary-500 hover:bg-primary-600 text-white',
                         'disabled:opacity-50 disabled:cursor-not-allowed'
                       )}
                     >
-                      {isGenerating ? (
+                      {actualIsGenerating ? (
                         <>
                           <Loader2 className="h-4 w-4 animate-spin" />
                           생성 중...

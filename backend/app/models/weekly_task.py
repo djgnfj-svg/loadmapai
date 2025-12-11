@@ -1,10 +1,18 @@
 import uuid
+import enum
 from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, Enum as SQLEnum, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base, TimestampMixin
 from app.models.monthly_goal import TaskStatus
+
+
+class DailyGenerationStatus(str, enum.Enum):
+    """일일 태스크 생성 상태"""
+    NONE = "none"           # 생성 안됨
+    GENERATING = "generating"  # 생성 중
+    COMPLETED = "completed"    # 생성 완료
 
 
 class WeeklyTask(Base, TimestampMixin):
@@ -22,6 +30,13 @@ class WeeklyTask(Base, TimestampMixin):
 
     # LEARNING 모드 전용 필드
     review_generated = Column(Boolean, default=False, nullable=False)  # 복습 세션 생성 여부
+
+    # 일일 태스크 생성 상태 (중복 생성 방지)
+    daily_generation_status = Column(
+        SQLEnum(DailyGenerationStatus, values_callable=lambda x: [e.value for e in x]),
+        default=DailyGenerationStatus.NONE,
+        nullable=False
+    )
 
     # Relationships
     monthly_goal = relationship("MonthlyGoal", back_populates="weekly_tasks")

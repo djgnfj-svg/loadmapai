@@ -276,15 +276,7 @@ async def finalize_roadmap(
 
         db.commit()
 
-        # 첫 주 일일 태스크 생성 (백그라운드)
         roadmap_id = str(roadmap.id)
-        try:
-            await _generate_first_week_daily_tasks(
-                roadmap_id, str(current_user.id), db, session.interview_context
-            )
-        except Exception as e:
-            logger.warning(f"Failed to generate first week daily tasks: {e}")
-            # 실패해도 계속 진행
 
         # 세션 정리
         del feedback_sessions[session_id]
